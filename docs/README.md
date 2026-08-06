@@ -20,7 +20,7 @@
 | Phase 6.9.7 Tutor/Organizer | 主线已完成；SR5 语义 authority、SR6 产品 default-off、SR7 main replay 分开记录 | [SR7 main acceptance](./acceptance/phase-6-9-7-tutor-organizer-full-gate-schema-recovery-sr7-main-acceptance.md)    |
 | Phase 6.9.8 Task 9C         | 唯一 Live 失败封存，不得重跑                                                   | [Task 9C failure](./acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md)                         |
 | Phase 6.9.8 Recovery R0--R4 | R4 Mock-only 完成，`qualityAuthority=none`                                     | [R4 acceptance](./acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md) |
-| Phase 6.9.8 R5              | fresh admission 未授权、未开始                                                 | [当前状态](./current-status.md)                                                                                     |
+| Phase 6.9.8 R5              | fresh admission 未授权、未开始；前置 proxy/source 检查已零调用完成             | [R5 admission readiness](./acceptance/phase-6-9-8-retriever-final-response-r5-admission-readiness-zero-provider.md) |
 | Phase 6.10                  | 分层记忆尚未启动                                                               | [路线图](./roadmap.md)                                                                                              |
 
 分支是否已经进入 `main` 不看“完成”字样，而看 [分支关系](./branch-map.md) 中的 source tip、merge commit 和 main replay 三项证据。

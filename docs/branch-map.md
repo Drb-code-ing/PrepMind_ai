@@ -55,6 +55,18 @@ drb/docs-governance-main
 
 这里的“未合入”是明确的安全决策，不是遗漏。R4 分支已推送，证据和代码可回溯；禁止因为看到 `completed` 就自动合并。
 
+## R5 的固定 lineage 交接（2026-08-06）
+
+R5 不是从 `drb/docs-governance-main` 派生的新普通任务。R4 的 source-admission contract 把 branch、approved
+source ref、HEAD/upstream/remote parity 和 source bundle 绑定到
+`drb/phase-6-9-8-retriever-final-response-contract`；在文档治理分支上运行会返回
+`source_admission_invalid`，从而阻止误发 controlled-Live capability。
+
+因此 R5 若获准，只能切回已经推送的 R4 功能分支，重新做 clean/parity/proxy 检查，再消费新的精确授权。这里的“切回”是继续同一 fixed lineage，不是从功能分支再开子分支；当前不创建 R5 子分支，也不把 R4 或治理分支提前合入 `main`。若未来要坚持所有新任务都从 `main` 开分支，必须先完成独立的 zero-provider source-admission 参数化任务并建立新的 lineage，不能在 R5 运行中临时改 branch identity。
+
+本次准入前检查的独立回执见
+[R5 admission readiness](./acceptance/phase-6-9-8-retriever-final-response-r5-admission-readiness-zero-provider.md)。
+
 ## 历史分支的处理
 
 - `codex/phase-6-9-5-review-planner` @ `b8c089d0` 是旧的、已发散的本地历史分支。它的 tip 不是 `main` 的祖先，并且相对当前 main 含有大规模删除/旧版 runner 变更；Review/Planner 的已完成结果来自 `3aff6cc6` 合并线，不能把这个旧 tip 当作“未合并任务”再合入。

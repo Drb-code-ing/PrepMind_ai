@@ -13,6 +13,7 @@ PrepMind AI 的 Phase 7 核心工程化、Phase 6.9.7 Tutor/Organizer 主线和 
 - R0--R4 zero-provider 设计、diagnostic、runner/durability 与 reviewed Mock/static 均已完成。
 - R4 的唯一 authority 是 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。
 - R4 证明本地生产节点、双 wire、bounded diagnostic、runner 和 scorer 在 Mock 上自洽；不证明真实 Provider、真实模型质量、产品可用性、SLA 或 main 可用性。
+- R5 准入前零网络检查已完成：proxy `direct_ready / providerCalls=0`，当前治理分支 source-admission 按固定 lineage 安全返回 `source_admission_invalid`；详见 [R5 admission readiness](./acceptance/phase-6-9-8-retriever-final-response-r5-admission-readiness-zero-provider.md)。
 - 下一步是 **R5 fresh admission**，目前“未授权、未开始”。普通“继续”不等于 Provider 一次性授权。
 
 分支是否已进入 `main` 不看“完成”字样，而看 [分支关系](./branch-map.md) 中的 source tip、merge commit 和 main replay 三项证据。
@@ -69,6 +70,8 @@ PrepMind AI 的 Phase 7 核心工程化、Phase 6.9.7 Tutor/Organizer 主线和 
 - 运行失败也必须 durable seal，且不得自动重试或扩大范围。
 
 R5 通过后仍需单独判断产品 Docker/API/可见浏览器和 main authority；R5 不是自动解锁全部后续阶段的通行证。
+
+R5 的运行分支交接见 [branch-map.md](./branch-map.md#r5-的固定-lineage-交接2026-08-06)：正式运行不能使用当前文档治理分支，必须回到已推送的 R4 fixed lineage；这不是从功能分支再开子分支。
 
 ## 如何向协作者提问
 

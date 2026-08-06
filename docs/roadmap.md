@@ -7,18 +7,20 @@
 > 当前 Architecture Recovery R0--R4 已完成。R4 reviewed Mock/static 固定 guards `16/16` zero-call、双 wire
 > `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`，gate 为
 > `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；Provider、credential、formal evidence
-> 与业务写入均为 0。下一步仅 R5 fresh admission（未授权、未开始），R6/R7、产品 Docker/API/browser、main 与后续
-> Phase 继续阻断。
+> 与业务写入均为 0。R5 准入前 proxy 检查已得到 `direct_ready / providerCalls=0`，但当前文档治理分支按 fixed
+> lineage 安全返回 `source_admission_invalid`；下一步仍仅 R5 fresh admission（未授权、未开始），R6/R7、产品
+> Docker/API/browser、main 与后续 Phase 继续阻断。详见
+> [`R5 admission readiness`](./acceptance/phase-6-9-8-retriever-final-response-r5-admission-readiness-zero-provider.md)。
 
 ## 当前决策表
 
-| 当前问题 | 结论 | 下一允许动作 |
-| --- | --- | --- |
-| Phase 6.9.8 R4 是否完成 | 是，zero-provider reviewed Mock/static | 复核代码、测试和文档 |
-| R4 是否等于真实模型可用 | 否，authority=`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none` | 不得据此打开产品 gate |
-| 是否可以继续 R5 | 尚未授权、尚未开始 | 重新接受 DeepSeek/Qwen 数据边界并给出 exact authorization |
-| 是否可以先做产品 Docker/API/browser 或 main | 不可以 | 等 R5 与独立产品准入 |
-| Phase 6.10 记忆系统 | 阻断 | 全部 Agent 架构 authority 收口后再启动 |
+| 当前问题                                    | 结论                                                                                    | 下一允许动作                                              |
+| ------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Phase 6.9.8 R4 是否完成                     | 是，zero-provider reviewed Mock/static                                                  | 复核代码、测试和文档                                      |
+| R4 是否等于真实模型可用                     | 否，authority=`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none` | 不得据此打开产品 gate                                     |
+| 是否可以继续 R5                             | 尚未授权、尚未开始                                                                      | 重新接受 DeepSeek/Qwen 数据边界并给出 exact authorization |
+| 是否可以先做产品 Docker/API/browser 或 main | 不可以                                                                                  | 等 R5 与独立产品准入                                      |
+| Phase 6.10 记忆系统                         | 阻断                                                                                    | 全部 Agent 架构 authority 收口后再启动                    |
 
 完整准入条件与禁止动作见 [`docs/current-status.md`](./current-status.md)。
 各阶段的 source branch、merge commit、main replay 与“有意未合入”原因见 [`docs/branch-map.md`](./branch-map.md)。
@@ -36,23 +38,23 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 
 ## 总体路线
 
-| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                               |
-| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                             |
-| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                             |
-| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                             |
-| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                             |
-| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                             |
-| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                             |
-| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                             |
-| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                     |
-| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成      |
+| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                                         |
+| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                                       |
+| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                                       |
+| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                                       |
+| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                                       |
+| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                                       |
+| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                                       |
+| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                                       |
+| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                               |
+| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成                |
 | Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | 6.9.8 Task 9C 失败封存；Recovery R0--R4 Mock-only；R5 未授权 |
-| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                          |
-| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成              |
-| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                             |
-| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                             |
-| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                             |
+| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                                    |
+| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成                        |
+| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                                       |
+| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                                       |
+| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                                       |
 
 ## 已完成阶段
 

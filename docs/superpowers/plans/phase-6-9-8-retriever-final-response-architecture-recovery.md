@@ -3,7 +3,8 @@
 > - 设计来源：
 >   [Phase 6.9.8 Retriever / FinalResponse Architecture Recovery 设计](../specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md)
 > - 当前状态：R0--R4 zero-provider 完成；下一步仅 R5 controlled-Live admission（未授权）
-> - 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
+> - 当前开发分支：`drb/phase-6-9-8-retriever-final-response-contract`（R4 fixed lineage）；文档治理审阅分支为
+>   `drb/docs-governance-main`，不能用于 R5 source admission
 > - 当前 authority：`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`
 
 ## 1. 总体规则
@@ -200,6 +201,10 @@ R4 完成、提交、推送和独立复审不自动授权 R5。若用户未来�
 5. fresh DeepSeek + Qwen 数据边界接受；
 6. 新 lineage 的精确一次性授权；
 7. 三项专用 credential late-binding。
+
+R5 运行时必须切回已推送的 R4 fixed lineage；当前文档治理分支会被 source-admission fail-closed 拒绝。这是
+同一 lineage 的交接，不是从功能分支再开子分支。若要改为从 `main` 创建全新 R5 分支，必须先另做
+zero-provider source-admission 参数化并建立新的 lineage，不能在 R5 运行中临时改写 branch identity。
 
 本计划不预写 exact authorization 文本。任何 R5 失败都先正常 durable seal、strict validate 和复盘；禁止重跑或
 用单 case/curl/产品 API 补证。

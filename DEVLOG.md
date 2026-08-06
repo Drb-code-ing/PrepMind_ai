@@ -1,5 +1,18 @@
 # PrepMind AI 开发日志
 
+> 2026-08-06 — Phase 6.9.8 R5 准入前 zero-provider 检查：
+>
+> 在 `drb/docs-governance-main` 上完成只读 Git/证据/代理前置核对：HEAD 与 upstream `c2fd7c5a` 为 `0/0`，
+> `main` 与 `origin/main` 为 `185b8171`，R4 fixed-lineage formal recovery 文件为 `0`。proxy preflight 返回
+> `direct_ready / providerCalls=0`。同一分支调用 R4 source-admission 得到 `source_admission_invalid`，确认
+> branch identity 保护会阻止在文档治理分支上误发 R5 capability；这不是 R4 质量失败，也没有读取 credential 或
+> 调用 Provider。
+>
+> 新增 `docs/acceptance/phase-6-9-8-retriever-final-response-r5-admission-readiness-zero-provider.md`，并同步
+> branch-map、current-status、roadmap 与 Architecture Recovery plan。R5 仍未授权、未开始；正式运行必须回到已推送
+> R4 fixed lineage，重新做 parity/proxy 检查并取得匹配的 DeepSeek + Qwen 数据边界接受和精确一次性授权。当前不
+> 创建 R5 子分支、不合入 main、不启动 Docker/API/browser；不要把本次 proxy ready 当成 Provider health 或语义 authority。
+
 > 2026-08-06 — 文档治理与分支关系核对（进行中）：
 >
 > 为避免“功能分支写了完成但没有合并”或“合并后没有在 main 复验”的误读，建立
