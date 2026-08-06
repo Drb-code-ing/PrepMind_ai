@@ -10,6 +10,11 @@
 
 ---
 
+> **历史路径说明（as-of 2026-07-17）**：本计划的 `Modify:` 路径
+> `docs/acceptance/2026-07-17-phase-6-9-5-review-planner-production.md` 后续未以该日期文件名落地；
+> 当前对应的 production 记录是 [`2026-07-20-phase-6-9-5-review-planner-production.md`](../../acceptance/2026-07-20-phase-6-9-5-review-planner-production.md)。
+> 该旧路径标记为 `renamed`，不应据此创建重复 acceptance 或执行本计划旧流程。
+
 ## File map
 
 | File | Responsibility |

@@ -10,6 +10,19 @@
 > 与业务写入均为 0。下一步仅 R5 fresh admission（未授权、未开始），R6/R7、产品 Docker/API/browser、main 与后续
 > Phase 继续阻断。
 
+## 当前决策表
+
+| 当前问题 | 结论 | 下一允许动作 |
+| --- | --- | --- |
+| Phase 6.9.8 R4 是否完成 | 是，zero-provider reviewed Mock/static | 复核代码、测试和文档 |
+| R4 是否等于真实模型可用 | 否，authority=`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none` | 不得据此打开产品 gate |
+| 是否可以继续 R5 | 尚未授权、尚未开始 | 重新接受 DeepSeek/Qwen 数据边界并给出 exact authorization |
+| 是否可以先做产品 Docker/API/browser 或 main | 不可以 | 等 R5 与独立产品准入 |
+| Phase 6.10 记忆系统 | 阻断 | 全部 Agent 架构 authority 收口后再启动 |
+
+完整准入条件与禁止动作见 [`docs/current-status.md`](./current-status.md)。
+各阶段的 source branch、merge commit、main replay 与“有意未合入”原因见 [`docs/branch-map.md`](./branch-map.md)。
+
 ## 项目目标
 
 PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是聊天 Demo。最终链路包括：
@@ -34,7 +47,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                             |
 | Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                     |
 | Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成      |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 Task 9C 失败封存；Recovery R0--R4 完成 |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | 6.9.8 Task 9C 失败封存；Recovery R0--R4 Mock-only；R5 未授权 |
 | Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                          |
 | Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成              |
 | Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                             |

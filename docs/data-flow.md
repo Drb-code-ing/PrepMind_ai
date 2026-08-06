@@ -218,7 +218,7 @@ Agent Trace 边界：
 - Trace 是在线账号级观测能力，不进入 Dexie `mutationQueue`；离线或弱网时不补写历史 trace。
 - Trace 不保存完整 prompt、完整模型回答、完整 RAG chunk、access token、refresh token 或 API key。
 - `inputPreview`、`inputSummary`、`outputSummary` 和 `errorMessage` 只用于调试摘要，长度受 schema 与服务端双重限制。
-- 现有 fixed deterministic eval set 位于 `@repo/agent`，用于回归已实现 policy，不替代 live 输出体验验收。最终治理范围是 11 个逻辑节点加 Tool-Using Orchestrator；Retriever 已有正式 zero-provider node/port/baseline、evidence projector 与 query rewrite candidate，但仍需 Chat composition、paired quality gate、Live、产品和 graph 独立验收。FinalResponse 和 Orchestrator 仍需正式 node/graph contract 与独立验收。
+- 现有 fixed deterministic eval set 位于 `@repo/agent`，用于回归已实现 policy，不替代 live 输出体验验收。最终治理范围是 11 个逻辑节点加 Tool-Using Orchestrator；Retriever 与 FinalResponse 已有正式 node/contract，Task 7 已接入 `/api/chat` composition/terminal Trace，Task 8/R4 已完成 zero-provider reviewed Mock/static。它们仍需独立的真实 Live、产品和 main authority；Tool-Using Orchestrator 仍只有 descriptor/expectation-only eval，尚未形成可执行 graph。
 
 ## 4. RAG 知识库数据流
 
@@ -305,7 +305,7 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
   -> suspicious / conflict / insufficient 时追加“资料核对提示”
 ```
 
-Task 3 formal Retriever 数据流（尚未替换上面的 legacy Chat RAG composition）：
+Task 3 formal Retriever 数据流（历史 as-of：当时尚未替换上面的 legacy Chat RAG composition）：
 
 ```text
 authenticated AgentExecutionContextV1 + RetrieverRequestV1
@@ -327,10 +327,12 @@ authenticated AgentExecutionContextV1 + RetrieverRequestV1
        -> no query/chunk body/owner/token
 ```
 
-Task 3 的 PostgreSQL E2E 使用 fake 1536 embedding，因此上图的正式 Qwen 分支只描述现有后端 runtime contract，
-不是该 Task 的 Provider 执行证据。Task 3 完成时正式 Retriever node 尚未接入 `/api/chat`，当时只解锁 Task 4
-VerifiedEvidenceBundle/evidence projector；Task 4/5/6 现已完成，但正式 Retriever/FinalResponse 仍未接产品
-`/api/chat`，必须由 Task 7 完成 composition 与 terminal Trace。
+Task 3 的 PostgreSQL E2E 使用 fake 1536 embedding，因此上图的正式 Qwen 分支只描述后端 runtime contract，
+不是该 Task 的 Provider 执行证据。**以下三句是 Task 3 checkpoint 的历史 as-of 说明**：当时正式 Retriever node
+尚未接入 `/api/chat`，只解锁了 Task 4 VerifiedEvidenceBundle/evidence projector；Task 4/5/6 当时也尚未形成
+产品 composition。当前 Task 7 已完成 Retriever/Verifier/evidence projector/FinalResponse stream 与 terminal Trace
+接线，R4 仍只形成 zero-provider Mock authority；当前产品和 R5 边界以本文件顶部摘要及
+[`docs/current-status.md`](./current-status.md) 为准。
 
 资料管理建议默认关闭 gate 时的 fallback 数据流：
 

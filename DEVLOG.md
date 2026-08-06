@@ -1,5 +1,20 @@
 # PrepMind AI 开发日志
 
+> 2026-08-06 — 文档治理与分支关系核对（进行中）：
+>
+> 为避免“功能分支写了完成但没有合并”或“合并后没有在 main 复验”的误读，建立
+> `docs/branch-map.md`，登记 source tip、merge commit、main replay 和有意阻断的准入原因。当前
+> `main`/本地 `origin/main` 均为 `185b8171`；SR6 已由 `510bbc94` 合并，SR7 step-check 已由
+> `006f54e9` 合并，Review/Planner 主线已由 `3aff6cc6` 合并并由 `baf9ecfd` 收口。Phase 6.9.8 R4
+> 功能分支 `5c4d27d9` 已推送但尚未合入 main；当前 `drb/docs-governance-main` 仅为文档审阅分支，
+> 通过 `9a2d6056` 显式纳入 R4 基线，R5 仍未授权，因此不把 R4 带入 main。
+>
+> 同时把过时的 Retriever/FinalResponse 数据流表述改为历史 as-of，修复一处损坏字符，并把分支入口
+> 链接加入当前状态、README、协作规范和服务 README。旧的 `codex/phase-6-9-5-review-planner`
+> (`b8c089d0`) 已标记为发散历史分支，不是待合并任务；不直接 merge。当前工作树只有一个 worktree。
+> 文档提交、链接/编码/敏感信息检查与 R4 focused/typecheck/lint 回放在本任务收口前完成；最终 commit 和远程
+> 推送结果以本分支 Git history 与交付回执为准。
+>
 > 2026-08-06 — Phase 6.9.8 Retriever / FinalResponse Architecture Recovery R4：
 >
 > R4 zero-provider reviewed Mock/static 已完成。Task 8 的 production Retriever/FinalResponse node、ledger 与

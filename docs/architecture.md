@@ -742,7 +742,7 @@ eventEmitter.emit(SystemEvents.QUESTION_CREATED, { questionId, userId });
 
 ## 6. Agent 系统设计（LangGraph）
 
-> 本节的状态图、`Annotation.Root` 和 Tutor `llm.generate()` 是早期目标示例，不是当前仓库实现。当前 `createAgentGraph()` 只返回 graph descriptor，生产 Chat 使用分散的 Web/Nest orchestration；Retriever 与 FinalResponse 职责隐含于 RAG/Chat 链路，Tool-Using Orchestrator 尚未实现。后续将先完成 11 个逻辑节点加 Orchestrator 的模型路径、通信、权限和可执行 LangGraph，再进入分层记忆。
+> **历史目标快照（as-of Phase 0/早期 Agent 设计）**：本节的状态图、`Annotation.Root` 和 Tutor `llm.generate()` 是目标示例，不是当前仓库实现。当前 `createAgentGraph()` 仍只返回 graph descriptor，生产 Chat 使用 Web/Nest orchestration；Phase 6.9.8 Task 7 已把 Retriever、evidence projector、FinalResponse stream 和 realtime Trace 接入 `/api/chat`，Recovery R0--R4 又完成了 zero-provider diagnostic/runner/reviewed Mock checkpoint。真实 Provider、产品 gate 和可执行 Tool-Using Orchestrator 仍需按 [`docs/current-status.md`](./current-status.md) 与对应 acceptance 单独判断。保留本节的目标图是为了回顾设计演进，不应把它当作当前实现清单。
 
 ### 6.1 Agent 状态图
 

@@ -1,7 +1,9 @@
 # PrepMind 本地启动命令
 
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
-> 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
+> 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`；需要确认任务是否已合并和 main 是否复验时，再看 `docs/branch-map.md`。
+
+> 当前阶段提示（2026-08-06）：Phase 6.9.8 Recovery R0--R4 已完成，R4 仅为 zero-provider Mock-only；R5 fresh admission 未授权、未开始。本文的启动命令不等于 Live 或产品验收授权；真实模型、headed 浏览器和 main 验收必须遵循 [`docs/current-status.md`](./current-status.md) 的准入条件。
 
 ## 0. 先看这里：Prisma Studio、数据库和管理员账号
 

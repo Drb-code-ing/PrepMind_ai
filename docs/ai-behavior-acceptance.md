@@ -2,7 +2,15 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.5 Review / Planner 当前边界
+## 当前阶段总览（2026-08-06）
+
+Phase 6.9.8 Architecture Recovery R0--R4 已完成，但 R4 只有
+`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；Task 9C 的唯一 Live 已失败封存，
+R5 fresh admission 未授权、未开始。本文下方的 Router/Verifier、Review/Planner 和早期 Agent 条目包含历史 checkpoint，
+请按各节日期阅读，当前准入、禁止动作和可复制提问以 [`docs/current-status.md`](./current-status.md) 为准。
+任务是否已合并及 main 回放是否完成，以 [`docs/branch-map.md`](./branch-map.md) 的 commit 关系为准。
+
+## Phase 6.9.5 Review / Planner 历史边界（as-of 2026-07-20）
 
 Review/Planner 的 V10 controlled-Live 仍是唯一语义质量 authority。V22 的 `operation_failed -> recovered` 以及 V11--V21 的既有 terminal 都是不可重跑、不可复用、不可拼接的历史；V22 的终止是 API aggregate timing 与 Trace candidate-step timing 的错误精确比较，不是语义质量或计费失败。
 
@@ -172,7 +180,9 @@ Phase 6.9.4.4 的生产验收 contract 为：
 
 回顾时可以问：“为什么 `json_object` 仍不能取代 canonical Zod？”“为什么 runner/prompt/entry identity 必须绑定？”“什么证据才足以把 Router / Verifier 从 `enabled=false` 改为可启用？”
 
-下一会话可以复制：“请继续 Phase 6.9.4.4 Task 9：在当前分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、精确清理合成数据，并提交 evidence/current docs；不要开始 Task 10，不要提前进入记忆系统。”
+历史复制问法（已废弃）：“请继续 Phase 6.9.4.4 Task 9：在当前分支完成完整 gates、Mock、controlled-Live、Docker、可见浏览器验收、精确清理合成数据，并提交 evidence/current docs；不要开始 Task 10，不要提前进入记忆系统。”
+
+当前安全复制问法：“请先读取 `docs/current-status.md`，只在 R5 fresh admission 的数据边界和精确一次性授权都明确后执行；在此之前不要读取 credential、调用 Provider、启动产品 Docker/API/浏览器或合并 main，并同步 DEVLOG、roadmap 和 acceptance。”
 
 后续 Agent 模型路径必须遵循：
 

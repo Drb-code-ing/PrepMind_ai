@@ -10,6 +10,11 @@
 
 ---
 
+> **历史路径说明（as-of 2026-07-17）**：本计划中的
+> `docs/acceptance/phase-6-9-5-review-planner-v6-production.md` 是预期的 v6 产物，但未按该命名落地；
+> 它是 `unrealized` 历史路径，不是当前待办，也不应补建空文件。当前阶段入口见
+> [`docs/current-status.md`](../../current-status.md) 与 [`docs/branch-map.md`](../../branch-map.md)。
+
 ## Preconditions and stop rules
 
 - Work on `codex/phase-6-9-5-review-planner-live-diagnostics`; do not create a

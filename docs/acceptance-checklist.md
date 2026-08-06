@@ -5,6 +5,14 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
+## 当前安全横幅（2026-08-06）
+
+当前仓库停在 Phase 6.9.8 Architecture Recovery R4：R4 是 zero-provider reviewed Mock-only，
+`qualityAuthority=none`；R5 fresh admission 未授权、未开始。不要把本清单中的历史 Live 小样本规则当作当前授权，
+也不要因“继续”而读取 credential、调用 Provider、启动产品 Docker/API/浏览器或合并 main。
+当前状态和允许动作见 [`docs/current-status.md`](./current-status.md)；真实模型验收必须重新接受当次数据边界并给出精确一次性授权。
+分支是否已合并、合并后是否回放通过，统一看 [`docs/branch-map.md`](./branch-map.md)；不要用一个功能分支的 `completed` 文案替代 merge/main 证据。
+
 ## 0. Phase 6.9.5 历史 Product-Acceptance checkpoint（非当前阻断）
 
 > 当前状态索引（2026-07-20）：V19 及本节以下 V8/V9 文本均为不可改写的历史 checkpoint，不可把其“未完成/不得进入产品验收”理解为当前状态。V10 仍是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 保留为独立历史。修复 Trace 计时耦合后，独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收为 `candidate_applied`；main default-off replay 已通过，gate 保持关闭、合成账户/Trace 已清理。详见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。
@@ -18,7 +26,7 @@ main default-off replay 已完成。本段流程保留给后续同类阶段：�
 | 场景                      | 推荐模式                                                          | 能证明什么                                                   | 不能证明什么                      |
 | ------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------- |
 | 普通 UI、表单、鉴权、CRUD | 本机 Bun + Docker 基础设施                                        | 页面交互、接口联通、校验和鉴权边界                           | Docker standalone 打包是否可用    |
-| 后台任务、队列、worker    | Docker PostgreSQL / Redis + `SERVER_ROLE=both` 或 API/worker 拆分 | BullMQ、BackgroundJob、heartbeat、轮询和状态流               | 容器级 readiness 是否健康         |
+| 后台任务、队列、worker    | 本机可用 `SERVER_ROLE=both`；Compose 必须拆为 `SERVER_ROLE=api` + 独立 worker | BullMQ、BackgroundJob、heartbeat、轮询和状态流               | 容器级 readiness 是否健康         |
 | Docker 部署链路           | Docker Compose 全栈                                               | Web/API/Worker 容器能否一起启动，worker healthcheck 是否工作 | 本机热更新开发体验                |
 | Chat / Agent 工程链路     | Mock AI                                                           | route headers、prompt 拼接、trace、RAG 降级、UI 渲染         | 真实模型回答质量                  |
 | Chat / Agent 真实体验     | Live AI 小样本                                                    | Tutor 风格、RAG 引用自然度、真实模型是否遵守 guard           | 大规模稳定性和成本                |

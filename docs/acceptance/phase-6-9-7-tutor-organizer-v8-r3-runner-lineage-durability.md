@@ -96,7 +96,7 @@ runner/runtime/marker/journal/evidence/recovery token 在 V8 artifact 任意层�
 
 R3 默认 Mock CLI 在没有显式 reviewed harness 时返回 `runtime_factory_unavailable`，且不会创建
 marker/journal/evidence。只有测试在临时目录显式注入 synthetic harness，才能验证工程合同；R4 才负责接入
-reviewed Mock factory �� fresh Mock evidence。
+reviewed Mock factory 与 fresh Mock evidence。
 
 ## 5. Evidence、敏感字段与 crash-only recovery
 

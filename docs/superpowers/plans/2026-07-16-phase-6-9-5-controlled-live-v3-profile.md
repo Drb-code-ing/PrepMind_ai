@@ -10,6 +10,11 @@
 
 ---
 
+> **历史路径说明（as-of 2026-07-16）**：本计划中的 `Create:` 和 `git add` 路径是当时预期的 v3 产物；其中
+> `docs/acceptance/phase-6-9-5-review-planner-v3-preflight.md` 未按该命名落地。它是未落地产物
+>（`unrealized`），不是当前缺失任务；不要补建空文件或执行本计划旧命令。当前 Review/Planner 证据入口见
+> [`docs/current-status.md`](../../current-status.md) 与 [`docs/branch-map.md`](../../branch-map.md)。
+
 ## Fixed preconditions and invariants
 
 - This plan is the only authorized continuation after v1/v2. Never invoke,
