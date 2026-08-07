@@ -1,9 +1,10 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 实施计划
 
 > 设计来源：[Transport Re-entry V2 设计](../specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md)
-> 当前状态：D0、C1、C2 zero-provider runner/durability 与 S1 reviewed Mock/static 已完成；当前停止在 L1 授权门
+> 当前状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static 与 L1 zero-provider implementation 已完成；当前停止在 source commit 后的 L1 授权门
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> 当前 authority：`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`
+> 当前 authority：`zero_provider_transport_reentry_v2_l1_implementation / qualityAuthority=none`；S1 的
+> `zero_provider_transport_reentry_v2_s1 / qualityAuthority=none` 保留为历史 reviewed Mock/static checkpoint
 
 ## 执行原则
 
@@ -79,6 +80,17 @@ validator（`ok=true`）均通过。未读取真实 `.env`、未调用 Provider�
 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
 
 ## L1：唯一 controlled canary（待授权）
+
+### L1 implementation checkpoint（已完成，zero-provider）
+
+- 新增 production-shaped launcher、strict source/proxy/data-boundary/authorization gate 与 fixed three-slot
+  runner；真正 adapter constructor 延后到 durable marker/reservation 之后；
+- 新增 dispatch/response/usage journal state machine、hash-chain validator、lineage path fence、reserved/dispatch
+  crash-only recovery、existing-artifact publication recovery 与 recovery-claim integrity check；
+- focused L1 `12/12`（44 assertions）、C1+C2+S1+L1 `44/44`（218 assertions）、Agent full `1406/1406`（24063
+  assertions，174 files）、targeted ESLint/Prettier/Bun build 通过；Provider/credential/formal evidence=0；
+- 该 checkpoint 不消费 L1 marker，不形成 transport/semantic/product authority；提交并推送后需要对新 source commit
+  重新接受数据边界并给出 exact authorization。
 
 仅在 S1 source parity、clean tree、formal artifact=0、新数据边界接受与新 exact authorization 全部通过后执行：
 

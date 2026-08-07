@@ -1,10 +1,11 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 设计
 
 > 日期：2026-08-07
-> 状态：D0、C1、C2 zero-provider runner/durability 与 S1 reviewed Mock/static 已完成；L1/P1 尚未开始
+> 状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static 与 L1 zero-provider implementation 已完成；唯一 L1 controlled-Live 尚未执行
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
-> 当前 checkpoint authority：`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`
+> 当前 checkpoint authority：`zero_provider_transport_reentry_v2_l1_implementation / qualityAuthority=none`；S1 的
+> `zero_provider_transport_reentry_v2_s1 / qualityAuthority=none` 保留为历史 reviewed Mock/static checkpoint
 
 ## 1. 决策摘要
 
@@ -174,6 +175,18 @@ semantic/product authority 并完成 Docker/API/browser/main 回放。
 
 当前 S1 完成后，下一原子任务仅为 L1 授权门；没有新的 exact authorization 前不得执行 L1，不得读取真实 `.env`、
 credential 或调用 Provider。
+
+## 10. L1 implementation checkpoint（2026-08-08，zero-provider）
+
+L1 的 production-shaped launcher、固定三槽 runner、source/proxy/data-boundary/authorization gate、deferred
+adapter handoff、strict journal state machine、existing-artifact recovery 与 recovery-claim validator 已完成。
+focused `12/12`、C1+C2+S1+L1 `44/44`、Agent full `1406/1406` 通过；targeted ESLint、Prettier、Bun build
+通过。实现阶段未读取真实 `.env`、credential、Provider，也未创建正式 evidence。真正的 adapter constructor 只在
+exclusive marker/reservation durable 后执行，marker 前仅做 capability shape/lineage/family/call preflight。
+
+该 checkpoint 不是 Live authority；source commit 固定并推送后，仍需重新接受当前 source 的 DeepSeek/Qwen 数据边界
+并给出 exact authorization，才可执行唯一一次 L1 controlled canary。无论终态如何，不能解锁 semantic/product/
+Docker/API/browser、SLA 或 `main`。
 
 ## 9. Reader questions
 

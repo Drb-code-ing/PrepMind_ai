@@ -1,5 +1,22 @@
 # PrepMind AI 开发日志
 
+> 2026-08-08 — Phase 6.9.8 Transport Re-entry V2 L1 implementation 与 zero-provider 回归已完成：
+>
+> 新增 production-shaped L1 launcher、固定 `rewrite -> qwen -> final_response` runner、source/proxy/data-boundary/
+> authorization gate、deferred adapter handoff、strict dispatch/response/usage journal state machine、hash-chain
+> validator、lineage formal-path fence、reserved/dispatch crash-only recovery、existing-artifact publication recovery
+> 与 recovery-claim integrity check。真正 adapter constructor 只在 durable marker/reservation 后执行，marker 前只做
+> capability shape/lineage/family/call preflight；raw key 不进入 report/journal/artifact/diagnostic。
+>
+> L1 focused `12/12`（44 assertions），C1+C2+S1+L1 `44/44`（218 assertions），Agent full `1406/1406`（24063
+> expect()，174 files），targeted ESLint、Prettier 与 Bun build 通过。`tsc` 仍只受既有 Bun/Node/DOM 类型与 monorepo
+> rootDir 环境问题阻断；新增 L1 除该环境类错误外无独立类型错误。真实 `.env`/credential、DeepSeek/Qwen、正式
+> marker/journal/report/artifact/recovery claim、Docker/API/browser、Trace、业务写入均为 `0`。
+>
+> 本记录不是 Live authority。提交并推送当前 source 后，仍需对新 commit 重新接受 DeepSeek/Qwen 数据边界并给出 exact
+> authorization，才可执行唯一一次 controlled canary；成功也只形成 transport diagnostic authority，不解锁
+> semantic/product/main。验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`。
+
 > 2026-08-07 — Phase 6.9.8 Transport Re-entry V2 S1 reviewed Mock/static 已完成：
 >
 > 三个 bounded synthetic first-party adapter（DeepSeek rewrite、Qwen embedding、DeepSeek FinalResponse）均通过同一个

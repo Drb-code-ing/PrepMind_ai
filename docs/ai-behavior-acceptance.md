@@ -2,6 +2,22 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
+## Phase 6.9.8 Transport Re-entry V2 L1 实现 checkpoint（2026-08-08）
+
+L1 implementation 已完成，但尚未形成本次 controlled-Live 证据。它把 root launcher、source/proxy/data-boundary/
+authorization gate、bounded root `.env` projection、三槽真实 adapter seam、strict journal/hash-chain validator、
+hard-link publication 与 crash-only recovery 固定为一条不可扩展的 transport canary 流。真正的 dedicated key handoff
+只在 durable marker/reservation 后进入 adapter constructor；marker 前仅做 capability 的 lineage/family/call
+shape 检查。固定顺序为 `rewrite -> qwen -> final_response`，最多 3 calls、总 cap `0.024096 CNY`，首错即停止后缀。
+
+zero-provider 回归：L1 focused `12/12`（44 assertions）、C1+C2+S1+L1 `44/44`（218 assertions）、Agent full
+`1406/1406`（24063 assertions）；真实 `.env`/credential/Provider/formal evidence/Docker/API/browser/Trace/
+BackgroundJob/Outbox/业务写入均为 `0`。因此当前不能写成“模型质量通过”或“产品可用”。提交推送后，只有在当前 source
+commit 上重新接受 DeepSeek/Qwen 数据边界并给出 exact authorization，才能消费唯一一次 L1 controlled canary；成功最多
+形成 `qualityAuthority=none` 的 transport diagnostic authority，随后仍需独立 zero-provider semantic/product 路线。
+
+验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`。
+
 ## Phase 6.9.8 Transport Re-entry V2 S1 当前边界
 
 S1 是 C2 之后的 zero-provider reviewed Mock/static checkpoint。三个 bounded synthetic first-party adapter 通过同一

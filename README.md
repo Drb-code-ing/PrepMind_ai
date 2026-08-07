@@ -1,14 +1,25 @@
 # PrepMind AI 智能备考助手
 
-> 当前任务（2026-08-07）：Transport Re-entry V2 S1 reviewed Mock/static 已完成。C2 zero-provider runner/durability
+> 当前任务（2026-08-08）：Transport Re-entry V2 L1 implementation 与 zero-provider 回归已完成。新增 strict
+> source/proxy/data-boundary/authorization launcher、固定三槽 runner、deferred adapter handoff、journal state
+> machine、hash-chain validator、lineage formal-path fence、reserved/dispatch crash-only recovery、existing-artifact
+> recovery 与 recovery-claim integrity check。L1 focused `12/12`、C1+C2+S1+L1 `44/44`、Agent full `1406/1406`
+> （24063 assertions）通过，targeted ESLint/Prettier/Bun build 通过；真实 `.env`/credential/DeepSeek/Qwen、正式
+> evidence、Docker/API/browser 与业务写入仍为 `0`。真正 adapter constructor 只在 durable reservation 后执行。
+> source commit 推送后还需重新接受当前 source 的 DeepSeek/Qwen 数据边界并给出 exact authorization，才执行唯一一次
+> controlled canary；成功也只形成 transport diagnostic authority，不代表语义或产品可用。详见
+> [`L1 zero-provider 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md)。
+
+> 历史回执（2026-08-07）：Transport Re-entry V2 S1 reviewed Mock/static 已完成。C2 zero-provider runner/durability
 > 已先完成；新的
 > `phase-6.9.8-retriever-final-response-transport-reentry-v2` 不复用旧 T3 identity；C2 已把 C1 的三个 dedicated
 > capability 收口为单次 opaque configuration capability，并验证 `rewrite -> qwen -> final_response` 固定三槽、
 > exclusive marker、reservation-before-dispatch、fsynced hash-chain journal、hard-link artifact、strict validator
 > 与 crash-only recovery。首错 breaker/no-retry 覆盖 8 类 bounded fault，publication recovery 不重放 port call。
-> C2 focused `15/15`、Agent full `1387/1387`，typecheck/lint/Prettier 全部通过；真实 credential、Provider、正式
+> C2 当时 focused `15/15`、Agent full `1387/1387`，typecheck/lint/Prettier 全部通过；真实 credential、Provider、正式
 > evidence、Docker/API/browser 与业务写入均为 `0`。authority=`zero_provider_transport_reentry_v2_c2 /
-qualityAuthority=none`；该段为 C2 历史回执；S1 已完成，V2 L1 仍需新的数据边界接受与 exact authorization。
+qualityAuthority=none`；该段数字是 C2 历史回执，不是当前累计数；S1 已完成，V2 L1 implementation 也已完成，当前仍需
+> 在最终 source commit 上重新接受数据边界与 exact authorization。
 > 详见 [`V2 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md)、
 > [`C2 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md)。
 
@@ -57,9 +68,10 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 项目不是一次性 Demo，而是按 Phase 0 到 Phase 10 逐步推进的 AI 应用工程项目。Phase 7 核心后台任务工程化已完成；Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Phase 6.9.7 Tutor/Organizer 已完成 SR5 分支语义质量门、SR6 zero-provider 产品验收与 SR7 main/default-off 回放。Phase 6.9.8 RetrieverAgent / FinalResponseAgent Task 0--9B 已完成工程地基；唯一 Task 9C controlled-Live run `28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2` 随后以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：guard `16/16`，实际 Provider calls `5/64`，第二条 DeepSeek rewrite 在 dispatch 后以 `schema_invalid / wire 1/1/0/0` 失败，breaker 阻止剩余 59 次调用；journal `134`、validator `ok=true`、recovery claim=`null`。Task 9C 不得重跑，Task 10/11、产品/main 与后续阶段继续阻断。Architecture Recovery R0--R4 已完成独立三链路/双 wire/no-raw/no-hash 设计、diagnostic robustness、source-admitted runner/durability 与 reviewed Mock/static；R3 固定 16-guard/64-call 调度、模块私有 single-use observation、双 wire accounting、hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery，R4 gate 为 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。R5 唯一 controlled-Live 已失败封存（run 34eb99be...），不能重跑或追加探测；R6 产品、main 与后续阶段继续阻断。Phase 6.9 全部 Agent 架构完成后再进入 Phase 6.10 分层记忆，随后进入 Phase 8 性能/PWA 和 Phase 9 MCP Tool 体系。Phase 7.23 的 production 导出与维护开关仍默认关闭。
 
 当前不把 R5 或 T3 配置失败拼接成“部分通过”；T0/T1/T2/T3-A 已完成 Transport Evidence Recovery 的 zero-provider
-contract、可判别性、admission、调度与 durability 前置验证，T3 controlled 已一次性失败封存。新的 V2 D0/C1/C2 已冻结并
-实现 re-entry 的配置隔离、dedicated projection、runner 与 durability；当前只允许读取证据、运行 validator、修正文档
-或实现 S1 zero-provider reviewed Mock，不得自动重跑 T3、执行 V2 L1、追加 Provider 探测或进入产品/main 验收。
+contract、可判别性、admission、调度与 durability 前置验证，T3 controlled 已一次性失败封存。新的 V2 D0/C1/C2/S1 已冻结并
+实现 re-entry 的配置隔离、dedicated projection、runner、durability 与 L1 production-shaped launcher；L1 zero-provider
+focused `12/12`、C1+C2+S1+L1 `44/44`、Agent full `1406/1406` 已通过。当前只允许在最终 source commit 上执行
+这次唯一 controlled canary；不得自动重跑 T3、追加 Provider 探测或进入产品/main 验收。
 
 Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1--V9 九条 controlled-Live 均以 `quality_gate_failed` 独立封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 完成 `24/24` guard zero-call；首个 pair 两条 lane 各进入一次 durable dispatch，但均没有 Provider response。Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全为 `null`。
 
@@ -160,6 +172,7 @@ evidence 仍为 0；上述为 R4 historical checkpoint。R5 唯一 controlled-Li
 | Phase 6.9.8 V2-C1 | bounded root-env parser、pre-credential gate、dedicated single-use capability projection            | 已完成（历史 checkpoint）   |
 | Phase 6.9.8 V2-C2 | opaque configuration、三槽 runner、exclusive marker、journal/artifact、crash-only durability        | 已完成（zero-provider）     |
 | Phase 6.9.8 V2-S1 | 三个 synthetic first-party adapter、wire/usage/fault matrix、reviewed Mock/static                   | 已完成（Mock-only）         |
+| Phase 6.9.8 V2-L1 | 唯一三槽 controlled transport canary（新 source/data-boundary/authorization）                       | 实现完成，Live 待执行       |
 | Phase 7           | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit              | 核心工程化已完成            |
 | Phase 7.8.5       | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固                            | 已完成                      |
 | Phase 7.23        | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                            | 已完成                      |
@@ -499,6 +512,7 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 - [Phase 6.9.8 Transport Re-entry V2 C1 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md)
 - [Phase 6.9.8 Transport Re-entry V2 C2 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md)
 - [Phase 6.9.8 Transport Re-entry V2 S1 reviewed Mock/static 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md)
+- [Phase 6.9.8 Transport Re-entry V2 L1 implementation zero-provider 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

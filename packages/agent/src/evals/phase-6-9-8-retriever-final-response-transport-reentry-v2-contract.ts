@@ -650,6 +650,70 @@ export function consumePhase698TransportReentryV2DedicatedCapability(
   });
 }
 
+/**
+ * Validate a dedicated capability without consuming it. This is the
+ * pre-marker configuration check; the capability is handed to a first-party
+ * adapter only after the durable reservation exists.
+ */
+export function inspectPhase698TransportReentryV2DedicatedCapability(
+  capability: unknown,
+  expectedFamily: Phase698TransportReentryV2Family,
+  expectedCallId: string,
+): Phase698TransportReentryV2DedicatedCapabilityReceipt | Phase698TransportReentryV2Failure {
+  if (!FAMILY_SET.has(expectedFamily) || !validCallId(expectedCallId) || !isObject(capability))
+    return failure('capability_invalid');
+  const state = dedicatedStates.get(capability);
+  if (!state) return failure('capability_invalid');
+  if (state.lineage !== PHASE_6_9_8_TRANSPORT_REENTRY_V2_LINEAGE)
+    return failure('capability_invalid');
+  if (consumedDedicated.has(capability)) return failure('capability_reused');
+  if (state.family !== expectedFamily) return failure('family_mismatch');
+  if (state.callId !== expectedCallId) return failure('call_mismatch');
+  return Object.freeze({
+    lineage: PHASE_6_9_8_TRANSPORT_REENTRY_V2_LINEAGE,
+    family: state.family,
+    callId: state.callId,
+    credentialAvailable: true as const,
+  });
+}
+
+/**
+ * L1-only secret handoff. The credential remains owned by this module's
+ * WeakMap and is available to a trusted first-party adapter constructor only
+ * for the duration of the callback. The raw key is never returned as a value,
+ * receipt, diagnostic, or evidence field. Calling this function also consumes
+ * the capability, so a second handoff (including a forged/cross-family one)
+ * fails closed.
+ */
+export function withPhase698TransportReentryV2DedicatedApiKey<T>(
+  capability: unknown,
+  expectedFamily: Phase698TransportReentryV2Family,
+  expectedCallId: string,
+  consumer: (apiKey: string) => T,
+): T | Phase698TransportReentryV2Failure {
+  if (
+    !FAMILY_SET.has(expectedFamily) ||
+    !validCallId(expectedCallId) ||
+    typeof consumer !== 'function' ||
+    !isObject(capability)
+  ) {
+    return failure('capability_invalid');
+  }
+  const state = dedicatedStates.get(capability);
+  if (!state) return failure('capability_invalid');
+  if (state.lineage !== PHASE_6_9_8_TRANSPORT_REENTRY_V2_LINEAGE)
+    return failure('capability_invalid');
+  if (consumedDedicated.has(capability)) return failure('capability_reused');
+  if (state.family !== expectedFamily) return failure('family_mismatch');
+  if (state.callId !== expectedCallId) return failure('call_mismatch');
+  consumedDedicated.add(capability);
+  try {
+    return consumer(state.apiKey);
+  } catch {
+    return failure('credential_shape_invalid');
+  }
+}
+
 export function makePhase698TransportReentryV2SyntheticPreflightInput(
   overrides: Partial<Phase698TransportReentryV2PreflightInput> = {},
 ): Phase698TransportReentryV2PreflightInput {

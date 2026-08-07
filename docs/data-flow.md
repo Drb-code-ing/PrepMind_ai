@@ -1,5 +1,16 @@
 # PrepMind AI 数据流
 
+> 当前 L1 implementation checkpoint（2026-08-08）：V2 已从 S1 reviewed Mock/static 收口到可受控执行的
+> production-shaped launcher。固定入口顺序为 `exact argv -> source/remote parity -> loopback proxy preflight ->
+DeepSeek/Qwen data boundary -> exact authorization -> root .env bounded projection -> capability shape check ->
+exclusive marker/reservation -> adapter construction -> rewrite -> qwen -> final_response -> durable publication`。
+> marker 前不构造第一方 adapter、不把 raw key 放入 runtime/report/journal/artifact；首错 breaker、suffix no-dispatch、
+> no-retry 与 reserved/dispatch crash-only recovery 均由 L1 runner 固定。当前 zero-provider 回归为 L1 `12/12`、
+> C1+C2+S1+L1 `44/44`、Agent full `1406/1406`；真实 `.env`/credential/Provider、正式 evidence、Docker/API/browser、
+> Trace、BackgroundJob、Outbox 与业务写入仍为 `0`。提交并推送后才可在新 source 上执行本次唯一 controlled canary；
+> 即使成功也只形成 transport diagnostic authority，不等同于 Retriever/FinalResponse 语义或产品可用。
+> 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`。
+
 > 当前 S1（2026-08-07）：C2 durability 之上的三个 bounded synthetic first-party adapter 复用同一
 > `rewrite -> qwen -> final_response` runner seam。success flow 的 runner wire 与 adapter/provider wire 分别为
 > `3/3/3/3`，usage=`480/120/600`，synthetic port calls=`3`，正式 Provider/credential/formal evidence 均为 `0`。

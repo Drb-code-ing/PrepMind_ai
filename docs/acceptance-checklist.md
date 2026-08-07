@@ -2172,6 +2172,22 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 
 ## 12. Phase 6.9.8 Retriever / FinalResponse 验收入口
 
+### 当前路线：Transport Re-entry V2 L1（2026-08-08）
+
+- [x] D0/C1/C2/S1 zero-provider contract、runner/durability 与 reviewed Mock/static 已完成并分别留存验收文档；
+- [x] L1 production-shaped launcher 已完成：exact argv、source/remote parity、loopback proxy、数据边界、授权、
+      bounded root `.env` projection、capability shape、exclusive marker/reservation 与 adapter handoff 顺序固定；
+- [x] L1 固定 `rewrite -> qwen -> final_response` 三槽、最多 `3` calls、总预算 `0.024096 CNY`、首错 breaker、
+      suffix no-dispatch、no-retry，以及 strict journal/hash-chain、hard-link artifact、reserved/dispatch recovery；
+- [x] L1 zero-provider focused `12/12`、C1+C2+S1+L1 `44/44`、Agent full `1406/1406`，targeted lint/Prettier/Bun build
+      通过；正式 marker/journal/report/artifact/recovery claim 与 Provider/credential 均为 `0`；
+- [ ] 当前唯一动作：在提交并推送后的最终 source commit 上重新确认 DeepSeek/Qwen 数据边界与 exact authorization，
+      通过 fresh proxy preflight 后执行一次 controlled canary；不可 retry/replay/backfill/追加探测；
+- [ ] L1 即使成功也不解锁 semantic/product/Docker/API/browser/Trace/main，只能进入下一项 zero-provider semantic-gate
+      设计；失败则按封存结果重新做架构决策。
+
+以上条目取代旧 R5 后遗留的“R6/Task 10/Task 11 直接推进”表述；旧条目保留为历史记录，不得作为当前执行顺序。
+
 Task 0 `zero_provider_retriever_final_response_design`：
 
 - [x] 从已推送最新 main `185b8171...` 新建普通分支
@@ -2355,9 +2371,11 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Recovery R5 唯一 controlled-Live 已失败封存：run `34eb99be...`、guards `16/16`、external calls `4`、
       second-pair DeepSeek `provider_dispatch / unknown`、remaining `59` not-started、rewrite strict `1/16`、
       FinalResponse `0/16`、journal `237`、validator `ok=true`；不得重跑；
-- [ ] R6 产品 Docker/API/可见浏览器/Trace、R7 main（因 R5 quality gate failed 阻断）；
-- [ ] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理；
-- [ ] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐。
+- [x] R6 产品 Docker/API/可见浏览器/Trace、R7 main：旧 R5 路线因 quality gate failed 封存，已由 Transport Re-entry V2
+      独立 lineage 取代；不从旧 R5 继续推进；
+- [x] Task 10 分支 Docker/API/可见浏览器/Trace/权限/精确清理：保留为旧路线历史阻断，当前不执行；
+- [x] Task 11 文档复审、main `--no-ff`、main default-off 复验与远程 SHA 对齐：只在后续形成新的 semantic/product
+      authority 后重新规划，当前 L1 不直接进入 main。
 
 设计、计划、Task 0--9C 与 Architecture Recovery R0--R5 验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
