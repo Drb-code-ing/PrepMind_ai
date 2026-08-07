@@ -5,7 +5,39 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0A. Phase 6.9.8 Architecture Recovery R5 controlled-Live（当前）
+## 0D. Phase 6.9.8 Transport Re-entry V2 C2 zero-provider runner/durability（当前）
+
+C2 在同一功能分支上完成了 C1 dedicated projection 到 opaque configuration capability 的收口，并实现固定
+`rewrite -> qwen -> final_response` 三槽 runner、exclusive marker、reservation-before-dispatch、fsynced hash-chain
+journal、hard-link artifact、strict validator 与 crash-only recovery。invalid C1 projection 在 marker 前失败；首错
+breaker/no-retry 覆盖 `missing/invalid/conflict/abort/timeout/transport/schema/usage`，publication interruption 只恢复
+同一 terminal，不重放 synthetic port call。
+
+固定 zero-provider 边界：真实 `.env`/credential、Provider、正式 marker/journal/artifact/recovery claim、Docker/API/
+browser、Trace、BackgroundJob、Outbox 与业务写入均为 `0`。C2 gate=`transport_reentry_v2_c2_zero_provider_passed`，
+authority=`zero_provider_transport_reentry_v2_c2 / qualityAuthority=none`。
+
+### C2 固定回归命令
+
+```text
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2.test.ts
+bun --filter @repo/agent eval:phase-6-9-8:transport-reentry:v2:c2
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+bun test packages/agent/tests
+bun --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:validate
+bun --filter @repo/agent eval:phase-6-9-8:architecture-recovery:r5:validate
+bun --filter @repo/agent eval:phase-6-9-8:task9:validate
+```
+
+本组测试结果为 focused `15/15`（88 assertions）、Agent full `1387/1387`（23957 expect()，172 files）、typecheck/
+lint/Prettier 通过；旧 T3/R5/Task 9C validator 均 `ok=true` 且 sealed SHA 不变。C2 只解锁 S1 reviewed Mock/static，
+不解锁 V2 L1、产品 Docker/API/browser 或 `main`。S1 完成后仍需新的 DeepSeek/Qwen 数据边界接受与 exact authorization
+才能讨论唯一 L1。
+
+详见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
+
+## 0A. Phase 6.9.8 Architecture Recovery R5 controlled-Live（历史封存）
 
 R5 唯一 controlled-Live run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已正常 durable seal，但 gate 为
 `architecture_recovery_quality_gate_failed / qualityAuthority=none`。16 guards 全通过；第二个 pair 的 DeepSeek rewrite
@@ -76,7 +108,7 @@ bun --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:validate
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-configuration.test.ts
 ```
 
-## 0C. Phase 6.9.8 Transport Re-entry V2 C1（当前）
+## 0C. Phase 6.9.8 Transport Re-entry V2 C1（历史 checkpoint）
 
 旧 T3 不得重跑。新的 `phase-6.9.8-retriever-final-response-transport-reentry-v2` 已完成 D0 design 与 C1 zero-provider
 launcher/projection contract：
@@ -92,8 +124,8 @@ launcher/projection contract：
 - future L1 固定 `rewrite -> qwen -> final_response`、最多 3 calls、`0.024096 CNY` cap、首错 breaker/no-retry；
 - C1 Provider/真实 credential/formal evidence/Docker/API/browser/业务写入均为 `0`，不形成 semantic/product/main authority。
 
-当前只允许实现 C2 zero-provider runner/durability。没有新的数据边界接受与 exact authorization 前，不得执行 V2 L1；
-不得把本 C1、D0 或 T3-C 当成 Provider health。设计、计划与验收：
+C2 已在上方 0D 完成。没有新的数据边界接受与 exact authorization 前，不得执行 V2 L1；不得把本 C1、D0 或 T3-C
+当成 Provider health。设计、计划与验收：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md`
 - `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-reentry-v2.md`

@@ -2,16 +2,31 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Transport Re-entry V2 C1 当前边界
+## Phase 6.9.8 Transport Re-entry V2 C2 当前边界
+
+V2 C2 已在 C1 projection contract 之上完成 zero-provider runner/durability：三个 dedicated capability 先收口为
+single-use opaque configuration capability，随后以固定 `rewrite -> qwen -> final_response` 顺序运行 synthetic
+三槽；exclusive marker、reservation-before-dispatch、fsynced hash-chain journal、hard-link artifact、strict
+validator 与 crash-only recovery 全部由本地 contract 掌握。missing/invalid/conflict/abort/timeout/transport/schema/
+usage 的首错会打开 breaker，publication interruption 只恢复同一 terminal，不重放 dispatch。
+
+C2 focused `15/15`、Agent full `1387/1387`、typecheck/lint/Prettier 通过；真实 credential、Provider、正式 evidence、
+Docker/API/browser、Trace 与业务写入均为 `0`。authority=`zero_provider_transport_reentry_v2_c2 /
+qualityAuthority=none`。这只证明 synthetic 执行与 durability 边界，不证明 Provider health、真实模型语义、产品
+`/api/chat`、P95/SLA 或 `main`；下一步是 S1 reviewed Mock/static，V2 L1 仍需新的数据边界接受与 exact authorization。
+
+验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
+
+## Phase 6.9.8 Transport Re-entry V2 C1 历史边界
 
 旧 T3 controlled canary 已一次性失败封存，不能由配置 guard 修复后重跑。V2 C1 已实现 root launcher → bounded
 parser → dedicated capability 的 zero-provider contract：exact gate 顺序先于 credential composition，runtime core
 不读取 `process.env`，capability 由 module-owned WeakMap/WeakSet 绑定 lineage/family/call 并单次消费；没有读取真实
 credential、调用 Provider 或执行产品 Chat。未来 L1 即使得到 strict response/verified usage，也只形成
-transport/evidence authority，不能直接写成 Retriever/FinalResponse 语义通过、`/api/chat` 可用或 main 已完成。下一
-原子任务仅 C2 zero-provider runner/durability；没有新的数据边界接受与 exact authorization 前不得执行 L1。
+transport/evidence authority，不能直接写成 Retriever/FinalResponse 语义通过、`/api/chat` 可用或 main 已完成。C1
+已由上方 C2 回执收口；没有新的数据边界接受与 exact authorization 前不得执行 L1。
 
-## Phase 6.9.8 Transport Evidence Recovery T3 当前边界
+## Phase 6.9.8 Transport Evidence Recovery T3 历史封存边界
 
 T3-A 是 zero-provider admission/runner checkpoint，不是模型质量或产品行为验收。它验证 source parity、T2 gate、
 fresh proxy nonce、DeepSeek/Qwen 数据边界与 exact authorization 的 gate 顺序，以及

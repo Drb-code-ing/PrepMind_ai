@@ -1,10 +1,10 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 设计
 
 > 日期：2026-08-07
-> 状态：D0 zero-provider design 与 C1 launcher/projection contract 已完成；C2/S1/L1/P1 尚未开始
+> 状态：D0、C1 与 C2 zero-provider runner/durability 已完成；S1/L1/P1 尚未开始
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
-> Authority：`zero_provider_transport_reentry_v2_design / qualityAuthority=none`
+> 当前 checkpoint authority：`zero_provider_transport_reentry_v2_c2 / qualityAuthority=none`
 
 ## 1. 决策摘要
 
@@ -107,23 +107,23 @@ re-entry 的主要架构修复，但不改写旧 T3 的事实。
 
 ### 4.3 观察与持久化权限
 
-| 模块 | 可做 | 禁止 |
-| --- | --- | --- |
-| root launcher | 读取固定 generic key、生成一次性 dedicated projection、输出 bounded status | 输出 key/value、读取其它 env、写业务/Trace、调用 Provider |
-| V2 runtime core | 消费一次 projection、运行固定三槽、写 V2 evidence | 读取 `process.env`、接受调用方 URL/model/fetch、改写旧 lineage |
-| transport adapters | 使用固定 model/endpoint/timeout/预算，签发 provider wire | 读取 credential、重试、写 marker/journal、改变 owner/answer |
-| crash-only seal | 读取 durable prefix 并发布同一 attempt 的 bounded terminal | 读取 credential、构造 transport、补发 Provider call、recovery 成功结果 |
-| 产品 `/api/chat` | 维持 default-off 现状 | 接入 V2、创建 BackgroundJob/Outbox/Trace 或业务写入 |
+| 模块               | 可做                                                                       | 禁止                                                                   |
+| ------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| root launcher      | 读取固定 generic key、生成一次性 dedicated projection、输出 bounded status | 输出 key/value、读取其它 env、写业务/Trace、调用 Provider              |
+| V2 runtime core    | 消费一次 projection、运行固定三槽、写 V2 evidence                          | 读取 `process.env`、接受调用方 URL/model/fetch、改写旧 lineage         |
+| transport adapters | 使用固定 model/endpoint/timeout/预算，签发 provider wire                   | 读取 credential、重试、写 marker/journal、改变 owner/answer            |
+| crash-only seal    | 读取 durable prefix 并发布同一 attempt 的 bounded terminal                 | 读取 credential、构造 transport、补发 Provider call、recovery 成功结果 |
+| 产品 `/api/chat`   | 维持 default-off 现状                                                      | 接入 V2、创建 BackgroundJob/Outbox/Trace 或业务写入                    |
 
 ## 5. 固定 canary contract（仅未来 L1）
 
 V2 未来 L1 最多三个 Provider slots，固定顺序和预算，不接受 CLI 覆盖：
 
-| slot | adapter | model/endpoint | hard timeout | input/output | cost cap |
-| --- | --- | --- | ---: | ---: | ---: |
-| 1 | DeepSeek rewrite | `deepseek-v4-pro` / fixed `/v1/chat/completions` | 4000ms | 1200 / 160 | `0.005 CNY` |
-| 2 | Qwen embedding | `text-embedding-v4` / fixed Beijing compatible endpoint | 5500ms | fixed synthetic text / 1536 | `0.004096 CNY` |
-| 3 | DeepSeek FinalResponse stream | `deepseek-v4-pro` / fixed stream endpoint | 20000ms | 2500 / 1200 | `0.015 CNY` |
+| slot | adapter                       | model/endpoint                                          | hard timeout |                input/output |       cost cap |
+| ---- | ----------------------------- | ------------------------------------------------------- | -----------: | --------------------------: | -------------: |
+| 1    | DeepSeek rewrite              | `deepseek-v4-pro` / fixed `/v1/chat/completions`        |       4000ms |                  1200 / 160 |    `0.005 CNY` |
+| 2    | Qwen embedding                | `text-embedding-v4` / fixed Beijing compatible endpoint |       5500ms | fixed synthetic text / 1536 | `0.004096 CNY` |
+| 3    | DeepSeek FinalResponse stream | `deepseek-v4-pro` / fixed stream endpoint               |      20000ms |                 2500 / 1200 |    `0.015 CNY` |
 
 总 cap 固定 `0.024096 CNY`。每个 slot 最多一次；首个 strict/transport failure 打开 breaker，未启动 suffix
 保留在分母；不 retry/resume/replay/backfill。输入使用 fact-free synthetic payload，不携带用户正文、真实题目、
@@ -136,36 +136,38 @@ strict response、verified usage、wire/stage 完整、artifact validator `ok=tr
 
 ## 6. 阶段与交付顺序
 
-| 阶段 | 交付 | Provider calls | 解锁 |
-| --- | --- | ---: | --- |
-| D0 | 本设计、计划、停止边界和 reader questions | 0 | C1 |
-| C1 | root-launcher path/credential projection contract、hostile-input tests | 0 | C2 |
-| C2 | V2 runner、marker/journal/artifact、strict validator、crash-only seal | 0 | S1 |
-| S1 | reviewed Mock/static、source parity、独立复审 | 0 | L1 授权门 |
-| L1 | 新数据边界 + exact authorization 下唯一三槽 controlled canary | ≤3 | 仅 transport authority 或失败封存 |
-| P1 | 依据 L1 终态冻结小样本 semantic gate | 0 | 新的语义路线决策 |
+| 阶段 | 交付                                                                   | Provider calls | 解锁                              |
+| ---- | ---------------------------------------------------------------------- | -------------: | --------------------------------- |
+| D0   | 本设计、计划、停止边界和 reader questions                              |              0 | C1                                |
+| C1   | root-launcher path/credential projection contract、hostile-input tests |              0 | C2                                |
+| C2   | V2 runner、marker/journal/artifact、strict validator、crash-only seal  |              0 | S1                                |
+| S1   | reviewed Mock/static、source parity、独立复审                          |              0 | L1 授权门                         |
+| L1   | 新数据边界 + exact authorization 下唯一三槽 controlled canary          |             ≤3 | 仅 transport authority 或失败封存 |
+| P1   | 依据 L1 终态冻结小样本 semantic gate                                   |              0 | 新的语义路线决策                  |
 
 每个阶段单独提交并推送当前 feature branch；不从该分支再开嵌套分支，不合并 `main`，除非后续形成完整
 semantic/product authority 并完成 Docker/API/browser/main 回放。
 
-## 7. Zero-provider D0/C1 通过定义
+## 7. Zero-provider D0/C1/C2 通过定义
 
-- `providerCalls=0`、`credentialReads=0`、formal marker/journal/artifact/recovery claim=`0`；
+- 真实 `providerCalls=0`、`credentialReads=0`、formal marker/journal/artifact/recovery claim=`0`；
 - synthetic env fixture 能证明 root launcher 的 `.env` 路径来自自身位置，而不是 package cwd 或 ambient process env；
 - parser 对 BOM/CRLF/引号/重复键/插值/多行/未知字段保持固定 fail-closed 行为；
 - hostile ambient `process.env` 即使预先注入同名或其它 Agent key，也不能成为 V2 credential 来源；
 - hostile/accessor/extra-field/empty/alias-conflict credential input 全部 fail-closed，且 raw value 不进入输出；
 - dedicated projection capability 为 module-owned、single-use、lineage-bound，伪造、复用、跨 family/call 均拒绝；
+- C2 opaque configuration capability 在 marker 前消费，fixed three-slot synthetic runner 首错 breaker/no-retry；
+- synthetic marker/journal/report/hard-link artifact/strict validator 与 crash-only recovery 只存在隔离临时目录并精确清理；
 - T3 validator 只读通过，T3/R5/Task 9C SHA parity 不变；
-- 文档明确记录：D0/C1 不证明 Provider health、模型语义、产品/API/browser、SLA 或 main。
+- 文档明确记录：D0/C1/C2 不证明 Provider health、模型语义、产品/API/browser、SLA 或 main。
 
 ## 8. 停止门
 
 任一 gate、预算、wire、journal、artifact、validator 或安全边界失败，停止当前阶段并封存 bounded diagnostic；
 不能自动推进下一阶段。L1 一次性名额一旦 marker durable 即消费，无论结果成功或失败均不得重跑。
 
-当前 C1 完成后，下一原子任务仅为 C2 zero-provider runner/durability implementation；没有新的 exact authorization 前不得执行 L1，
-不得读取真实 `.env`、credential 或调用 Provider。
+当前 C2 完成后，下一原子任务仅为 S1 zero-provider reviewed Mock/static；没有新的 exact authorization 前不得执行
+L1，不得读取真实 `.env`、credential 或调用 Provider。
 
 ## 9. Reader questions
 

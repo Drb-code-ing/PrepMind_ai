@@ -1,13 +1,16 @@
 # PrepMind AI 数据流
 
-> 当前设计（2026-08-07）：Transport Re-entry V2 C1 已完成 zero-provider launcher/projection flow：
+> 当前设计（2026-08-07）：Transport Re-entry V2 C2 已完成 zero-provider runner/durability flow：
 > `exact argv -> source/T2+T3-C parity -> fresh proxy -> data boundary -> authorization -> launcher-location root-env
-> parser -> dedicated projection`。C1 的 synthetic path 不读取真实 `.env`/credential、不调用 Provider、不写
-> marker/journal/artifact、Trace、BackgroundJob、Outbox 或业务表；configuration failure 在 marker 前收口。下一步仅
-> C2 zero-provider runner/durability；没有新的 exact authorization 前不执行 V2 L1。设计见
-> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与 C1 验收记录。
+parser -> dedicated projection -> opaque configuration -> exclusive marker -> reservation -> three-slot journal ->
+hard-link artifact -> strict validator/crash-only recovery`。C2 synthetic path 不读取真实 `.env`/credential、不调用
+> Provider、不写正式 evidence、Trace、BackgroundJob、Outbox 或业务表；configuration failure 在 marker 前收口，首错
+> breaker 不 retry，publication recovery 不重放 port call。下一步仅 S1 reviewed Mock/static；没有新的 exact authorization
+> 前不执行 V2 L1。设计见 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与
+> C2 验收记录；C1 launcher/projection 的历史边界见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md`。
 
-> 当前原子任务（2026-08-07）：Transport Evidence Recovery T3 controlled canary 已一次性失败封存。数据流为
+> 历史封存（2026-08-07）：Transport Evidence Recovery T3 controlled canary 已一次性失败封存。数据流为
 > `argv -> source/T2 admission -> fresh proxy nonce -> data boundary -> exact authorization -> reservation -> late credential gate`；
 > 三槽位固定 `rewrite -> qwen -> final_response`，本次在首个 slot 前停止，planned/started/completed=`3/0/0`，
 > Provider/credential/fetch=`0/0/0`，三个 suffix lane 为 `not_started_quality_breaker`。Authority 为

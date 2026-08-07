@@ -6,6 +6,7 @@
 > authority：`zero_provider_transport_reentry_v2_design`
 > qualityAuthority：`none`
 > 后续：C1 launcher/projection 已在独立验收记录完成；本文件为不可改写的 D0 设计快照。
+> 后续状态：C2 runner/durability 也已在独立 zero-provider 验收记录完成；下一步为 S1，V2 L1 仍未授权。
 
 ## 1. 本任务范围
 
@@ -35,14 +36,14 @@ D0 只冻结新 V2 re-entry 的 identity、credential composition、权限、三
 
 ## 4. D0 通过定义
 
-| 门 | 结果 |
-| --- | --- |
-| Provider calls | `0`（设计阶段无运行） |
-| credential reads | `0` |
-| formal marker/journal/artifact/recovery claim | `0` |
-| 产品/Docker/API/browser/业务写入 | `0` |
-| 旧 T3 validator/SHA | 只读保持不变 |
-| 下一步 | 仅 C1 zero-provider launcher/projection implementation |
+| 门                                            | 结果                                                   |
+| --------------------------------------------- | ------------------------------------------------------ |
+| Provider calls                                | `0`（设计阶段无运行）                                  |
+| credential reads                              | `0`                                                    |
+| formal marker/journal/artifact/recovery claim | `0`                                                    |
+| 产品/Docker/API/browser/业务写入              | `0`                                                    |
+| 旧 T3 validator/SHA                           | 只读保持不变                                           |
+| 下一步                                        | 仅 C1 zero-provider launcher/projection implementation |
 
 ## 5. 读者验收问题
 
@@ -58,3 +59,5 @@ D0 已完成并只形成 `zero_provider_transport_reentry_v2_design / qualityAut
 完成、新数据边界接受和新 exact authorization 之前，仍不得执行 V2 controlled canary，也不得进入产品或 `main`。
 
 C1 结果见 [`Transport Re-entry V2 C1 launcher/projection 验收`](./phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md)。
+
+C2 结果见 [`Transport Re-entry V2 C2 runner/durability 验收`](./phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md)。

@@ -1,18 +1,19 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前原子任务（2026-08-07）：Phase 6.9.8 Transport Re-entry V2 C1 zero-provider launcher/projection contract 已完成。
+> 当前原子任务（2026-08-07）：Phase 6.9.8 Transport Re-entry V2 C2 zero-provider runner/durability 已完成。
 > 新 lineage `phase-6.9.8-retriever-final-response-transport-reentry-v2` 不复用旧 T3 marker/authorization/evidence；C1
-> 已验证 root launcher 从自身位置解析仓库根 `.env`，在 exact args/source/T2+T3-C/proxy/data-boundary/authorization
-> 后才读取两个 allowlisted generic key，并投影为 runtime core 的 module-owned、lineage/family/call 绑定
-> single-use capability。Configuration failure 在 marker 前停止；未来 L1 固定
-> `rewrite -> qwen -> final_response`、最多 3 calls、总 cap `0.024096 CNY`、首错 breaker/no-retry。C1 未读取真实
-> `.env`/credential、未调用 Provider 或创建 formal evidence，authority=`zero_provider_transport_reentry_v2_c1 /
-> qualityAuthority=none`；下一任务仅 C2 zero-provider runner/durability。设计、计划与 C1 验收见
+> 先完成 root launcher 与 dedicated projection，C2 再将三项 projection 收口为 opaque single-use configuration
+> capability，并落地 `rewrite -> qwen -> final_response` 固定三槽、exclusive marker、reservation-before-dispatch、
+> fsynced hash-chain journal、hard-link artifact、strict validator 和 crash-only recovery。C2 focused `15/15`、Agent
+> full `1387/1387`；真实 `.env`/credential、Provider、formal evidence、Docker/API/browser 与业务写入均为 `0`，
+> authority=`zero_provider_transport_reentry_v2_c2 / qualityAuthority=none`。下一任务为 S1 reviewed Mock/static；
+> V2 L1 仍需新的数据边界接受与 exact authorization。设计、计划与 C1/C2 验收见
 > `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md` 与
-> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md`。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
 >
-> 当前原子任务（2026-08-07）：Phase 6.9.8 Transport Evidence Recovery T3 controlled canary 已按一次性授权执行并失败封存。
+> 历史封存结果（2026-08-07）：Phase 6.9.8 Transport Evidence Recovery T3 controlled canary 已按一次性授权执行并失败封存。
 > source admission 绑定 branch/HEAD/upstream/origin/approved ref、clean tree、formal artifact=0、T2 gate 与 source
 > bundle SHA；三槽位顺序固定为 `rewrite -> qwen -> final_response`，最多 3 slots、预算上限 `0.024096 CNY`、首错
 > breaker、fresh proxy nonce 与 exact data-boundary/authorization reader 均已通过 focused `12/12`（49 assertions）。
@@ -76,23 +77,23 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 
 ## 总体路线
 
-| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                               |
-| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                             |
-| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                             |
-| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                             |
-| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                             |
-| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                             |
-| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                             |
-| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                             |
-| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                     |
-| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成      |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 T3 配置失败封存；Re-entry V2 C1 完成，下一步 C2 |
-| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                          |
-| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成              |
-| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                             |
-| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                             |
-| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                             |
+| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                                        |
+| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                                      |
+| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                                      |
+| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                                      |
+| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                                      |
+| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                                      |
+| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                                      |
+| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                                      |
+| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                              |
+| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成               |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 T3 配置失败封存；Re-entry V2 C2 完成，下一步 S1 |
+| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                                   |
+| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成                       |
+| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                                      |
+| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                                      |
+| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                                      |
 
 ## 已完成阶段
 

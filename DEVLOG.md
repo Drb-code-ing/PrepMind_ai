@@ -1,5 +1,20 @@
 # PrepMind AI 开发日志
 
+> 2026-08-07 — Phase 6.9.8 Transport Re-entry V2 C2 zero-provider runner/durability 已完成：
+>
+> C2 将 C1 的三个 dedicated capability 收口为单次 opaque configuration capability，并在 synthetic root 中落地
+> `rewrite -> qwen -> final_response` 固定三槽、exclusive marker、reservation-before-dispatch、fsynced hash-chain
+> journal、hard-link artifact、strict validator 与 crash-only recovery。invalid C1 projection 在 marker 前失败；首错
+> breaker/no-retry 覆盖 missing/invalid/conflict/abort/timeout/transport/schema/usage，publication interruption 只恢复
+> 同一 terminal，不重放 port call。
+>
+> C2 focused `15/15`（88 assertions），synthetic CLI 的 success + 8 fault cases 与 publication recovery 全部通过；Agent
+> full `1387/1387`（23957 expect()，172 files），typecheck/lint/Prettier 通过。真实 Provider、credential、正式
+> marker/journal/artifact/recovery claim、Docker/API/browser、Trace 与业务写入均为 `0`。旧 T3/R5/Task 9C 只读 validator
+> 仍分别为 `ok=true`，sealed SHA 未改变。authority=`zero_provider_transport_reentry_v2_c2 /
+qualityAuthority=none`；下一原子任务为 S1 reviewed Mock/static，V2 L1 仍需新的数据边界接受与 exact authorization。
+> 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
+
 > 2026-08-07 — Phase 6.9.8 Transport Re-entry V2 C1 zero-provider launcher/projection contract 已完成：
 >
 > 新增 bounded root-env parser、launcher-location root resolver、exact pre-credential gate 与 dedicated capability
@@ -12,8 +27,7 @@
 > `providerCalls=0 / credentialReads=0 / formalEvidence=0`，typecheck/lint/Prettier/`git diff --check` 全部通过；旧 T3
 > 只读 validator 仍为 `ok=true / journal=7`，其 sealed
 > bytes/authority 未改变。C1 未读取真实 `.env`/credential、未调用 Provider、未创建正式 marker/journal/artifact/
-> recovery claim、未启动 Docker/API/browser 或写业务数据。下一原子任务为 C2 zero-provider runner/durability；V2 L1
-> 仍需新的数据边界接受与 exact authorization。验收见
+> recovery claim、未启动 Docker/API/browser 或写业务数据。C1 已由上方 C2 回执收口；其历史验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md`。
 
 > 2026-08-07 — Phase 6.9.8 Transport Re-entry V2 D0 zero-provider design 已完成：
@@ -55,7 +69,7 @@
 > 唯一 run `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 source commit
 > `2423baf3768c245d2e4d6ea0038c6fb1bf8f9bc7` 上通过 source/T2/direct-proxy/data-boundary/approval gate，并在
 > late-bound credential gate 以 `configuration_invalid` 停止。固定顺序为 `DeepSeek rewrite -> Qwen embedding ->
-> DeepSeek FinalResponse stream`；planned/started/completed=`3/0/0`，breaker reason=`configuration`，三个 suffix lane
+DeepSeek FinalResponse stream`；planned/started/completed=`3/0/0`，breaker reason=`configuration`，三个 suffix lane
 > 均为 `not_started_quality_breaker`，Provider calls=`0`、credential reads=`0`、verified usage/cost/semantic/P95 全为
 > `null`。这属于 CLI/configuration composition 失败，不是 Provider transport 失败，不能归因 DNS、TLS、代理、账号、
 > 余额、模型权限或服务端，也不能证明 Retriever/FinalResponse 真实语义或产品可用。
