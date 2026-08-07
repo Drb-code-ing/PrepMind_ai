@@ -5,6 +5,7 @@
 > lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
 > authority：`zero_provider_transport_reentry_v2_design`
 > qualityAuthority：`none`
+> 后续：C1 launcher/projection 已在独立验收记录完成；本文件为不可改写的 D0 设计快照。
 
 ## 1. 本任务范围
 
@@ -53,5 +54,7 @@ D0 只冻结新 V2 re-entry 的 identity、credential composition、权限、三
 
 ## 6. 结论
 
-D0 已完成并只形成 `zero_provider_transport_reentry_v2_design / qualityAuthority=none`。C1 是下一原子任务；在 C1/C2/S1
-完成、新数据边界接受和新 exact authorization 之前，不得执行 V2 controlled canary，也不得进入产品或 `main`。
+D0 已完成并只形成 `zero_provider_transport_reentry_v2_design / qualityAuthority=none`。后续 C1 已完成，但在 C2/S1
+完成、新数据边界接受和新 exact authorization 之前，仍不得执行 V2 controlled canary，也不得进入产品或 `main`。
+
+C1 结果见 [`Transport Re-entry V2 C1 launcher/projection 验收`](./phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md)。

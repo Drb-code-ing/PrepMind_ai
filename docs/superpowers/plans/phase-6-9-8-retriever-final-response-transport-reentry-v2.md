@@ -1,9 +1,9 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 实施计划
 
 > 设计来源：[Transport Re-entry V2 设计](../specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md)
-> 当前状态：D0 zero-provider design 已完成；下一步为 C1 zero-provider launcher/projection contract
+> 当前状态：D0 与 C1 zero-provider launcher/projection contract 已完成；下一步为 C2 zero-provider runner/durability
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> 当前 authority：`zero_provider_transport_reentry_v2_design / qualityAuthority=none`
+> 当前 authority：`zero_provider_transport_reentry_v2_c1 / qualityAuthority=none`
 
 ## 执行原则
 
@@ -23,7 +23,7 @@
 
 验收：文档互链、停止门、权限矩阵和事实/未知事实口径一致；Provider/credential/formal evidence 均为 `0`。
 
-## C1：root launcher 与 dedicated projection contract（下一步）
+## C1：root launcher 与 dedicated projection contract（已完成）
 
 责任范围：新建 `packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-*`
 模块和 focused tests；旧 T3 文件只读复用。
@@ -33,7 +33,20 @@
 - synthetic env fixture 验证 path/cwd 独立性与 BOM/CRLF/引号/重复键边界；hostile ambient `process.env` 不得影响来源；
   credential reader 使用 data-property、无 getter、无 raw 输出；
 - generic key 仅投影为 module-owned dedicated capability，single-use、lineage/family/call 绑定，不能伪造/复用/跨界；
+- capability consumer 只返回不含 raw key 的 opaque receipt，密钥留在模块私有状态，不进入 runtime/adapter 或 evidence；
 - C1 focused、Agent full、typecheck/lint/Prettier/diff check 通过，正式 marker/evidence 保持 `0`。
+
+实现落点：
+
+- `packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-contract.ts`
+- `packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1.ts`
+- `packages/agent/scripts/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1.ts`
+- `packages/agent/tests/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1.test.ts`
+
+验收摘要：focused `10/10`（38 assertions），Agent full `1372/1372`（23864 expect()，171 files），C1 synthetic CLI
+输出 `providerCalls=0 / credentialReads=0 / formalEvidence=0`；typecheck/lint/Prettier/diff check 与旧 T3 只读
+validator（`ok=true`）均通过。未读取真实 `.env`、未调用 Provider、未创建 marker/journal/artifact/recovery claim，也未
+启动 Docker/API/browser。下一步解锁 C2；V2 L1 仍需要新的数据边界接受与 exact authorization。
 
 ## C2：V2 runner/durability（待完成）
 
@@ -70,5 +83,5 @@ L1 最多三次 Provider call，失败即 durable seal；不得 retry/resume/rep
 
 ## 当前停止边界
 
-T3 controlled canary 已失败封存，T3-C guard 与本 V2 D0 已完成。当前允许读取旧 validator、运行 zero-provider 回归、
-同步文档和实现 C1；当前禁止旧 T3/L1、产品 Docker/API/browser、`main`、Task 10/11 以及任何 Provider 追加调用。
+T3 controlled canary 已失败封存，T3-C guard 与本 V2 D0/C1 已完成。当前允许读取旧 validator、运行 zero-provider 回归、
+同步文档和实现 C2；当前禁止旧 T3/L1、产品 Docker/API/browser、`main`、Task 10/11 以及任何 Provider 追加调用。

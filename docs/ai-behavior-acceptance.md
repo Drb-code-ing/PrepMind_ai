@@ -2,13 +2,14 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Transport Re-entry V2 D0 当前边界
+## Phase 6.9.8 Transport Re-entry V2 C1 当前边界
 
-旧 T3 controlled canary 已一次性失败封存，不能由配置 guard 修复后重跑。新的 V2 D0 只冻结 root launcher →
-dedicated capability、exact gate 顺序、三槽 transport budget 和停止门；没有读取真实 credential、调用 Provider 或
-执行产品 Chat。未来 L1 即使得到 strict response/verified usage，也只形成 transport/evidence authority，不能直接
-写成 Retriever/FinalResponse 语义通过、`/api/chat` 可用或 main 已完成。下一原子任务仅 C1 zero-provider
-launcher/projection contract；没有新的数据边界接受与 exact authorization 前不得执行 L1。
+旧 T3 controlled canary 已一次性失败封存，不能由配置 guard 修复后重跑。V2 C1 已实现 root launcher → bounded
+parser → dedicated capability 的 zero-provider contract：exact gate 顺序先于 credential composition，runtime core
+不读取 `process.env`，capability 由 module-owned WeakMap/WeakSet 绑定 lineage/family/call 并单次消费；没有读取真实
+credential、调用 Provider 或执行产品 Chat。未来 L1 即使得到 strict response/verified usage，也只形成
+transport/evidence authority，不能直接写成 Retriever/FinalResponse 语义通过、`/api/chat` 可用或 main 已完成。下一
+原子任务仅 C2 zero-provider runner/durability；没有新的数据边界接受与 exact authorization 前不得执行 L1。
 
 ## Phase 6.9.8 Transport Evidence Recovery T3 当前边界
 

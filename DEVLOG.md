@@ -1,5 +1,21 @@
 # PrepMind AI 开发日志
 
+> 2026-08-07 — Phase 6.9.8 Transport Re-entry V2 C1 zero-provider launcher/projection contract 已完成：
+>
+> 新增 bounded root-env parser、launcher-location root resolver、exact pre-credential gate 与 dedicated capability
+> projection。parser 覆盖 UTF-8/BOM、CRLF/LF、引号、duplicate/unknown/empty/interpolation/multiline/non-ASCII/
+> accessor hostile 输入；runtime core 不读取 `process.env`。generic `DEEPSEEK_API_KEY`/`QWEN_API_KEY` 只在内存中
+> 投影为绑定 `lineage + family + callId` 的 module-owned WeakMap/WeakSet single-use capability，伪造/复用/跨界均
+> fail-closed；consumer 只返回不含 raw key 的 opaque receipt，密钥不会暴露给 runtime/adapter 或写入 evidence。
+>
+> C1 focused `10/10`（38 assertions）、Agent full `1372/1372`（23864 expect()，171 files）、synthetic CLI
+> `providerCalls=0 / credentialReads=0 / formalEvidence=0`，typecheck/lint/Prettier/`git diff --check` 全部通过；旧 T3
+> 只读 validator 仍为 `ok=true / journal=7`，其 sealed
+> bytes/authority 未改变。C1 未读取真实 `.env`/credential、未调用 Provider、未创建正式 marker/journal/artifact/
+> recovery claim、未启动 Docker/API/browser 或写业务数据。下一原子任务为 C2 zero-provider runner/durability；V2 L1
+> 仍需新的数据边界接受与 exact authorization。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md`。
+
 > 2026-08-07 — Phase 6.9.8 Transport Re-entry V2 D0 zero-provider design 已完成：
 >
 > 在旧 T3 `configuration_invalid` 一次性失败封存后，冻结全新 lineage

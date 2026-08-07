@@ -1,7 +1,7 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 设计
 
 > 日期：2026-08-07
-> 状态：D0 zero-provider design 已冻结；C1/C2/S1/L1/P1 尚未开始
+> 状态：D0 zero-provider design 与 C1 launcher/projection contract 已完成；C2/S1/L1/P1 尚未开始
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
 > Authority：`zero_provider_transport_reentry_v2_design / qualityAuthority=none`
@@ -164,7 +164,7 @@ semantic/product authority 并完成 Docker/API/browser/main 回放。
 任一 gate、预算、wire、journal、artifact、validator 或安全边界失败，停止当前阶段并封存 bounded diagnostic；
 不能自动推进下一阶段。L1 一次性名额一旦 marker durable 即消费，无论结果成功或失败均不得重跑。
 
-当前 D0 完成后，下一原子任务仅为 C1 zero-provider implementation；没有新的 exact authorization 前不得执行 L1，
+当前 C1 完成后，下一原子任务仅为 C2 zero-provider runner/durability implementation；没有新的 exact authorization 前不得执行 L1，
 不得读取真实 `.env`、credential 或调用 Provider。
 
 ## 9. Reader questions

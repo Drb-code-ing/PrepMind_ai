@@ -76,23 +76,39 @@ bun --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:validate
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-configuration.test.ts
 ```
 
-## 0C. Phase 6.9.8 Transport Re-entry V2 D0（当前）
+## 0C. Phase 6.9.8 Transport Re-entry V2 C1（当前）
 
-旧 T3 不得重跑。新的 `phase-6.9.8-retriever-final-response-transport-reentry-v2` 已完成 D0 zero-provider design：
+旧 T3 不得重跑。新的 `phase-6.9.8-retriever-final-response-transport-reentry-v2` 已完成 D0 design 与 C1 zero-provider
+launcher/projection contract：
 
 - root launcher 未来只在 exact args/source/T2+T3-C/proxy/data-boundary/authorization 通过后读取
   `DEEPSEEK_API_KEY` 与 `QWEN_API_KEY`；
 - runtime core 只消费 module-owned、single-use dedicated projection，不读取 `process.env` 或其它 Agent/product key；
 - configuration failure 在 marker 前停止，不消费 V2 一次性 marker；
+- root path 从 launcher 自身位置解析，package cwd 与 hostile ambient `process.env` 不改变 credential 来源；
+- bounded parser 对 BOM/CRLF/LF/引号及 duplicate/unknown/empty/interpolation/multiline/non-ASCII/accessor/extra-field
+  输入 fail-closed；
+- generic key 只投影为绑定 lineage/family/call、module-owned、single-use capability，伪造/复用/跨界均拒绝；
 - future L1 固定 `rewrite -> qwen -> final_response`、最多 3 calls、`0.024096 CNY` cap、首错 breaker/no-retry；
-- D0 Provider/credential/formal evidence/Docker/API/browser/业务写入均为 `0`，不形成 semantic/product/main authority。
+- C1 Provider/真实 credential/formal evidence/Docker/API/browser/业务写入均为 `0`，不形成 semantic/product/main authority。
 
-当前只允许实现 C1 zero-provider launcher/projection contract。没有新的数据边界接受与 exact authorization 前，不得
-执行 V2 L1；不得把本 D0 或 T3-C 当成 Provider health。设计、计划与验收：
+当前只允许实现 C2 zero-provider runner/durability。没有新的数据边界接受与 exact authorization 前，不得执行 V2 L1；
+不得把本 C1、D0 或 T3-C 当成 Provider health。设计、计划与验收：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md`
 - `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-reentry-v2.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md`
+
+### C1 固定回归命令
+
+```text
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1.test.ts
+bun --filter @repo/agent eval:phase-6-9-8:transport-reentry:v2:c1
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+bun --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:validate
+```
 
 ## 0. Phase 6.9.5 历史 Product-Acceptance checkpoint（非当前阻断）
 

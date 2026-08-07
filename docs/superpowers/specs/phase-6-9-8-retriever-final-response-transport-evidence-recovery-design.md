@@ -244,7 +244,8 @@ T3-A 的 zero-provider 条件已满足；T3-B 唯一 run 已在 credential confi
 
 Transport Evidence Recovery 当前只允许：读取既有 marker/journal/report/artifact、运行 strict validator、同步文档和
 进行 zero-provider 设计审查。禁止 retry/resume/replay/backfill、seal/recovery、curl、单 case 或追加 Provider 探测。
-若未来产品路线仍需要真实 Retriever/FinalResponse 语义，必须沿 V2 新路线完成 C1/C2/S1，并重新定义 source、数据
+若未来产品路线仍需要真实 Retriever/FinalResponse 语义，必须沿 V2 新路线继续完成 C2/S1（C1 已 zero-provider
+完成），并重新定义 source、数据
 边界、预算、权限和产品验收；不能从本 T3 失败自动进入 R6、R7/main、Phase 6.9.9/6.9.10/6.10、Phase 8/9 或博客
 收尾。没有新的 exact authorization 前不得执行 V2 L1。
 
