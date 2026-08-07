@@ -14,10 +14,12 @@ qualityAuthority=none`；该段为 C2 历史回执；S1 已完成，V2 L1 仍需
 
 > S1 已完成三个 bounded synthetic first-party adapter 的 reviewed Mock/static：固定三槽 success wire 为
 > `3/3/3/3 + 3/3/3/3`，usage=`480/120/600`，synthetic port calls=`3`，正式 Provider/credential/formal evidence
-> 均为 `0`；timeout/transport/schema/usage/abort fault matrix、breaker/no-retry 与临时目录清理通过。S1+C2 focused
-> `21/21`、Agent full `1393/1393`，gate=`transport_reentry_v2_s1_mock_quality_not_evidence`、
-> authority=`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。这不是真实模型语义或产品验收；提交推送
-> 后仅需 clean-source CLI 回放，随后停止在 V2 L1 的两条 exact authorization 门。详见 [`S1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md)。
+> 均为 `0`；timeout/transport/schema/usage/abort fault matrix、breaker/no-retry 与临时目录清理通过。S1 source admission
+> 已修复历史 `.tmp` 文件误计问题，只阻断当前 V2 正式路径占用并对非 `ENOENT` 读取错误 fail-closed。S1+C2 focused
+> `22/22`（136 assertions）、Agent full `1394/1394`（24011 expect()，173 files），clean-source CLI 回放通过；gate=
+> `transport_reentry_v2_s1_mock_quality_not_evidence`、authority=`zero_provider_transport_reentry_v2_s1 /
+qualityAuthority=none`。这不是真实模型语义或产品验收；当前停止在 V2 L1 的两条 exact authorization 门。详见
+> [`S1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md)。
 
 > C1 历史 checkpoint：root launcher 在 exact pre-credential gates 后解析仓库根 `.env`，并投影为 runtime core 的
 > module-owned、lineage/family/call 绑定 single-use capability；configuration failure 在 marker 前收口。详见

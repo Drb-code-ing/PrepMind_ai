@@ -8,6 +8,7 @@ import { z } from 'zod';
 import {
   PHASE_6_9_8_TRANSPORT_REENTRY_V2_C2_BRANCH,
   PHASE_6_9_8_TRANSPORT_REENTRY_V2_C2_GATE,
+  phase698TransportReentryV2C2WritableRelativePath,
 } from './phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-contract.ts';
 import { PHASE_6_9_8_TRANSPORT_REENTRY_V2_LINEAGE } from './phase-6-9-8-retriever-final-response-transport-reentry-v2-contract.ts';
 
@@ -159,7 +160,7 @@ export function inspectPhase698TransportReentryV2S1SourceAdmission(
       !trackingCommit ||
       !remoteCommit ||
       status !== '' ||
-      countFormalRepositoryFiles(root) !== 0
+      countPhase698TransportReentryV2S1FormalRepositoryPaths(root) !== 0
     ) {
       return { ok: false, reasonCode: 'source_admission_invalid' };
     }
@@ -460,13 +461,28 @@ function computeSourceBundle(root: string, commit: string): string | null {
   return phase698TransportReentryV2S1Sha256(phase698TransportReentryV2S1Canonical(entries));
 }
 
-function countFormalRepositoryFiles(root: string): number {
+export function countPhase698TransportReentryV2S1FormalRepositoryPaths(root: string): number {
+  const tmp = readDirectoryOrEmpty(join(root, '.tmp'));
+  const tmpCount = tmp.filter((entry) =>
+    phase698TransportReentryV2C2WritableRelativePath(`.tmp/${entry.name}`),
+  ).length;
+  const rootEntries = readdirSync(root, { withFileTypes: true });
+  return (
+    tmpCount +
+    rootEntries.filter((entry) => phase698TransportReentryV2C2WritableRelativePath(entry.name))
+      .length
+  );
+}
+
+function readDirectoryOrEmpty(path: string) {
   try {
-    const tracked = gitText(root, ['ls-files', '.tmp']);
-    if (tracked && tracked.length > 0) return tracked.split(/\r?\n/u).filter(Boolean).length;
-    const tmp = readdirSync(join(root, '.tmp'), { withFileTypes: true });
-    return tmp.filter((entry) => entry.isFile()).length;
-  } catch {
-    return 0;
+    return readdirSync(path, { withFileTypes: true });
+  } catch (error) {
+    if (isNodeError(error) && error.code === 'ENOENT') return [];
+    throw error;
   }
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
 }

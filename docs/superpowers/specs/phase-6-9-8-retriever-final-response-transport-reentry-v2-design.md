@@ -159,6 +159,8 @@ semantic/product authority 并完成 Docker/API/browser/main 回放。
 - C2 opaque configuration capability 在 marker 前消费，fixed three-slot synthetic runner 首错 breaker/no-retry；
 - S1 三个 bounded synthetic first-party adapter 必须通过同一 C2 runner，success wire=`3/3/3/3 + 3/3/3/3`、
   usage=`480/120/600`，fault matrix 与 abort/no-retry 均 fail-closed；
+- S1 source admission 只统计当前 V2 marker/journal/recovery/report/root artifact 的路径占用；历史 lineage 与普通日志
+  不参与计数，匹配名称的任意目录项均阻断，缺失 `.tmp` 视为空且其他读取错误 fail-closed；
 - S1 reviewed Mock 的 gate 固定为 `transport_reentry_v2_s1_mock_quality_not_evidence`，不得写成 semantic/product
   authority；子代理复审若因工具 429 未形成证据，必须如实记录；
 - synthetic marker/journal/report/hard-link artifact/strict validator 与 crash-only recovery 只存在隔离临时目录并精确清理；

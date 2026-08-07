@@ -6,8 +6,9 @@
 > timeout/transport/schema/usage 首错 breaker 与 `abort_before_qwen` 均 fail-closed；临时 marker/journal/artifact 只存在
 > isolated temp root 并在 case 后清理。S1 gate=`transport_reentry_v2_s1_mock_quality_not_evidence`、
 > authority=`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。这条流不进入真实 `.env`、Provider、
-> `/api/chat`、Trace、BackgroundJob、Outbox、Docker/browser 或 main；提交推送后只需 clean-source CLI 回放，随后停在
-> V2 L1 exact authorization 门。验收见
+> `/api/chat`、Trace、BackgroundJob、Outbox、Docker/browser 或 main。S1 source admission 只统计当前 V2 正式路径占用，
+> 忽略历史 lineage/普通日志并对非 `ENOENT` 读取错误 fail-closed；clean-source CLI 已以
+> `git_verified / formalArtifactCount=0` 回放，当前停在 V2 L1 exact authorization 门。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
 
 > C2 历史设计（2026-08-07）：Transport Re-entry V2 C2 已完成 zero-provider runner/durability flow：

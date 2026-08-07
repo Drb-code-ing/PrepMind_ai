@@ -64,7 +64,7 @@ S1 不是 retry、resume、replay、backfill、seal 或 recovery。
 ```text
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1.test.ts \
   packages/agent/tests/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2.test.ts
-  21 pass / 0 fail / 133 expect()
+  22 pass / 0 fail / 136 expect()
 
 bun --filter @repo/agent typecheck
   passed
@@ -79,12 +79,15 @@ git diff --check
   passed
 
 bun --filter @repo/agent test
-  1393 pass / 0 fail / 24008 expect() / 173 files
+  1394 pass / 0 fail / 24011 expect() / 173 files
 ```
 
-S1 package CLI 在工作区尚未提交时按设计得到 `sourceAdmission={ok:false, reasonCode=source_admission_invalid}`，
-因为 dirty-tree 必须 fail-closed；它仍完成 zero-provider reviewed Mock 输出并保持所有正式计数为零。提交并推送后，
-必须在 clean source 上再次运行同一 CLI，确认 branch/HEAD/upstream/origin parity 后才算完成 source admission 回放。
+S1 package CLI 在工作区尚未提交时按设计得到 `sourceAdmission={ok:false, reasonCode=source_admission_invalid}`，因为
+dirty-tree 必须 fail-closed。首次提交推送后的 clean 回放又暴露历史 `.tmp` 文件被全部误计为当前 formal evidence；修复后
+只统计当前 V2 marker/journal/recovery/report/root artifact 路径占用，历史 lineage/普通日志忽略，匹配名称的文件、目录
+或 symlink 均阻断，缺失 `.tmp` 视为空而其他读取错误 fail-closed。最终 clean branch/HEAD/upstream/origin 回放为
+`sourceAdmission.ok=true / authority=git_verified / formalArtifactCount=0`，且仍保持 Provider/credential/formal evidence
+为 `0/0/0`。
 
 ### 3.1 Reviewed Mock checkpoint
 
@@ -117,6 +120,10 @@ runId         = 00000000-0000-4000-8000-000000000101
 本轮按计划尝试启动三路只读子代理（contract、security、operations），但服务端连续返回 `429 Too Many Requests`
 并超过重试上限，未产生有效审查结果。因此本验收**不声称**子代理独立复审通过；429 只是工具可用性事实，不能被
 写成代码质量结论。
+
+source-admission 修复时再次启动只读复审：contract reviewer 未发现阻断；security reviewer 识别出仅统计
+`Dirent.isFile()` 会遗漏匹配名称的目录/symlink，主代理据此改为统计任意匹配目录项，并补目录占用与非 `ENOENT`
+读取失败回归。docs reviewer 因模型容量不足未形成结果，未写成文档复审通过。
 
 ## 5. Authority 与下一停止门
 

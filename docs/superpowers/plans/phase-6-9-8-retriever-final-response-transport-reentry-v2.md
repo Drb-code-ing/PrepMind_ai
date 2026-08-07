@@ -68,8 +68,10 @@ validator（`ok=true`）均通过。未读取真实 `.env`、未调用 Provider�
   factory/report SHA 与 no-raw audit；
 - fault matrix 覆盖 timeout/transport/schema/usage 与 `abort_before_qwen`，首错 breaker、no-retry、suffix 不补发和
   isolated temp-root cleanup 全部通过；
-- focused（S1+C2）`21/21`（133 assertions），Agent full `1393/1393`（24008 expect()，173 files），typecheck/lint/
+- focused（S1+C2）`22/22`（136 assertions），Agent full `1394/1394`（24011 expect()，173 files），typecheck/lint/
   Prettier/diff check 通过；
+- source admission 只统计占用当前 V2 marker/journal/recovery/report/root artifact 路径的目录项；历史 `.tmp` 文件忽略，
+  缺失 `.tmp` 视为空，其他读取失败 fail-closed；clean-source CLI 为 `git_verified / formalArtifactCount=0`；
 - 主代理完成 contract/security/operations 静态复核。三路只读子代理尝试均因服务端 `429 Too Many Requests` 超过
   重试上限，未形成独立复审证据，文档不声称子代理复审通过；
 - gate 固定 `transport_reentry_v2_s1_mock_quality_not_evidence / qualityAuthority=none`。

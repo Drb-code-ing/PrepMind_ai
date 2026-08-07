@@ -24,6 +24,12 @@ credential、Provider、正式 marker/journal/artifact/recovery claim、Docker/A
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
 
+S1 提交后的 clean-source 回放曾因把 `.tmp` 全部历史文件误计为当前 formal evidence 而返回
+`source_admission_invalid`；修复后只统计占用当前 V2 marker/journal/recovery/report/root artifact 路径的任意目录项，
+历史 lineage/普通日志不再阻断，缺失 `.tmp` 视为空，其他读取错误 fail-closed。最终 focused（S1+C2）`22/22`
+（136 assertions）、Agent full `1394/1394`（24011 expect()，173 files）、typecheck/lint/Prettier/diff check 与
+clean branch/HEAD/upstream/origin CLI 回放通过；该修复不改变 zero-provider authority 或 L1 停止门。
+
 ## 历史封存：Phase 6.9.8 Transport Evidence Recovery T3 controlled canary（2026-08-07）
 
 唯一 T3 run `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 已在 source commit

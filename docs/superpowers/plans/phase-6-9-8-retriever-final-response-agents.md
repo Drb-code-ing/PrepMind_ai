@@ -24,11 +24,13 @@
 
 S1 在 Task 9B 基线所在功能分支上完成 reviewed Mock/static：三个 bounded synthetic first-party adapter 复用 C2
 `rewrite -> qwen -> final_response` runner seam，success wire=`3/3/3/3 + 3/3/3/3`、usage=`480/120/600`，
-Provider/credential/formal evidence=`0/0/0`。focused（S1+C2）`21/21`、Agent full `1393/1393`、typecheck/lint/
-Prettier/diff check 均通过，gate 固定 `transport_reentry_v2_s1_mock_quality_not_evidence / qualityAuthority=none`。
+Provider/credential/formal evidence=`0/0/0`。focused（S1+C2）`22/22`（136 assertions）、Agent full `1394/1394`
+（24011 expect()，173 files）、typecheck/lint/Prettier/diff check 均通过，gate 固定
+`transport_reentry_v2_s1_mock_quality_not_evidence / qualityAuthority=none`。
 
 主代理完成 contract/security/operations 静态复核；三路只读子代理尝试均被服务端 `429 Too Many Requests` 拒绝，未
-形成独立复审证据。提交推送后必须在 clean source 上重跑 S1 CLI，确认 branch/HEAD/upstream/origin parity；随后仅等待
+形成独立复审证据。后续 source-admission 修复只统计当前 V2 正式路径占用，忽略历史 `.tmp` 文件并对其他读取错误
+fail-closed；clean source CLI 已确认 branch/HEAD/upstream/origin parity、`git_verified` 与 formal artifact `0`。随后仅等待
 V2 L1 的全新 DeepSeek/Qwen 数据边界接受与两条 exact authorization。S1 不解锁产品 Docker/API/browser、`main`、Task
 10/11 或任何 Provider 追加探测。完整验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。

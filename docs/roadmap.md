@@ -9,7 +9,9 @@
 > full `1387/1387`；真实 `.env`/credential、Provider、formal evidence、Docker/API/browser 与业务写入均为 `0`，
 > authority=`zero_provider_transport_reentry_v2_c2 / qualityAuthority=none`。S1 随后已完成三个 bounded synthetic
 > first-party adapter、wire/usage/fault matrix 与 reviewed Mock/static；S1 authority 为
-> `zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`，下一任务仅为 V2 L1 exact authorization；
+> `zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。S1 source admission 已修复历史 `.tmp` 误计并在
+> clean branch/HEAD/upstream/origin 上完成 `git_verified / formalArtifactCount=0` 回放；focused（S1+C2）`22/22`、
+> Agent full `1394/1394`。下一任务仅为 V2 L1 exact authorization；
 > V2 L1 仍需新的数据边界接受与 exact authorization。设计、计划与 C1/C2 验收见
 > `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md` 与

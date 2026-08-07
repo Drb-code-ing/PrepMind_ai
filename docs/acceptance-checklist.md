@@ -18,8 +18,8 @@ S1 在 C2 runner/durability 之上让三个 bounded synthetic first-party adapte
 | --------------------------------------- | --------------------------------------------------: |
 | gate                                    | `transport_reentry_v2_s1_mock_quality_not_evidence` |
 | authority / qualityAuthority            |      `zero_provider_transport_reentry_v2_s1 / none` |
-| focused（S1+C2）                        |                               `21/21`，133 expect() |
-| Agent full                              |              `1393/1393`，24008 expect()，173 files |
+| focused（S1+C2）                        |                               `22/22`，136 expect() |
+| Agent full                              |              `1394/1394`，24011 expect()，173 files |
 | success wire                            |        runner `3/3/3/3`；adapter/provider `3/3/3/3` |
 | usage                                   |                `480 input / 120 output / 600 total` |
 | Provider / credential / formal evidence |                                         `0 / 0 / 0` |
@@ -38,7 +38,9 @@ bun --filter @repo/agent test
 
 fault matrix 覆盖 success、timeout、transport、schema、usage 和 `abort_before_qwen`；每个 case 的 synthetic
 temporary root 都在 finally 中清理。工作区 dirty 时 S1 CLI 的 source admission 必须返回
-`source_admission_invalid`；提交推送后要在 clean branch/HEAD/upstream/origin parity 上重跑 CLI。
+`source_admission_invalid`。历史 `.tmp` 文件不能阻断当前 lineage；任何当前 V2 marker/journal/recovery/report/root
+artifact 路径占用（文件、目录或 symlink）都必须阻断，非 `ENOENT` 读取错误 fail-closed。最终 clean
+branch/HEAD/upstream/origin CLI 回放必须为 `git_verified / formalArtifactCount=0`。
 
 S1 只形成 Mock/static 工程 authority，不形成真实模型语义、Provider health、P95/SLA、产品 API、Docker/browser、Trace、
 BackgroundJob/Outbox、业务写入或 `main` authority。下一步仅 V2 L1；必须重新接受 DeepSeek/Qwen 数据边界并提供两条

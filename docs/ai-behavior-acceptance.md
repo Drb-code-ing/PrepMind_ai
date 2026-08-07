@@ -15,6 +15,10 @@ S1 gate=`transport_reentry_v2_s1_mock_quality_not_evidence`，authority=
 `sha256:c50b257b...cc20 / 8538b13c...c068`。主代理完成 source/capability/credential/provider/package 静态复核；
 三路只读子代理尝试均因服务端 `429 Too Many Requests` 超过重试上限，未形成独立复审证据，不能写成“子代理通过”。
 
+S1 source admission 只统计当前 V2 marker/journal/recovery/report/root artifact 的路径占用；历史 T3/R5/Task 9C 文件和
+普通日志不影响当前 lineage，匹配名称的文件、目录或 symlink 均阻断，非 `ENOENT` 读取错误 fail-closed。最终 clean
+source 回放为 `git_verified / formalArtifactCount=0`；该回放仍是 zero-provider source authority，不是模型质量证据。
+
 这只能证明 synthetic contract、wire/usage accounting、durability 和 no-raw 边界，不证明 DeepSeek/Qwen health、真实
 模型语义、Retriever/FinalResponse P95/SLA、`/api/chat`、Docker/API/browser、Trace、BackgroundJob/Outbox、
 业务数据或 `main`。S1 后停止在 V2 L1；L1 仍需新的数据边界接受与两条 exact authorization。

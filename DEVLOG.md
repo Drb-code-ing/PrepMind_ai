@@ -8,7 +8,8 @@
 > 首错 `timeout/transport/schema/usage` 与 `abort_before_qwen` fault matrix 全部 validator-valid，breaker/no-retry/
 > suffix 不补发成立；临时 evidence root 每 case 精确清理。
 >
-> S1 focused 与 C2 合计 `21/21`（133 assertions），Agent full `1393/1393`（24008 expect()，173 files），package
+> 初始 S1 reviewed Mock checkpoint focused 与 C2 合计 `21/21`（133 assertions），Agent full `1393/1393`（24008 expect()，173 files）；
+> 后续 source-admission 修复回归的最终数字见下一条记录。package
 > typecheck/lint、Prettier 与 `git diff --check` 通过。固定 factory SHA=`sha256:c50b257dd79cd0f9a36f6f93a375ac19deda8b1e9d15ef9cc0d845ad5f64cc20`，
 > report SHA=`8538b13ca16e8c011f00fcec815ca10de60638cd3ddc7e543edeb2d49b96c068`；gate=
 > `transport_reentry_v2_s1_mock_quality_not_evidence / qualityAuthority=none`。真实 `.env`/credential、Provider、正式
@@ -19,6 +20,16 @@
 > P95/SLA 或 `main`。提交推送后必须在 clean source 上重跑 S1 CLI，确认 branch/HEAD/upstream/origin parity；随后停止在
 > V2 L1 的两条 exact authorization 门，不执行 Live、Docker、browser 或 main。
 > 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
+
+> 2026-08-07 — S1 source-admission 修复回归已完成：
+>
+> 发现提交推送后的 S1 CLI 仍返回 `source_admission_invalid`，根因是 admission 将 `.tmp` 目录中所有历史运行文件误计为当前
+> V2 formal evidence。修复后只按当前 V2 writable-path contract 统计 marker/journal/recovery/report/root artifact；历史
+> T3/R5/Task 9C 文件与普通日志不再阻断 admission，`.tmp` 缺失按空目录处理，其他目录读取异常保持 fail-closed。新增回归覆盖
+> 历史文件忽略、当前 lineage 路径占用、缺失 `.tmp` 与非 `ENOENT` 读取失败；focused（S1+C2）`22/22`（136
+> assertions）、Agent full `1394/1394`（24011 expect()，173 files）、typecheck/lint/Prettier/`git diff --check` 均通过。
+> 该修复不读取 credential、不调用 Provider、
+> 不创建正式 evidence，也不改变 S1 gate/authority 或 L1 授权门。
 
 > 2026-08-07 — Phase 6.9.8 Transport Re-entry V2 C2 zero-provider runner/durability 已完成：
 >
