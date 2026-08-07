@@ -1,12 +1,22 @@
 # PrepMind AI 数据流
 
-> 当前设计（2026-08-07）：Transport Re-entry V2 C2 已完成 zero-provider runner/durability flow：
+> 当前 S1（2026-08-07）：C2 durability 之上的三个 bounded synthetic first-party adapter 复用同一
+> `rewrite -> qwen -> final_response` runner seam。success flow 的 runner wire 与 adapter/provider wire 分别为
+> `3/3/3/3`，usage=`480/120/600`，synthetic port calls=`3`，正式 Provider/credential/formal evidence 均为 `0`。
+> timeout/transport/schema/usage 首错 breaker 与 `abort_before_qwen` 均 fail-closed；临时 marker/journal/artifact 只存在
+> isolated temp root 并在 case 后清理。S1 gate=`transport_reentry_v2_s1_mock_quality_not_evidence`、
+> authority=`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。这条流不进入真实 `.env`、Provider、
+> `/api/chat`、Trace、BackgroundJob、Outbox、Docker/browser 或 main；提交推送后只需 clean-source CLI 回放，随后停在
+> V2 L1 exact authorization 门。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
+
+> C2 历史设计（2026-08-07）：Transport Re-entry V2 C2 已完成 zero-provider runner/durability flow：
 > `exact argv -> source/T2+T3-C parity -> fresh proxy -> data boundary -> authorization -> launcher-location root-env
 parser -> dedicated projection -> opaque configuration -> exclusive marker -> reservation -> three-slot journal ->
 hard-link artifact -> strict validator/crash-only recovery`。C2 synthetic path 不读取真实 `.env`/credential、不调用
 > Provider、不写正式 evidence、Trace、BackgroundJob、Outbox 或业务表；configuration failure 在 marker 前收口，首错
-> breaker 不 retry，publication recovery 不重放 port call。下一步仅 S1 reviewed Mock/static；没有新的 exact authorization
-> 前不执行 V2 L1。设计见 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与
+> breaker 不 retry，publication recovery 不重放 port call。S1 已在上方完成；没有新的 exact authorization 前不执行 V2 L1。
+> 设计见 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与
 > C2 验收记录；C1 launcher/projection 的历史边界见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md`。
 
@@ -49,7 +59,7 @@ hard-link artifact -> strict validator/crash-only recovery`。C2 synthetic path 
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
 
-> 当前版本：2026-08-06。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
+> 当前版本：2026-08-07。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
 >
 > 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--8 随后完成。Task 7 已把 canonical auth、Retriever/query rewrite、Verifier、本地 evidence projector、FinalResponse stream 与 realtime Trace 串联进 `/api/chat`；Task 8 又以固定 48-case reviewed Mock/static 验证 guard/rewrite/FinalResponse `16/16/16`、rewrite nDCG uplift `0.43076385233` 与 FinalResponse grounded/citation/critical notice `1`。Task 8 authority 仅 `zero_provider_retriever_final_response_reviewed_mock_static / qualityAuthority=none`，Provider/credential/Qwen 与正式 evidence=0。Task 9A 又冻结 Qwen 北京区 official price/endpoint/usage、1536 维 strict direct transport 与 `262144 tokens / 0.131072 CNY` cap；全部测试使用 injected fetch，真实 Provider/credential/evidence=0。Task 9B 又完成 16 guard + 64-call runner、双 Provider accounting、source admission、durability/validator/CLI；Reviewed Mock 仍为 `task9b_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/approved tag/正式 evidence=0。唯一 Task 9C run `28b5f92f...` 已以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：第二条 DeepSeek rewrite 在 dispatch 后命中本地 `schema_invalid`，仅执行 `5/64` Provider calls，其余 59 次被 breaker 阻止；journal `134`、validator `ok=true`。一次性名额已消费，Task 10/11、产品/main 继续阻断。
 

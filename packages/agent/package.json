@@ -29,6 +29,8 @@
     "./retriever-query-rewrite": "./src/model-candidates/retriever-query-rewrite-model-candidate.ts",
     "./transport-reentry-v2-c1": "./src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1.ts",
     "./transport-reentry-v2-c2": "./src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2.ts",
+    "./transport-reentry-v2-s1": "./src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock.ts",
+    "./transport-reentry-v2-s1-contract": "./src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-contract.ts",
     "./router": "./src/router.ts",
     "./tutor": "./src/nodes/tutor.ts",
     "./tutor-schema-recovery": "./src/model-candidates/tutor-schema-recovery.ts",
@@ -120,6 +122,7 @@
     "eval:phase-6-9-8:transport-evidence:t3:validate": "bun scripts/validate-phase-6-9-8-retriever-final-response-transport-evidence-t3-controlled-evidence.ts",
     "eval:phase-6-9-8:transport-reentry:v2:c1": "bun scripts/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1.ts",
     "eval:phase-6-9-8:transport-reentry:v2:c2": "bun scripts/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2.ts",
+    "eval:phase-6-9-8:transport-reentry:v2:s1": "bun scripts/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1.ts",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

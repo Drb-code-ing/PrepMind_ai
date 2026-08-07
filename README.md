@@ -1,15 +1,23 @@
 # PrepMind AI 智能备考助手
 
-> 当前任务（2026-08-07）：Transport Re-entry V2 C2 zero-provider runner/durability 已完成。新的
+> 当前任务（2026-08-07）：Transport Re-entry V2 S1 reviewed Mock/static 已完成。C2 zero-provider runner/durability
+> 已先完成；新的
 > `phase-6.9.8-retriever-final-response-transport-reentry-v2` 不复用旧 T3 identity；C2 已把 C1 的三个 dedicated
 > capability 收口为单次 opaque configuration capability，并验证 `rewrite -> qwen -> final_response` 固定三槽、
 > exclusive marker、reservation-before-dispatch、fsynced hash-chain journal、hard-link artifact、strict validator
 > 与 crash-only recovery。首错 breaker/no-retry 覆盖 8 类 bounded fault，publication recovery 不重放 port call。
 > C2 focused `15/15`、Agent full `1387/1387`，typecheck/lint/Prettier 全部通过；真实 credential、Provider、正式
 > evidence、Docker/API/browser 与业务写入均为 `0`。authority=`zero_provider_transport_reentry_v2_c2 /
-qualityAuthority=none`；下一任务为 S1 reviewed Mock/static，V2 L1 仍需新的数据边界接受与 exact authorization。
+qualityAuthority=none`；该段为 C2 历史回执；S1 已完成，V2 L1 仍需新的数据边界接受与 exact authorization。
 > 详见 [`V2 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md)、
 > [`C2 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md)。
+
+> S1 已完成三个 bounded synthetic first-party adapter 的 reviewed Mock/static：固定三槽 success wire 为
+> `3/3/3/3 + 3/3/3/3`，usage=`480/120/600`，synthetic port calls=`3`，正式 Provider/credential/formal evidence
+> 均为 `0`；timeout/transport/schema/usage/abort fault matrix、breaker/no-retry 与临时目录清理通过。S1+C2 focused
+> `21/21`、Agent full `1393/1393`，gate=`transport_reentry_v2_s1_mock_quality_not_evidence`、
+> authority=`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。这不是真实模型语义或产品验收；提交推送
+> 后仅需 clean-source CLI 回放，随后停止在 V2 L1 的两条 exact authorization 门。详见 [`S1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md)。
 
 > C1 历史 checkpoint：root launcher 在 exact pre-credential gates 后解析仓库根 `.env`，并投影为 runtime core 的
 > module-owned、lineage/family/call 绑定 single-use capability；configuration failure 在 marker 前收口。详见
@@ -149,6 +157,7 @@ evidence 仍为 0；上述为 R4 historical checkpoint。R5 唯一 controlled-Li
 | Phase 6.9.8 T3-C  | package/root `.env` configuration composition 与 crash-only seal 静态 guard                         | 已完成（zero-provider）     |
 | Phase 6.9.8 V2-C1 | bounded root-env parser、pre-credential gate、dedicated single-use capability projection            | 已完成（历史 checkpoint）   |
 | Phase 6.9.8 V2-C2 | opaque configuration、三槽 runner、exclusive marker、journal/artifact、crash-only durability        | 已完成（zero-provider）     |
+| Phase 6.9.8 V2-S1 | 三个 synthetic first-party adapter、wire/usage/fault matrix、reviewed Mock/static                   | 已完成（Mock-only）         |
 | Phase 7           | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit              | 核心工程化已完成            |
 | Phase 7.8.5       | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固                            | 已完成                      |
 | Phase 7.23        | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                            | 已完成                      |
@@ -487,6 +496,7 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 - [Phase 6.9.8 Transport Re-entry V2 D0 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md)
 - [Phase 6.9.8 Transport Re-entry V2 C1 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md)
 - [Phase 6.9.8 Transport Re-entry V2 C2 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md)
+- [Phase 6.9.8 Transport Re-entry V2 S1 reviewed Mock/static 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

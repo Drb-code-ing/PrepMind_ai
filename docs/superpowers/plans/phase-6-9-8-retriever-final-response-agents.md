@@ -4,7 +4,7 @@
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
 > 当前状态：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1/T2/T3-A 已完成，T3-B
 > controlled canary 已按一次性授权执行并以配置失败 durable seal，T3-C configuration guard 与 Transport Re-entry V2
-> D0/C1/C2 zero-provider contract 已完成；S1/L1、R6/R7、产品/main 与后续阶段仍阻断
+> D0/C1/C2/S1 zero-provider contract/reviewed Mock 已完成；L1、R6/R7、产品/main 与后续阶段仍阻断
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
 ## 执行原则
@@ -19,6 +19,19 @@
 - Mock、synthetic、旧 Chat Live 或 Phase 6.9.7 evidence 均不能替代 Phase 6.9.8 质量 authority。
 - 任何 owner、安全、usage、价格、分母或 Trace terminal 不可验证都 fail-closed。
 - 每个 Task 完成后同步 AGENTS/DEVLOG/roadmap/acceptance；只有新增运行配置时才更新 dev-start/README。
+
+## Transport Re-entry V2 S1 checkpoint（2026-08-07）
+
+S1 在 Task 9B 基线所在功能分支上完成 reviewed Mock/static：三个 bounded synthetic first-party adapter 复用 C2
+`rewrite -> qwen -> final_response` runner seam，success wire=`3/3/3/3 + 3/3/3/3`、usage=`480/120/600`，
+Provider/credential/formal evidence=`0/0/0`。focused（S1+C2）`21/21`、Agent full `1393/1393`、typecheck/lint/
+Prettier/diff check 均通过，gate 固定 `transport_reentry_v2_s1_mock_quality_not_evidence / qualityAuthority=none`。
+
+主代理完成 contract/security/operations 静态复核；三路只读子代理尝试均被服务端 `429 Too Many Requests` 拒绝，未
+形成独立复审证据。提交推送后必须在 clean source 上重跑 S1 CLI，确认 branch/HEAD/upstream/origin parity；随后仅等待
+V2 L1 的全新 DeepSeek/Qwen 数据边界接受与两条 exact authorization。S1 不解锁产品 Docker/API/browser、`main`、Task
+10/11 或任何 Provider 追加探测。完整验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
 
 ## Task 0：设计、边界与数值门冻结
 
@@ -609,14 +622,14 @@ exact-context evidence projector、正式 FinalResponse stream、`/api/chat` com
 48-case reviewed Mock/static checkpoint、严格 Qwen price/endpoint/usage transport，以及独立 64-call runner、双
 Provider accounting、source admission 与 durability/validator/CLI。Transport Evidence Recovery T0/T1/T2/T3-A 已完成
 30-case/15-classifier zero-provider、synthetic durability 与 admission/runner contract；T3-B controlled canary 已失败
-封存，T3-C configuration guard 与 Transport Re-entry V2 D0/C1/C2 zero-provider contract 已完成。当前仍没有：
+封存，T3-C configuration guard 与 Transport Re-entry V2 D0/C1/C2/S1 zero-provider contract/reviewed Mock 已完成。当前仍没有：
 
 - Task 9C 已执行，但没有形成 controlled-Live 质量 authority；
 - 真实 DeepSeek rewrite/FinalResponse 与真实 Qwen paired retrieval 的完整分母、verified usage/CNY 与 P95；
 - Task 10 Docker/API/可见浏览器/Trace/权限/精确清理 authority；
 - Task 11 main/default-off 回放与远程 main parity authority。
 - R4 只形成 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；R5 只形成 bounded failure/durability
-  evidence；Transport T2/T3-A/T3-C 与 Re-entry V2 D0/C1/C2 只形成 `qualityAuthority=none` 的 zero-provider
+  evidence；Transport T2/T3-A/T3-C 与 Re-entry V2 D0/C1/C2/S1 只形成 `qualityAuthority=none` 的 zero-provider
   authority，T3-B 只形成 `controlled_live_transport_evidence_t3 / qualityAuthority=none` 的配置失败证据，均不形成
   产品或 main authority。
 
@@ -624,5 +637,5 @@ Provider accounting、source admission 与 durability/validator/CLI。Transport 
 hybrid search 或 graph descriptor 写成 Phase 6.9.8 controlled-Live、产品或 main 能力已完成。Task 9C source/tag、
 marker、journal 与 artifact 必须保持不可变；当前禁止 Task 10/11、产品/main，以及任何 Task 9C/R5/T3-B retry、
 resume、replay、backfill、seal、recovery 或 Provider 追加调用。T3-C 仅是 zero-provider 配置回归 guard，V2
-D0/C1/C2 仅是新的 zero-provider re-entry 前置 contract，不构成旧 T3 重跑理由。下一步为 V2 S1 reviewed
-Mock/static；没有新的 exact authorization 前不得执行 V2 L1。不得把重跑 R5/T3-B 当作推进。
+D0/C1/C2/S1 仅是新的 zero-provider re-entry 前置 contract/reviewed Mock，不构成旧 T3 重跑理由。S1 已完成，当前
+仅等待 V2 L1 的新数据边界与 exact authorization。不得把重跑 R5/T3-B 当作推进。

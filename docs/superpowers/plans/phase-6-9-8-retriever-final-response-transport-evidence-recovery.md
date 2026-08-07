@@ -162,8 +162,9 @@ bun --env-file=.env --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:
 - T3-D：Transport Re-entry V2 D0 设计、计划与 zero-provider 验收记录单独提交并推送当前功能分支；
 - T3-E：Transport Re-entry V2 C1 launcher/projection 实现、focused/full 回归与 zero-provider 验收记录单独提交并推送当前功能分支；
 - T3-F：Transport Re-entry V2 C2 runner/durability、focused/full 回归与 zero-provider 验收记录单独提交并推送当前功能分支；
+- T3-G：Transport Re-entry V2 S1 synthetic adapter/reviewed Mock、focused/full 回归与 zero-provider 验收记录单独提交并推送当前功能分支；
 - 每次提交后推送当前功能分支并核对 `HEAD == upstream == origin`；
-- T1/T2/T3-A/T3-B/T3-C/T3-E/T3-F 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、data-flow、AI behavior
+- T1/T2/T3-A/T3-B/T3-C/T3-E/T3-F/T3-G 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、data-flow、AI behavior
   acceptance 与本设计/计划；
 - 不合并 main，不移动 approved tag，除非后续阶段明确形成新的质量 authority 并完成分支/产品/main 验收。
 
@@ -172,8 +173,8 @@ bun --env-file=.env --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:
 任一 gate 失败，停止在当前 T 任务并记录 bounded diagnostic；本次 T3-B 已在 credential configuration gate 停止并
 durable seal。它只形成 transport/evidence authority；Retriever/FinalResponse semantic、产品 Docker/API/browser、
 Trace、SLA 和 main 仍需单独授权与验收，且不得把本次失败改写为 Provider 根因。V2 D0/C1/C2 已形成新的
-zero-provider design/projection/durability authority；下一步仅允许 S1 reviewed Mock/static，没有新的 exact
-authorization 前不得执行 V2 L1。
+zero-provider design/projection/durability/reviewed-Mock authority；S1 已完成，没有新的 exact authorization 前不得执行
+V2 L1。
 
 ## 8. Reader Testing 问题
 

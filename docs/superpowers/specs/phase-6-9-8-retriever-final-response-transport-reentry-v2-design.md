@@ -1,10 +1,10 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 设计
 
 > 日期：2026-08-07
-> 状态：D0、C1 与 C2 zero-provider runner/durability 已完成；S1/L1/P1 尚未开始
+> 状态：D0、C1、C2 zero-provider runner/durability 与 S1 reviewed Mock/static 已完成；L1/P1 尚未开始
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
-> 当前 checkpoint authority：`zero_provider_transport_reentry_v2_c2 / qualityAuthority=none`
+> 当前 checkpoint authority：`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`
 
 ## 1. 决策摘要
 
@@ -141,14 +141,14 @@ strict response、verified usage、wire/stage 完整、artifact validator `ok=tr
 | D0   | 本设计、计划、停止边界和 reader questions                              |              0 | C1                                |
 | C1   | root-launcher path/credential projection contract、hostile-input tests |              0 | C2                                |
 | C2   | V2 runner、marker/journal/artifact、strict validator、crash-only seal  |              0 | S1                                |
-| S1   | reviewed Mock/static、source parity、独立复审                          |              0 | L1 授权门                         |
+| S1   | 三个 synthetic adapter、wire/usage/fault matrix、reviewed Mock/static  |              0 | L1 授权门                         |
 | L1   | 新数据边界 + exact authorization 下唯一三槽 controlled canary          |             ≤3 | 仅 transport authority 或失败封存 |
 | P1   | 依据 L1 终态冻结小样本 semantic gate                                   |              0 | 新的语义路线决策                  |
 
 每个阶段单独提交并推送当前 feature branch；不从该分支再开嵌套分支，不合并 `main`，除非后续形成完整
 semantic/product authority 并完成 Docker/API/browser/main 回放。
 
-## 7. Zero-provider D0/C1/C2 通过定义
+## 7. Zero-provider D0/C1/C2/S1 通过定义
 
 - 真实 `providerCalls=0`、`credentialReads=0`、formal marker/journal/artifact/recovery claim=`0`；
 - synthetic env fixture 能证明 root launcher 的 `.env` 路径来自自身位置，而不是 package cwd 或 ambient process env；
@@ -157,17 +157,21 @@ semantic/product authority 并完成 Docker/API/browser/main 回放。
 - hostile/accessor/extra-field/empty/alias-conflict credential input 全部 fail-closed，且 raw value 不进入输出；
 - dedicated projection capability 为 module-owned、single-use、lineage-bound，伪造、复用、跨 family/call 均拒绝；
 - C2 opaque configuration capability 在 marker 前消费，fixed three-slot synthetic runner 首错 breaker/no-retry；
+- S1 三个 bounded synthetic first-party adapter 必须通过同一 C2 runner，success wire=`3/3/3/3 + 3/3/3/3`、
+  usage=`480/120/600`，fault matrix 与 abort/no-retry 均 fail-closed；
+- S1 reviewed Mock 的 gate 固定为 `transport_reentry_v2_s1_mock_quality_not_evidence`，不得写成 semantic/product
+  authority；子代理复审若因工具 429 未形成证据，必须如实记录；
 - synthetic marker/journal/report/hard-link artifact/strict validator 与 crash-only recovery 只存在隔离临时目录并精确清理；
 - T3 validator 只读通过，T3/R5/Task 9C SHA parity 不变；
-- 文档明确记录：D0/C1/C2 不证明 Provider health、模型语义、产品/API/browser、SLA 或 main。
+- 文档明确记录：D0/C1/C2/S1 不证明 Provider health、模型语义、产品/API/browser、SLA 或 main。
 
 ## 8. 停止门
 
 任一 gate、预算、wire、journal、artifact、validator 或安全边界失败，停止当前阶段并封存 bounded diagnostic；
 不能自动推进下一阶段。L1 一次性名额一旦 marker durable 即消费，无论结果成功或失败均不得重跑。
 
-当前 C2 完成后，下一原子任务仅为 S1 zero-provider reviewed Mock/static；没有新的 exact authorization 前不得执行
-L1，不得读取真实 `.env`、credential 或调用 Provider。
+当前 S1 完成后，下一原子任务仅为 L1 授权门；没有新的 exact authorization 前不得执行 L1，不得读取真实 `.env`、
+credential 或调用 Provider。
 
 ## 9. Reader questions
 

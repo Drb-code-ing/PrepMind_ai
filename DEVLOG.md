@@ -1,5 +1,25 @@
 # PrepMind AI 开发日志
 
+> 2026-08-07 — Phase 6.9.8 Transport Re-entry V2 S1 reviewed Mock/static 已完成：
+>
+> 三个 bounded synthetic first-party adapter（DeepSeek rewrite、Qwen embedding、DeepSeek FinalResponse）均通过同一个
+> C2 `rewrite -> qwen -> final_response` runner seam；success wire 为 runner `3/3/3/3`、adapter/provider wire
+> `3/3/3/3`，usage 为 `480/120/600`，synthetic port calls=`3`，正式 `providerCalls=0`、`credentialReads=0`。
+> 首错 `timeout/transport/schema/usage` 与 `abort_before_qwen` fault matrix 全部 validator-valid，breaker/no-retry/
+> suffix 不补发成立；临时 evidence root 每 case 精确清理。
+>
+> S1 focused 与 C2 合计 `21/21`（133 assertions），Agent full `1393/1393`（24008 expect()，173 files），package
+> typecheck/lint、Prettier 与 `git diff --check` 通过。固定 factory SHA=`sha256:c50b257dd79cd0f9a36f6f93a375ac19deda8b1e9d15ef9cc0d845ad5f64cc20`，
+> report SHA=`8538b13ca16e8c011f00fcec815ca10de60638cd3ddc7e543edeb2d49b96c068`；gate=
+> `transport_reentry_v2_s1_mock_quality_not_evidence / qualityAuthority=none`。真实 `.env`/credential、Provider、正式
+> marker/journal/artifact/recovery claim、Docker/API/browser、Trace、BackgroundJob、Outbox 与业务写入均为 `0`。
+>
+> 本轮三路只读子代理尝试均因服务端 `429 Too Many Requests` 超过重试上限，未形成独立复审证据；主代理完成静态
+> contract/security/operations 复核，文档不虚报子代理通过。S1 不证明真实模型语义、Provider health、产品/API/browser、
+> P95/SLA 或 `main`。提交推送后必须在 clean source 上重跑 S1 CLI，确认 branch/HEAD/upstream/origin parity；随后停止在
+> V2 L1 的两条 exact authorization 门，不执行 Live、Docker、browser 或 main。
+> 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
+
 > 2026-08-07 — Phase 6.9.8 Transport Re-entry V2 C2 zero-provider runner/durability 已完成：
 >
 > C2 将 C1 的三个 dedicated capability 收口为单次 opaque configuration capability，并在 synthetic root 中落地
@@ -12,7 +32,7 @@
 > full `1387/1387`（23957 expect()，172 files），typecheck/lint/Prettier 通过。真实 Provider、credential、正式
 > marker/journal/artifact/recovery claim、Docker/API/browser、Trace 与业务写入均为 `0`。旧 T3/R5/Task 9C 只读 validator
 > 仍分别为 `ok=true`，sealed SHA 未改变。authority=`zero_provider_transport_reentry_v2_c2 /
-qualityAuthority=none`；下一原子任务为 S1 reviewed Mock/static，V2 L1 仍需新的数据边界接受与 exact authorization。
+qualityAuthority=none`；（当时）下一原子任务为 S1 reviewed Mock/static，V2 L1 仍需新的数据边界接受与 exact authorization。
 > 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
 
 > 2026-08-07 — Phase 6.9.8 Transport Re-entry V2 C1 zero-provider launcher/projection contract 已完成：

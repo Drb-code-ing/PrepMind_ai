@@ -314,12 +314,48 @@ export async function reservePhase698TransportReentryV2C2Attempt(input: {
   return reservationFromState(state);
 }
 
+export type Phase698TransportReentryV2C2SyntheticPortContext = Readonly<{
+  slot: Phase698TransportReentryV2C2Slot;
+  sequence: number;
+  signal: AbortSignal;
+}>;
+
+export type Phase698TransportReentryV2C2SyntheticPortSuccess = Readonly<{
+  usage: Readonly<{ inputTokens: number; outputTokens: number; totalTokens: number }>;
+  durationMs: number;
+}>;
+
+export type Phase698TransportReentryV2C2SyntheticPort = (
+  context: Phase698TransportReentryV2C2SyntheticPortContext,
+) => Promise<Phase698TransportReentryV2C2SyntheticPortSuccess>;
+
+export type Phase698TransportReentryV2C2SyntheticPorts = Readonly<
+  Record<Phase698TransportReentryV2C2Slot, Phase698TransportReentryV2C2SyntheticPort>
+>;
+
+export class Phase698TransportReentryV2C2SyntheticPortFailure extends Error {
+  readonly code: Phase698TransportReentryV2C2FailureCode;
+  readonly responseObserved: boolean;
+
+  constructor(
+    code: Phase698TransportReentryV2C2FailureCode,
+    options: Readonly<{ responseObserved?: boolean }> = {},
+  ) {
+    super(code);
+    this.name = 'Phase698TransportReentryV2C2SyntheticPortFailure';
+    this.code = code;
+    this.responseObserved = options.responseObserved ?? false;
+  }
+}
+
 export type Phase698TransportReentryV2C2SyntheticRunInput = Readonly<{
   root: string;
   admissionCapability: unknown;
   configurationCapability: unknown;
   reservationCapability: unknown;
   faults?: Partial<Record<Phase698TransportReentryV2C2Slot, Phase698TransportReentryV2C2Fault>>;
+  ports?: Phase698TransportReentryV2C2SyntheticPorts;
+  signal?: AbortSignal;
   abortBeforeSlot?: Phase698TransportReentryV2C2Slot;
   publicationFault?: boolean;
   runId?: string;
@@ -348,6 +384,8 @@ export async function runPhase698TransportReentryV2C2Synthetic(
     runId: input.runId,
   });
   const faults = input.faults ?? {};
+  const signal = input.signal ?? new AbortController().signal;
+  const ports = input.ports ?? createDefaultSyntheticPorts(faults);
   const slotResults: Phase698TransportReentryV2C2SlotResult[] = [];
   let breaker: Phase698TransportReentryV2C2FailureCode | 'none' = 'none';
   let syntheticPortCalls = 0;
@@ -370,7 +408,7 @@ export async function runPhase698TransportReentryV2C2Synthetic(
       continue;
     }
     const fault = faults[slot] ?? 'success';
-    if (fault === 'abort') {
+    if (!input.ports && fault === 'abort') {
       breaker = 'abort';
       const result = suffixResult(slot, sequence, 'attempted_aborted', 'abort');
       await reservation.appendSlotTerminal(result);
@@ -379,33 +417,29 @@ export async function runPhase698TransportReentryV2C2Synthetic(
     }
     await reservation.appendSlotDispatchStarted(slot);
     const base = baseWire();
+    let responseObserved = false;
     try {
       syntheticPortCalls += 1;
-      if (fault === 'timeout' || fault === 'transport') throw new SyntheticPortFailure(fault);
-      await reservation.appendSlotResponseObserved(slot);
-      if (
-        fault === 'missing' ||
-        fault === 'invalid' ||
-        fault === 'conflict' ||
-        fault === 'schema'
-      ) {
-        throw new SyntheticPortFailure(fault);
+      if (signal.aborted) {
+        throw new Phase698TransportReentryV2C2SyntheticPortFailure('abort');
       }
-      if (fault === 'usage') throw new SyntheticPortFailure('usage');
+      const outcome = parseSyntheticPortSuccess(await ports[slot]({ slot, sequence, signal }));
+      await reservation.appendSlotResponseObserved(slot);
+      responseObserved = true;
       await reservation.appendSlotUsageVerified(slot);
-      const result = successResult(slot, sequence);
+      const result = successResult(slot, sequence, outcome);
       await reservation.appendSlotTerminal(result);
       slotResults.push(result);
     } catch (error) {
-      const code = error instanceof SyntheticPortFailure ? error.code : 'validation';
+      const failure =
+        error instanceof Phase698TransportReentryV2C2SyntheticPortFailure ? error : null;
+      if (failure?.responseObserved && !responseObserved) {
+        await reservation.appendSlotResponseObserved(slot);
+        responseObserved = true;
+      }
+      const code = failure?.code ?? 'validation';
       breaker = code;
-      const result = failureResult(
-        slot,
-        sequence,
-        code,
-        base,
-        fault === 'timeout' || fault === 'transport',
-      );
+      const result = failureResult(slot, sequence, code, base, !responseObserved);
       await reservation.appendSlotTerminal(result);
       slotResults.push(result);
     }
@@ -429,16 +463,71 @@ export async function runPhase698TransportReentryV2C2Synthetic(
   return { ok: validation.ok, report, validation, recoveryRequired: !validation.ok };
 }
 
-class SyntheticPortFailure extends Error {
-  readonly code: Phase698TransportReentryV2C2FailureCode;
-  constructor(code: Phase698TransportReentryV2C2FailureCode) {
-    super(code);
-    this.code = code;
-  }
-}
-
 function baseWire() {
   return Object.freeze({ dispatched: true as const });
+}
+
+function createDefaultSyntheticPorts(
+  faults: Partial<Record<Phase698TransportReentryV2C2Slot, Phase698TransportReentryV2C2Fault>>,
+): Phase698TransportReentryV2C2SyntheticPorts {
+  return Object.freeze({
+    rewrite: createDefaultSyntheticPort('rewrite', faults.rewrite),
+    qwen: createDefaultSyntheticPort('qwen', faults.qwen),
+    final_response: createDefaultSyntheticPort('final_response', faults.final_response),
+  });
+}
+
+function createDefaultSyntheticPort(
+  slot: Phase698TransportReentryV2C2Slot,
+  fault: Phase698TransportReentryV2C2Fault | undefined,
+): Phase698TransportReentryV2C2SyntheticPort {
+  return async ({ signal }) => {
+    if (signal.aborted) throw new Phase698TransportReentryV2C2SyntheticPortFailure('abort');
+    if (fault === 'timeout' || fault === 'transport') {
+      throw new Phase698TransportReentryV2C2SyntheticPortFailure(fault);
+    }
+    if (fault === 'missing' || fault === 'invalid' || fault === 'conflict' || fault === 'schema') {
+      throw new Phase698TransportReentryV2C2SyntheticPortFailure(fault, {
+        responseObserved: true,
+      });
+    }
+    if (fault === 'usage') {
+      throw new Phase698TransportReentryV2C2SyntheticPortFailure('usage', {
+        responseObserved: true,
+      });
+    }
+    return Object.freeze({
+      usage:
+        slot === 'qwen'
+          ? { inputTokens: 32, outputTokens: 0, totalTokens: 32 }
+          : { inputTokens: 48, outputTokens: 8, totalTokens: 56 },
+      durationMs: slot === 'final_response' ? 3 : 1,
+    });
+  };
+}
+
+const SYNTHETIC_PORT_SUCCESS_SCHEMA = z
+  .object({
+    usage: z
+      .object({
+        inputTokens: z.number().int().nonnegative(),
+        outputTokens: z.number().int().nonnegative(),
+        totalTokens: z.number().int().nonnegative(),
+      })
+      .strict(),
+    durationMs: z.number().int().nonnegative().max(20_000),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.usage.totalTokens !== value.usage.inputTokens + value.usage.outputTokens) {
+      context.addIssue({ code: 'custom', message: 'synthetic usage total mismatch' });
+    }
+  });
+
+function parseSyntheticPortSuccess(
+  value: unknown,
+): Phase698TransportReentryV2C2SyntheticPortSuccess {
+  return SYNTHETIC_PORT_SUCCESS_SCHEMA.parse(value);
 }
 
 function providerFor(slot: Phase698TransportReentryV2C2Slot) {
@@ -448,11 +537,8 @@ function providerFor(slot: Phase698TransportReentryV2C2Slot) {
 function successResult(
   slot: Phase698TransportReentryV2C2Slot,
   sequence: number,
+  outcome: Phase698TransportReentryV2C2SyntheticPortSuccess,
 ): Phase698TransportReentryV2C2SlotResult {
-  const usage =
-    slot === 'qwen'
-      ? { inputTokens: 32, outputTokens: 0, totalTokens: 32 }
-      : { inputTokens: 48, outputTokens: 8, totalTokens: 56 };
   return PHASE_6_9_8_TRANSPORT_REENTRY_V2_C2_SLOT_RESULT_SCHEMA.parse({
     slot,
     provider: providerFor(slot),
@@ -464,9 +550,9 @@ function successResult(
     syntheticPortCalls: 1,
     providerCalls: 0,
     credentialReads: 0,
-    usage,
+    usage: outcome.usage,
     verifiedCostCny: null,
-    durationMs: slot === 'final_response' ? 3 : 1,
+    durationMs: outcome.durationMs,
     diagnostic: null,
     rawDataRetained: false,
   });

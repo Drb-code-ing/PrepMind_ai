@@ -1,26 +1,28 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前任务：Phase 6.9.8 Transport Re-entry V2 C2 已完成（2026-08-07）
+## 当前任务：Phase 6.9.8 Transport Re-entry V2 S1 已完成（2026-08-07）
 
 旧 T3 一次性名额已消费且不可重跑。新的独立 lineage
 `phase-6.9.8-retriever-final-response-transport-reentry-v2` 已以
-`zero_provider_transport_reentry_v2_c2 / qualityAuthority=none` 完成 D0、C1 与 C2：root launcher 只在 exact
+`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none` 完成 D0、C1、C2 与 S1：root launcher 只在 exact
 data-boundary + authorization 后读取根 `.env` 的 `DEEPSEEK_API_KEY`/`QWEN_API_KEY`，并投影为 runtime core 的
 module-owned dedicated capability；C2 再将三个 projection 收口为单次 opaque configuration capability，并完成
 exclusive marker、reservation-before-dispatch、固定三槽 runner、hash-chain journal、hard-link artifact、strict
 validator 与 crash-only recovery。exact argv/source/T2+T3-C/proxy/data-boundary/authorization 全部先于 credential
-composition，configuration failure 在 marker 前收口，不消费 V2 一次性 marker。
+composition，configuration failure 在 marker 前收口，不消费 V2 一次性 marker；S1 再以三个 bounded synthetic
+first-party adapter 复用 C2 runner 完成 reviewed Mock/static。
 
-未来 L1 固定 `rewrite -> qwen -> final_response`、最多 `3` calls、总 cap `0.024096 CNY`、首错 breaker 与 no-retry；
-即使 transport 全部成功也不形成 semantic/product/main authority。C1/C2 使用 synthetic fixture 完成 bounded root-env
+S1 固定 `rewrite -> qwen -> final_response`、最多 `3` synthetic calls、总 cap `0.024096 CNY`、首错 breaker 与 no-retry；
+即使 transport 全部成功也不形成 semantic/product/main authority。C1/C2/S1 使用 synthetic fixture 完成 bounded root-env
 parser、gate ordering、module-owned single-use capability、fault matrix 与 crash-only durability；真实 `.env`、
 credential、Provider、正式 marker/journal/artifact/recovery claim、Docker/API/browser 与业务写入仍为 `0`。下一原子
-任务仅 S1 reviewed Mock/static；L1、Task 10/11、产品/main 与后续阶段继续阻断。设计、计划与验收见
+任务仅 V2 L1 授权门；L1、Task 10/11、产品/main 与后续阶段继续阻断。设计、计划与验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-reentry-v2.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
 
 ## 历史封存：Phase 6.9.8 Transport Evidence Recovery T3 controlled canary（2026-08-07）
 

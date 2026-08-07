@@ -1,9 +1,9 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 实施计划
 
 > 设计来源：[Transport Re-entry V2 设计](../specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md)
-> 当前状态：D0、C1 与 C2 zero-provider runner/durability 已完成；下一步为 S1 reviewed Mock/static
+> 当前状态：D0、C1、C2 zero-provider runner/durability 与 S1 reviewed Mock/static 已完成；当前停止在 L1 授权门
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> 当前 authority：`zero_provider_transport_reentry_v2_c2 / qualityAuthority=none`
+> 当前 authority：`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`
 
 ## 执行原则
 
@@ -60,12 +60,21 @@ validator（`ok=true`）均通过。未读取真实 `.env`、未调用 Provider�
   通过；旧 T3/R5/Task 9C validator/SHA parity 只读通过；Provider/credential/formal evidence 均为 `0`。
 - 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
 
-## S1：reviewed Mock/static（下一步）
+## S1：reviewed Mock/static（已完成）
 
-- 三个第一方 adapter 通过 V2 runner 的 synthetic ports；
-- 记录 `0/0` Provider/credential、strict/wire/usage 账本与 no-raw evidence；
-- 至少完成 contract/security/operations 三路独立只读复审；
-- gate 固定 `transport_reentry_v2_mock_quality_not_evidence / qualityAuthority=none`。
+- 三个 bounded synthetic first-party adapter 通过同一 C2 runner 的 synthetic ports，固定顺序为
+  `rewrite -> qwen -> final_response`；
+- 记录 Provider/credential/formal evidence=`0/0/0`，success wire=`3/3/3/3 + 3/3/3/3`，usage=`480/120/600`、
+  factory/report SHA 与 no-raw audit；
+- fault matrix 覆盖 timeout/transport/schema/usage 与 `abort_before_qwen`，首错 breaker、no-retry、suffix 不补发和
+  isolated temp-root cleanup 全部通过；
+- focused（S1+C2）`21/21`（133 assertions），Agent full `1393/1393`（24008 expect()，173 files），typecheck/lint/
+  Prettier/diff check 通过；
+- 主代理完成 contract/security/operations 静态复核。三路只读子代理尝试均因服务端 `429 Too Many Requests` 超过
+  重试上限，未形成独立复审证据，文档不声称子代理复审通过；
+- gate 固定 `transport_reentry_v2_s1_mock_quality_not_evidence / qualityAuthority=none`。
+
+验收：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
 
 ## L1：唯一 controlled canary（待授权）
 
@@ -87,5 +96,6 @@ L1 最多三次 Provider call，失败即 durable seal；不得 retry/resume/rep
 
 ## 当前停止边界
 
-T3 controlled canary 已失败封存，T3-C guard 与本 V2 D0/C1/C2 已完成。当前允许读取旧 validator、运行 zero-provider
-回归、同步文档和实现 S1；当前禁止旧 T3/L1、产品 Docker/API/browser、`main`、Task 10/11 以及任何 Provider 追加调用。
+T3 controlled canary 已失败封存，T3-C guard 与本 V2 D0/C1/C2/S1 已完成。当前允许读取旧 validator、运行 zero-provider
+回归和同步文档；当前仅等待 L1 的新数据边界与 exact authorization，禁止旧 T3/L1、产品 Docker/API/browser、`main`、
+Task 10/11 以及任何 Provider 追加调用。

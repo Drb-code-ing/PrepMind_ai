@@ -2,7 +2,26 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Transport Re-entry V2 C2 当前边界
+## Phase 6.9.8 Transport Re-entry V2 S1 当前边界
+
+S1 是 C2 之后的 zero-provider reviewed Mock/static checkpoint。三个 bounded synthetic first-party adapter 通过同一
+`rewrite -> qwen -> final_response` runner seam；success wire 为 runner `3/3/3/3` 与 adapter/provider
+`3/3/3/3`，usage 为 `480/120/600`，synthetic port calls=`3`，正式 `providerCalls=0`、
+`credentialReads=0`、formal evidence=`0`。timeout/transport/schema/usage 首错 breaker 与
+`abort_before_qwen` fault matrix 均 fail-closed，不 retry、不补发 suffix。
+
+S1 gate=`transport_reentry_v2_s1_mock_quality_not_evidence`，authority=
+`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。固定 factory/report SHA 为
+`sha256:c50b257b...cc20 / 8538b13c...c068`。主代理完成 source/capability/credential/provider/package 静态复核；
+三路只读子代理尝试均因服务端 `429 Too Many Requests` 超过重试上限，未形成独立复审证据，不能写成“子代理通过”。
+
+这只能证明 synthetic contract、wire/usage accounting、durability 和 no-raw 边界，不证明 DeepSeek/Qwen health、真实
+模型语义、Retriever/FinalResponse P95/SLA、`/api/chat`、Docker/API/browser、Trace、BackgroundJob/Outbox、
+业务数据或 `main`。S1 后停止在 V2 L1；L1 仍需新的数据边界接受与两条 exact authorization。
+
+验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
+
+## Phase 6.9.8 Transport Re-entry V2 C2 历史边界
 
 V2 C2 已在 C1 projection contract 之上完成 zero-provider runner/durability：三个 dedicated capability 先收口为
 single-use opaque configuration capability，随后以固定 `rewrite -> qwen -> final_response` 顺序运行 synthetic
@@ -13,7 +32,7 @@ usage 的首错会打开 breaker，publication interruption 只恢复同一 term
 C2 focused `15/15`、Agent full `1387/1387`、typecheck/lint/Prettier 通过；真实 credential、Provider、正式 evidence、
 Docker/API/browser、Trace 与业务写入均为 `0`。authority=`zero_provider_transport_reentry_v2_c2 /
 qualityAuthority=none`。这只证明 synthetic 执行与 durability 边界，不证明 Provider health、真实模型语义、产品
-`/api/chat`、P95/SLA 或 `main`；下一步是 S1 reviewed Mock/static，V2 L1 仍需新的数据边界接受与 exact authorization。
+`/api/chat`、P95/SLA 或 `main`；S1 已完成；V2 L1 仍需新的数据边界接受与 exact authorization。
 
 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
 

@@ -5,7 +5,47 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0D. Phase 6.9.8 Transport Re-entry V2 C2 zero-provider runner/durability（当前）
+## 0E. Phase 6.9.8 Transport Re-entry V2 S1 reviewed Mock/static（当前）
+
+S1 在 C2 runner/durability 之上让三个 bounded synthetic first-party adapter 走同一条
+`rewrite -> qwen -> final_response` seam。它验证 adapter audit、strict usage、双层 wire、首错 breaker、abort/no-retry
+和 package/source admission；实际 responder 不是 DeepSeek/Qwen，所有真实 Provider/credential/formal evidence 计数必须为
+`0`。
+
+固定结果：
+
+| 项目                                    |                                                结果 |
+| --------------------------------------- | --------------------------------------------------: |
+| gate                                    | `transport_reentry_v2_s1_mock_quality_not_evidence` |
+| authority / qualityAuthority            |      `zero_provider_transport_reentry_v2_s1 / none` |
+| focused（S1+C2）                        |                               `21/21`，133 expect() |
+| Agent full                              |              `1393/1393`，24008 expect()，173 files |
+| success wire                            |        runner `3/3/3/3`；adapter/provider `3/3/3/3` |
+| usage                                   |                `480 input / 120 output / 600 total` |
+| Provider / credential / formal evidence |                                         `0 / 0 / 0` |
+| factory/report SHA                      |                 `c50b257b...cc20 / 8538b13c...c068` |
+
+### S1 固定回归命令
+
+```text
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2.test.ts
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+bunx prettier --check <S1/C2 changed files>
+git diff --check
+bun --filter @repo/agent test
+```
+
+fault matrix 覆盖 success、timeout、transport、schema、usage 和 `abort_before_qwen`；每个 case 的 synthetic
+temporary root 都在 finally 中清理。工作区 dirty 时 S1 CLI 的 source admission 必须返回
+`source_admission_invalid`；提交推送后要在 clean branch/HEAD/upstream/origin parity 上重跑 CLI。
+
+S1 只形成 Mock/static 工程 authority，不形成真实模型语义、Provider health、P95/SLA、产品 API、Docker/browser、Trace、
+BackgroundJob/Outbox、业务写入或 `main` authority。下一步仅 V2 L1；必须重新接受 DeepSeek/Qwen 数据边界并提供两条
+exact authorization，普通“继续/好的”不替代授权。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
+
+## 0D. Phase 6.9.8 Transport Re-entry V2 C2 zero-provider runner/durability（历史 checkpoint）
 
 C2 在同一功能分支上完成了 C1 dedicated projection 到 opaque configuration capability 的收口，并实现固定
 `rewrite -> qwen -> final_response` 三槽 runner、exclusive marker、reservation-before-dispatch、fsynced hash-chain
@@ -31,8 +71,7 @@ bun --filter @repo/agent eval:phase-6-9-8:task9:validate
 ```
 
 本组测试结果为 focused `15/15`（88 assertions）、Agent full `1387/1387`（23957 expect()，172 files）、typecheck/
-lint/Prettier 通过；旧 T3/R5/Task 9C validator 均 `ok=true` 且 sealed SHA 不变。C2 只解锁 S1 reviewed Mock/static，
-不解锁 V2 L1、产品 Docker/API/browser 或 `main`。S1 完成后仍需新的 DeepSeek/Qwen 数据边界接受与 exact authorization
+lint/Prettier 通过；旧 T3/R5/Task 9C validator 均 `ok=true` 且 sealed SHA 不变。C2 当时只解锁 S1 reviewed Mock/static；S1 已在 0E 完成，仍不解锁 V2 L1、产品 Docker/API/browser 或 `main`。S1 完成后仍需新的 DeepSeek/Qwen 数据边界接受与 exact authorization
 才能讨论唯一 L1。
 
 详见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
