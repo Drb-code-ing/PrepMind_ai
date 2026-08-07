@@ -1,7 +1,9 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 设计
 
 > 日期：2026-08-07
-> 状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static 与 L1 zero-provider implementation 已完成；唯一 L1 controlled-Live 尚未执行
+> 状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static 与 L1 zero-provider implementation 已完成；首次
+> L1 controlled-Live admission 在共享 root `.env` 以 `unknown_key` 阻断，selective root-env compatibility 修复已落地，
+> 新 source commit 尚未重新授权
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
 > 当前 checkpoint authority：`zero_provider_transport_reentry_v2_l1_implementation / qualityAuthority=none`；S1 的
@@ -80,11 +82,18 @@ V2 将 operator convenience 与 runtime isolation 分成两层：
 2. **V2 runtime core**：只接收 module-owned、single-use 的 dedicated projection capability，不读取
    `process.env`，不接收 generic key、其它 Agent key、gate、URL、model、retry 或 persistence port。
 
-Parser 只接受 UTF-8/UTF-8 BOM、CRLF/LF、单行 `KEY=value` 与有界单/双引号值；不做变量插值、不接受 multiline，
-冲突重复键、空值、越界、非 ASCII、未知 key 派生错误、accessor-backed 或 extra-field 均 fail-closed，raw file
-和 raw value 不进入 report。Launcher 把一个 DeepSeek 宿主 key 投影为两个 capability-scoped 字段（rewrite 与
-FinalResponse），把 Qwen 宿主 key 投影为 embedding 字段；投影不会改变底层 secret，也不会把 generic key 注入
-Web/server/worker/admin 或产品 Chat。
+strict synthetic parser 继续只接受 UTF-8/UTF-8 BOM、CRLF/LF、单行 `KEY=value` 与有界单/双引号值；不做变量插值、
+不接受 multiline，冲突重复键、空值、越界、非 ASCII、未知 key、accessor-backed 或 extra-field 均 fail-closed。
+生产 root launcher 另有 selective root profile：共享根 `.env` 可以包含正常的数据库、RAG、Chat 等项目设置，但只
+提取 `DEEPSEEK_API_KEY`、`QWEN_API_KEY`、宿主兼容 `Qwen_API_KEY`/`DASHSCOPE_API_KEY`；其它字段不进入 projection。
+Qwen alias 统一为 canonical `QWEN_API_KEY`，多个 alias 同时存在时 `alias_conflict` fail-closed。目标值仍执行同一
+有界、无插值、无 multiline、ASCII 约束，raw file/raw value 不进入 report。Launcher 把一个 DeepSeek 宿主 key 投影
+为两个 capability-scoped 字段（rewrite 与 FinalResponse），把 Qwen 宿主 key 投影为 embedding 字段；投影不会改变
+底层 secret，也不会把 generic key 注入 Web/server/worker/admin 或产品 Chat。
+
+这两个 parser profile 的分离是对真实 root `.env` admission diagnosis 的修复，不放宽 C1 synthetic hostile-input
+contract，也不是旧 T3 retry。诊断记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
 ### 4.2 读取顺序
 
@@ -180,7 +189,7 @@ credential 或调用 Provider。
 
 L1 的 production-shaped launcher、固定三槽 runner、source/proxy/data-boundary/authorization gate、deferred
 adapter handoff、strict journal state machine、existing-artifact recovery 与 recovery-claim validator 已完成。
-focused `12/12`、C1+C2+S1+L1 `44/44`、Agent full `1406/1406` 通过；targeted ESLint、Prettier、Bun build
+focused `13/13`、C1+C2+S1+L1 `47/47`、Agent full `1409/1409` 通过；targeted ESLint、Prettier、Bun build
 通过。实现阶段未读取真实 `.env`、credential、Provider，也未创建正式 evidence。真正的 adapter constructor 只在
 exclusive marker/reservation durable 后执行，marker 前仅做 capability shape/lineage/family/call preflight。
 

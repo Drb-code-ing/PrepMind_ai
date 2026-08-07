@@ -1,14 +1,19 @@
 # PrepMind AI 智能备考助手
 
-> 当前任务（2026-08-08）：Transport Re-entry V2 L1 implementation 与 zero-provider 回归已完成。新增 strict
+> 当前任务（2026-08-08）：Transport Re-entry V2 L1 implementation 与 zero-provider 回归已完成；首次受控入口在共享
+> root `.env` composition 以 `unknown_key` 停止，现已完成 selective root-env compatibility 修复。新增 strict
 > source/proxy/data-boundary/authorization launcher、固定三槽 runner、deferred adapter handoff、journal state
 > machine、hash-chain validator、lineage formal-path fence、reserved/dispatch crash-only recovery、existing-artifact
-> recovery 与 recovery-claim integrity check。L1 focused `12/12`、C1+C2+S1+L1 `44/44`、Agent full `1406/1406`
-> （24063 assertions）通过，targeted ESLint/Prettier/Bun build 通过；真实 `.env`/credential/DeepSeek/Qwen、正式
+> recovery 与 recovery-claim integrity check。L1 focused `13/13`、C1+C2+S1+L1 `47/47`、Agent full `1409/1409`
+> （24069 assertions）通过，targeted ESLint/Prettier/Bun build 通过；真实 `.env`/credential/DeepSeek/Qwen、正式
 > evidence、Docker/API/browser 与业务写入仍为 `0`。真正 adapter constructor 只在 durable reservation 后执行。
-> source commit 推送后还需重新接受当前 source 的 DeepSeek/Qwen 数据边界并给出 exact authorization，才执行唯一一次
-> controlled canary；成功也只形成 transport diagnostic authority，不代表语义或产品可用。详见
+> root parser 只提取 `DEEPSEEK_API_KEY` 与 `QWEN_API_KEY`/`Qwen_API_KEY`/`DASHSCOPE_API_KEY`，其它项目字段不进入
+> projection；strict synthetic parser 仍拒绝 unknown/duplicate/alias conflict。修复提交推送后还需重新接受当前 source
+> 的 DeepSeek/Qwen 数据边界并给出新的 exact authorization，才执行唯一一次 controlled canary；成功也只形成
+> transport diagnostic authority，不代表语义或产品可用。详见
 > [`L1 zero-provider 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md)。
+> Root admission 诊断与修复边界见
+> [`L1 root-env diagnosis`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md)。
 
 > 历史回执（2026-08-07）：Transport Re-entry V2 S1 reviewed Mock/static 已完成。C2 zero-provider runner/durability
 > 已先完成；新的
@@ -70,7 +75,7 @@ PrepMind AI 是一个移动端优先的 AI 智能备考助手，目标是把拍�
 当前不把 R5 或 T3 配置失败拼接成“部分通过”；T0/T1/T2/T3-A 已完成 Transport Evidence Recovery 的 zero-provider
 contract、可判别性、admission、调度与 durability 前置验证，T3 controlled 已一次性失败封存。新的 V2 D0/C1/C2/S1 已冻结并
 实现 re-entry 的配置隔离、dedicated projection、runner、durability 与 L1 production-shaped launcher；L1 zero-provider
-focused `12/12`、C1+C2+S1+L1 `44/44`、Agent full `1406/1406` 已通过。当前只允许在最终 source commit 上执行
+focused `13/13`、C1+C2+S1+L1 `47/47`、Agent full `1409/1409` 已通过。当前只允许在最终 source commit 上执行
 这次唯一 controlled canary；不得自动重跑 T3、追加 Provider 探测或进入产品/main 验收。
 
 Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1--V9 九条 controlled-Live 均以 `quality_gate_failed` 独立封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 完成 `24/24` guard zero-call；首个 pair 两条 lane 各进入一次 durable dispatch，但均没有 Provider response。Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全为 `null`。
@@ -513,6 +518,7 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 - [Phase 6.9.8 Transport Re-entry V2 C2 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md)
 - [Phase 6.9.8 Transport Re-entry V2 S1 reviewed Mock/static 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md)
 - [Phase 6.9.8 Transport Re-entry V2 L1 implementation zero-provider 验收](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md)
+- [Phase 6.9.8 Transport Re-entry V2 L1 root-env diagnosis / compatibility 修复](./docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md)
 - [本地启动命令](./docs/dev-start.md)
 - [架构设计文档](./docs/architecture.md)
 - [开发日志](./DEVLOG.md)

@@ -1,7 +1,8 @@
 # Phase 6.9.8 Transport Re-entry V2 L1 实现与 zero-provider 验收
 
 > 日期：2026-08-08
-> 状态：L1 runner/launcher 已完成实现与 zero-provider 回归；唯一 controlled-Live 尚未在本验收记录中执行。
+> 状态：L1 runner/launcher 已完成实现与 zero-provider 回归；随后一次受控入口在 root `.env` admission 以
+> `unknown_key` 阻断，未创建正式 Live evidence；compatibility 修复另见独立诊断记录。
 > Branch：`drb/phase-6-9-8-retriever-final-response-contract`
 > Lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
 > 当前 checkpoint authority：`zero_provider_transport_reentry_v2_l1_implementation / qualityAuthority=none`
@@ -48,8 +49,8 @@ bounded diagnostic；即使三槽成功，也不能形成 Retriever/FinalRespons
 
 ## 3. Zero-provider 证据
 
-- focused L1：`12/12` tests、`44` assertions；C1+C2+S1+L1：`44/44` tests、`218` assertions。
-- Agent full：`1406/1406` tests、`24063` assertions、`174` files。
+- focused L1：`13/13` tests、`44` assertions；C1+C2+S1+L1：`47/47` tests、`224` assertions。
+- Agent full：`1409/1409` tests、`24069` assertions、`174` files。
 - targeted ESLint（L1 source/launcher）通过；Prettier 与 Bun build 通过。
 - 覆盖：错误 argv/source gate ordering、capability deferred handoff、固定 slot/breaker、abort、reserved-only
   recovery、dispatch-only crash、hash-valid journal 乱序、lineage temp file、existing-artifact recovery、recovery
@@ -81,3 +82,16 @@ I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_TRANSPORT_REENTRY_V2_CONTROLLED
 - `packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-cli-core.ts`
 - `packages/agent/scripts/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1.ts`
 - `packages/agent/tests/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1.test.ts`
+
+## 6. Checkpoint 后的 root `.env` admission 诊断
+
+在本 checkpoint 推送后，唯一受控入口曾在 root `.env` composition 返回
+`credential_configuration_invalid / unknown_key`。根因是共享 `.env` 含正常项目配置字段，并使用宿主兼容
+`Qwen_API_KEY`；这不是 Provider/network/account 结论。该尝试 `providerCalls=0`、`credentialReads=0`，没有 marker、
+journal、report、artifact 或 recovery claim，因此没有消费一次性 marker，也不是 T3 retry。后续 production selective root
+profile 的修复规则与脱敏证据见：
+
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
+
+修复完成后仍必须在新的 source commit 上重新通过 clean/parity、fresh proxy、DeepSeek/Qwen data-boundary 与两条 exact
+authorization；在新授权前不得继续调用 Provider。

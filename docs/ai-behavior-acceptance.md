@@ -10,13 +10,21 @@ hard-link publication 与 crash-only recovery 固定为一条不可扩展的 tra
 只在 durable marker/reservation 后进入 adapter constructor；marker 前仅做 capability 的 lineage/family/call
 shape 检查。固定顺序为 `rewrite -> qwen -> final_response`，最多 3 calls、总 cap `0.024096 CNY`，首错即停止后缀。
 
-zero-provider 回归：L1 focused `12/12`（44 assertions）、C1+C2+S1+L1 `44/44`（218 assertions）、Agent full
-`1406/1406`（24063 assertions）；真实 `.env`/credential/Provider/formal evidence/Docker/API/browser/Trace/
+zero-provider 回归：L1 focused `13/13`（44 assertions）、C1+C2+S1+L1 `47/47`（224 assertions）、Agent full
+`1409/1409`（24069 assertions）；真实 `.env`/credential/Provider/formal evidence/Docker/API/browser/Trace/
 BackgroundJob/Outbox/业务写入均为 `0`。因此当前不能写成“模型质量通过”或“产品可用”。提交推送后，只有在当前 source
 commit 上重新接受 DeepSeek/Qwen 数据边界并给出 exact authorization，才能消费唯一一次 L1 controlled canary；成功最多
 形成 `qualityAuthority=none` 的 transport diagnostic authority，随后仍需独立 zero-provider semantic/product 路线。
 
+首次受控入口在共享 root `.env` composition 以 `credential_configuration_invalid / unknown_key` 停止：共享文件包含正常
+项目配置，Qwen 使用宿主兼容 `Qwen_API_KEY`。该次没有 Provider call、marker/evidence 或产品写入；当前 production
+profile 已改为只选择性提取 `DEEPSEEK_API_KEY` 与 `QWEN_API_KEY`/`Qwen_API_KEY`/`DASHSCOPE_API_KEY`，并归一化为
+canonical `QWEN_API_KEY`，alias 冲突仍 fail-closed。这是 zero-provider compatibility recovery，不是模型质量或网络
+健康证据。
+
 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`。
+Root admission 诊断记录：
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
 ## Phase 6.9.8 Transport Re-entry V2 S1 当前边界
 

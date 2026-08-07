@@ -1,5 +1,18 @@
 # PrepMind AI 开发日志
 
+> 2026-08-08 — Phase 6.9.8 L1 root `.env` admission diagnosis 与 compatibility recovery：
+>
+> 首次受控入口在 credential composition 返回 `credential_configuration_invalid / unknown_key`。根因是共享根 `.env`
+> 同时承载数据库、Redis、MinIO、RAG、Chat 等正常项目配置，并使用宿主兼容 `Qwen_API_KEY`；这不是 Provider、网络或
+> 账号故障。该次没有 marker/journal/report/artifact/recovery claim、credential read、Provider call 或业务写入，旧一次性
+> 名额未消费。生产 launcher 现使用 selective root profile，只提取 `DEEPSEEK_API_KEY` 与
+> `QWEN_API_KEY`/`Qwen_API_KEY`/`DASHSCOPE_API_KEY` 并归一化为 canonical `QWEN_API_KEY`；其它项目字段不进入
+> projection，多个 Qwen alias 以 `alias_conflict` fail-closed。C1 strict synthetic parser 与历史验收不变。
+>
+> 修复仍是 zero-provider checkpoint，不是 Live 证据；提交推送后须重新通过 source/proxy/data-boundary gate 并取得新的
+> exact authorization。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
+
 > 2026-08-08 — Phase 6.9.8 Transport Re-entry V2 L1 implementation 与 zero-provider 回归已完成：
 >
 > 新增 production-shaped L1 launcher、固定 `rewrite -> qwen -> final_response` runner、source/proxy/data-boundary/
@@ -8,7 +21,7 @@
 > 与 recovery-claim integrity check。真正 adapter constructor 只在 durable marker/reservation 后执行，marker 前只做
 > capability shape/lineage/family/call preflight；raw key 不进入 report/journal/artifact/diagnostic。
 >
-> L1 focused `12/12`（44 assertions），C1+C2+S1+L1 `44/44`（218 assertions），Agent full `1406/1406`（24063
+> L1 focused `13/13`（44 assertions），C1+C2+S1+L1 `47/47`（224 assertions），Agent full `1409/1409`（24069
 > expect()，174 files），targeted ESLint、Prettier 与 Bun build 通过。`tsc` 仍只受既有 Bun/Node/DOM 类型与 monorepo
 > rootDir 环境问题阻断；新增 L1 除该环境类错误外无独立类型错误。真实 `.env`/credential、DeepSeek/Qwen、正式
 > marker/journal/report/artifact/recovery claim、Docker/API/browser、Trace、业务写入均为 `0`。

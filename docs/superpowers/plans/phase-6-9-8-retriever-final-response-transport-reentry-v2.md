@@ -1,7 +1,8 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 实施计划
 
 > 设计来源：[Transport Re-entry V2 设计](../specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md)
-> 当前状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static 与 L1 zero-provider implementation 已完成；当前停止在 source commit 后的 L1 授权门
+> 当前状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static 与 L1 zero-provider implementation 已完成；首次
+> L1 root-env admission 以 `unknown_key` 阻断，compatibility 修复已落地，当前停止在修复后 source commit 的新授权门
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > 当前 authority：`zero_provider_transport_reentry_v2_l1_implementation / qualityAuthority=none`；S1 的
 > `zero_provider_transport_reentry_v2_s1 / qualityAuthority=none` 保留为历史 reviewed Mock/static checkpoint
@@ -29,7 +30,9 @@
 责任范围：新建 `packages/agent/src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-*`
 模块和 focused tests；旧 T3 文件只读复用。
 
-- root package script 只负责启动 launcher，不使用 ambient `bun --env-file`；launcher 根据自身位置解析根 `.env`，只允许固定 generic key allowlist；
+- root package script 只负责启动 launcher，不使用 ambient `bun --env-file`；launcher 根据自身位置解析共享根 `.env`，使用
+  selective credential profile，只提取固定 generic key 与既有 Qwen 宿主别名；strict synthetic parser 仍保留固定
+  allowlist/unknown-field fail-closed contract；
 - exact argv、source、T2/T3-C parity、proxy、data-boundary、authorization 在 credential 前执行；
 - synthetic env fixture 验证 path/cwd 独立性与 BOM/CRLF/引号/重复键边界；hostile ambient `process.env` 不得影响来源；
   credential reader 使用 data-property、无 getter、无 raw 输出；
@@ -87,10 +90,21 @@ validator（`ok=true`）均通过。未读取真实 `.env`、未调用 Provider�
   runner；真正 adapter constructor 延后到 durable marker/reservation 之后；
 - 新增 dispatch/response/usage journal state machine、hash-chain validator、lineage path fence、reserved/dispatch
   crash-only recovery、existing-artifact publication recovery 与 recovery-claim integrity check；
-- focused L1 `12/12`（44 assertions）、C1+C2+S1+L1 `44/44`（218 assertions）、Agent full `1406/1406`（24063
+- focused L1 `13/13`（44 assertions）、C1+C2+S1+L1 `47/47`（224 assertions）、Agent full `1409/1409`（24069
   assertions，174 files）、targeted ESLint/Prettier/Bun build 通过；Provider/credential/formal evidence=0；
 - 该 checkpoint 不消费 L1 marker，不形成 transport/semantic/product authority；提交并推送后需要对新 source commit
   重新接受数据边界并给出 exact authorization。
+
+### Root `.env` admission diagnosis and compatibility fix（2026-08-08）
+
+- 首次受控入口在 root-env composition 以 `credential_configuration_invalid / unknown_key` 停止：共享根 `.env` 含
+  正常项目设置，并使用兼容别名 `Qwen_API_KEY`；没有 marker、credential read、Provider call 或正式 evidence；
+- production root selector 现在忽略非 credential 项目字段，只把 `DEEPSEEK_API_KEY` 与
+  `QWEN_API_KEY`/`Qwen_API_KEY`/`DASHSCOPE_API_KEY` 投影为 canonical 两字段；Qwen alias 多源并存时
+  `alias_conflict` fail-closed，目标值仍遵守原 bounded value rules；
+- 该修复是独立 zero-provider compatibility checkpoint，不改写 C1 synthetic parser/历史验收，也不消费或恢复前次
+  L1 一次性名额；修复提交推送后必须重新做 source/proxy/data-boundary gate 并取得新的 exact authorization。
+- 详见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
 仅在 S1 source parity、clean tree、formal artifact=0、新数据边界接受与新 exact authorization 全部通过后执行：
 

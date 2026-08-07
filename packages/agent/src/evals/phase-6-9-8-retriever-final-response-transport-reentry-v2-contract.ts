@@ -62,6 +62,7 @@ export type Phase698TransportReentryV2FailureCode =
   | 'non_ascii'
   | 'credential_missing'
   | 'credential_shape_invalid'
+  | 'alias_conflict'
   | 'accessor_input'
   | 'extra_field'
   | 'root_not_found'
@@ -169,6 +170,22 @@ export type Phase698TransportReentryV2ConsumedCredential =
   Phase698TransportReentryV2DedicatedCapabilityReceipt;
 
 const ALLOWED_KEY_SET = new Set<string>(PHASE_6_9_8_TRANSPORT_REENTRY_V2_GENERIC_KEYS);
+/**
+ * The repository root .env is shared by the local application.  It contains
+ * many non-provider settings, so the launcher uses this separate, selective
+ * allowlist instead of feeding the whole file to the strict synthetic parser.
+ * Qwen_API_KEY and DASHSCOPE_API_KEY are existing host-compatible aliases used
+ * by the server's production config; they are normalized to QWEN_API_KEY here.
+ */
+export const PHASE_6_9_8_TRANSPORT_REENTRY_V2_ROOT_COMPATIBLE_KEYS = Object.freeze([
+  'DEEPSEEK_API_KEY',
+  'QWEN_API_KEY',
+  'Qwen_API_KEY',
+  'DASHSCOPE_API_KEY',
+] as const);
+const ROOT_COMPATIBLE_KEY_SET = new Set<string>(
+  PHASE_6_9_8_TRANSPORT_REENTRY_V2_ROOT_COMPATIBLE_KEYS,
+);
 const FAMILY_SET = new Set<string>(PHASE_6_9_8_TRANSPORT_REENTRY_V2_FAMILIES);
 const MAX_LINE_LENGTH = 1024;
 const MAX_VALUE_LENGTH = 512;
@@ -314,6 +331,110 @@ export function parsePhase698TransportReentryV2DotEnv(
   return Object.freeze({ ok: true as const, values: deepFreeze(values) });
 }
 
+/**
+ * Parse the shared repository .env without importing unrelated application
+ * settings into the transport launcher.  The strict parser above remains the
+ * fixture/credential-object contract and deliberately rejects unknown fields;
+ * this root selector instead ignores non-credential settings, while applying
+ * the same bounded value rules to the four supported host credential names.
+ * Qwen aliases are accepted at this boundary and normalized to QWEN_API_KEY.
+ */
+export function parsePhase698TransportReentryV2RootDotEnv(
+  input: unknown,
+): Phase698TransportReentryV2ParseResult {
+  if (typeof input !== 'string') return failure('invalid_input');
+  let source = input;
+  if (source.startsWith('\uFEFF')) source = source.slice(1);
+  if (source.includes('\u0000')) return failure('invalid_input');
+  for (let index = 0; index < source.length; index += 1) {
+    if (source[index] === '\r' && source[index + 1] !== '\n') return failure('multiline');
+  }
+
+  const lines = source.split('\n');
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  const values: Partial<Record<Phase698TransportReentryV2GenericKey, string>> = {};
+  let deepseekSeen = false;
+  let qwenSeen = false;
+
+  for (const originalLine of lines) {
+    if (originalLine.length > MAX_LINE_LENGTH) return failure('line_too_long');
+    if (originalLine.includes('\r') && !originalLine.endsWith('\r')) return failure('multiline');
+    const line = originalLine.endsWith('\r') ? originalLine.slice(0, -1) : originalLine;
+    const trimmed = line.trim();
+    if (trimmed.length === 0 || trimmed.startsWith('#')) continue;
+
+    const separator = line.indexOf('=');
+    if (separator <= 0) return failure('invalid_line');
+    const key = line.slice(0, separator);
+    if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/u.test(key)) return failure('invalid_line');
+
+    // Non-credential project settings stay inside the file and never enter
+    // the projection. Their values are intentionally not interpreted here.
+    if (!ROOT_COMPATIBLE_KEY_SET.has(key)) continue;
+
+    const rawValue = line.slice(separator + 1);
+    const parsedValue = parseBoundedRootCredentialValue(rawValue);
+    if (!parsedValue.ok) return parsedValue;
+
+    if (key === 'DEEPSEEK_API_KEY') {
+      if (deepseekSeen) return failure('duplicate_key');
+      deepseekSeen = true;
+      values.DEEPSEEK_API_KEY = parsedValue.value;
+      continue;
+    }
+
+    if (qwenSeen) return failure('alias_conflict');
+    qwenSeen = true;
+    values.QWEN_API_KEY = parsedValue.value;
+  }
+
+  if (!deepseekSeen || !qwenSeen) return failure('credential_missing');
+  return Object.freeze({ ok: true as const, values: deepFreeze(values) });
+}
+
+export function parsePhase698TransportReentryV2RootDotEnvBytes(
+  input: unknown,
+): Phase698TransportReentryV2ParseResult {
+  if (!(input instanceof Uint8Array)) return failure('invalid_input');
+  try {
+    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(input);
+    return parsePhase698TransportReentryV2RootDotEnv(decoded);
+  } catch {
+    return failure('unsupported_encoding');
+  }
+}
+
+function parseBoundedRootCredentialValue(
+  rawValue: string,
+): Readonly<{ ok: true; value: string }> | Phase698TransportReentryV2Failure {
+  if (rawValue.length === 0) return failure('empty_value');
+  if (rawValue.includes('$')) return failure('interpolation');
+  if (rawValue.endsWith('\\')) return failure('multiline');
+
+  let value: string;
+  if (rawValue.startsWith("'") || rawValue.startsWith('"')) {
+    const quote = rawValue[0];
+    if (rawValue.length < 2 || rawValue[rawValue.length - 1] !== quote) return failure('multiline');
+    value = rawValue.slice(1, -1);
+    if (
+      value.includes(quote) ||
+      value.includes('\\') ||
+      value.includes('\n') ||
+      value.includes('\r')
+    ) {
+      return failure('invalid_line');
+    }
+  } else {
+    if (rawValue !== rawValue.trim() || rawValue.includes('"') || rawValue.includes("'")) {
+      return failure('invalid_line');
+    }
+    value = rawValue;
+  }
+  if (!validCredentialValue(value))
+    return failure(value === '' ? 'empty_value' : 'credential_shape_invalid');
+  return Object.freeze({ ok: true as const, value });
+}
+
 export function parsePhase698TransportReentryV2DotEnvBytes(
   input: unknown,
 ): Phase698TransportReentryV2ParseResult {
@@ -326,7 +447,11 @@ export function parsePhase698TransportReentryV2DotEnvBytes(
   }
 }
 
-/** Read a root .env using launcher location only; cwd and ambient variables are ignored. */
+/**
+ * Read a shared root .env using launcher location only; cwd and ambient
+ * variables are ignored. Non-credential application settings are skipped by
+ * the selective root parser and never enter the dedicated projection.
+ */
 export function readPhase698TransportReentryV2RootDotEnv(
   launcherLocation: string | URL,
   readBytes: (path: string) => Uint8Array = (path) => readFileSync(path),
@@ -334,7 +459,7 @@ export function readPhase698TransportReentryV2RootDotEnv(
   const root = resolvePhase698TransportReentryV2RepositoryRoot(launcherLocation);
   if (root === null) return failure('root_not_found');
   try {
-    return parsePhase698TransportReentryV2DotEnvBytes(readBytes(join(root, '.env')));
+    return parsePhase698TransportReentryV2RootDotEnvBytes(readBytes(join(root, '.env')));
   } catch {
     return failure('env_read_failed');
   }

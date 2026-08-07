@@ -5,7 +5,33 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0E. Phase 6.9.8 Transport Re-entry V2 S1 reviewed Mock/static（当前）
+## 0F. Phase 6.9.8 Transport Re-entry V2 L1 root-env compatibility recovery（当前）
+
+首次受控入口在共享根 `.env` composition 以 `credential_configuration_invalid / unknown_key` 停止：共享文件含正常
+项目设置，Qwen 使用宿主兼容 `Qwen_API_KEY`。该尝试 `providerCalls=0`、`credentialReads=0`，未创建 marker/journal/
+report/artifact/recovery claim，也未写入产品数据。当前 production selector 只提取
+`DEEPSEEK_API_KEY`、`QWEN_API_KEY`、`Qwen_API_KEY`、`DASHSCOPE_API_KEY`，并把 Qwen alias 归一化为 canonical
+`QWEN_API_KEY`；多个 alias 同时存在时必须 `alias_conflict` fail-closed。C1 strict synthetic parser 的 unknown-field
+测试保持不变。
+
+固定检查：
+
+```text
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1.test.ts
+bun --filter @repo/agent test
+bunx prettier --check <changed files>
+git diff --check
+```
+
+- [x] diagnosis captured as configuration-only, no Provider/evidence
+- [x] selective root parser + Qwen alias compatibility fixture
+- [ ] 修复提交推送后 fresh source/proxy/data-boundary gate
+- [ ] 新的两条 exact authorization 后才可执行唯一 controlled canary
+
+诊断与停止边界：
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
+
+## 0E. Phase 6.9.8 Transport Re-entry V2 S1 reviewed Mock/static（历史 checkpoint）
 
 S1 在 C2 runner/durability 之上让三个 bounded synthetic first-party adapter 走同一条
 `rewrite -> qwen -> final_response` seam。它验证 adapter audit、strict usage、双层 wire、首错 breaker、abort/no-retry
@@ -2179,7 +2205,7 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
       bounded root `.env` projection、capability shape、exclusive marker/reservation 与 adapter handoff 顺序固定；
 - [x] L1 固定 `rewrite -> qwen -> final_response` 三槽、最多 `3` calls、总预算 `0.024096 CNY`、首错 breaker、
       suffix no-dispatch、no-retry，以及 strict journal/hash-chain、hard-link artifact、reserved/dispatch recovery；
-- [x] L1 zero-provider focused `12/12`、C1+C2+S1+L1 `44/44`、Agent full `1406/1406`，targeted lint/Prettier/Bun build
+- [x] L1 zero-provider focused `13/13`、C1+C2+S1+L1 `47/47`、Agent full `1409/1409`，targeted lint/Prettier/Bun build
       通过；正式 marker/journal/report/artifact/recovery claim 与 Provider/credential 均为 `0`；
 - [ ] 当前唯一动作：在提交并推送后的最终 source commit 上重新确认 DeepSeek/Qwen 数据边界与 exact authorization，
       通过 fresh proxy preflight 后执行一次 controlled canary；不可 retry/replay/backfill/追加探测；

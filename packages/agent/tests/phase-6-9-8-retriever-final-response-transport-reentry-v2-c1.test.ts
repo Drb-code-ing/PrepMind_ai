@@ -14,6 +14,7 @@ import {
   makePhase698TransportReentryV2SyntheticPreflightInput,
   parsePhase698TransportReentryV2DotEnv,
   parsePhase698TransportReentryV2DotEnvBytes,
+  parsePhase698TransportReentryV2RootDotEnv,
   readPhase698TransportReentryV2GenericCredentials,
   resolvePhase698TransportReentryV2RepositoryRoot,
   PHASE_6_9_8_TRANSPORT_REENTRY_V2_LINEAGE,
@@ -61,6 +62,54 @@ describe('Phase 6.9.8 Transport Re-entry V2 C1 parser', () => {
     expectFailure(parsePhase698TransportReentryV2DotEnv('QWEN_API_KEY="a"tail'), 'multiline');
     expectFailure(parsePhase698TransportReentryV2DotEnv('QWEN_API_KEY= value'), 'invalid_line');
     expectFailure(parsePhase698TransportReentryV2DotEnv('QWEN_API_KEY=value\rnext'), 'multiline');
+  });
+
+  test('selectively reads shared root settings and normalizes the Qwen host alias', () => {
+    const input =
+      '\uFEFFDATABASE_URL=postgresql://localhost/test\n' +
+      'AI_MODEL=deepseek-v4-pro\n' +
+      'DEEPSEEK_API_KEY=deepseek-fixture\n' +
+      'Qwen_API_KEY=qwen-compatible-fixture\n' +
+      'AI_ENABLE_LIVE_CALLS=false\n';
+    expect(parsePhase698TransportReentryV2RootDotEnv(input)).toEqual({
+      ok: true,
+      values: {
+        DEEPSEEK_API_KEY: 'deepseek-fixture',
+        QWEN_API_KEY: 'qwen-compatible-fixture',
+      },
+    });
+  });
+
+  test('rejects ambiguous Qwen aliases and duplicate DeepSeek credentials', () => {
+    expectFailure(
+      parsePhase698TransportReentryV2RootDotEnv(
+        'DEEPSEEK_API_KEY=one\nQWEN_API_KEY=qwen-one\nQwen_API_KEY=qwen-two',
+      ),
+      'alias_conflict',
+    );
+    expectFailure(
+      parsePhase698TransportReentryV2RootDotEnv(
+        'DEEPSEEK_API_KEY=one\nDEEPSEEK_API_KEY=two\nQWEN_API_KEY=qwen',
+      ),
+      'duplicate_key',
+    );
+  });
+
+  test('keeps root credential values fail-closed and requires both families', () => {
+    expectFailure(
+      parsePhase698TransportReentryV2RootDotEnv(
+        'DATABASE_URL=ok\nDEEPSEEK_API_KEY=\nQwen_API_KEY=qwen',
+      ),
+      'empty_value',
+    );
+    expectFailure(
+      parsePhase698TransportReentryV2RootDotEnv('DATABASE_URL=ok\nDEEPSEEK_API_KEY=deepseek'),
+      'credential_missing',
+    );
+    expectFailure(
+      parsePhase698TransportReentryV2RootDotEnv('DEEPSEEK_API_KEY=${HOST}\nQwen_API_KEY=qwen'),
+      'interpolation',
+    );
   });
 
   test('accepts only own data properties and rejects accessor/extra-field objects', () => {

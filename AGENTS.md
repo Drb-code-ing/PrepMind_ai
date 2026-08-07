@@ -1,18 +1,22 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前任务：Phase 6.9.8 Transport Re-entry V2 L1 zero-provider implementation 已完成（2026-08-08）
+## 当前任务：Phase 6.9.8 Transport Re-entry V2 L1 root `.env` compatibility recovery（2026-08-08）
 
-L1 已在独立 lineage 上完成 production-shaped launcher、固定
+L1 implementation 已在独立 lineage 上完成 production-shaped launcher、固定
 `rewrite -> qwen -> final_response` runner、source/proxy/data-boundary/authorization gate、deferred adapter
 handoff、strict journal state machine、hash-chain validator、lineage path fence、existing-artifact recovery 与
-recovery-claim integrity check。focused L1 `12/12`、C1+C2+S1+L1 `44/44`、Agent full `1406/1406`（24063 assertions）
+recovery-claim integrity check。focused L1 `13/13`、C1+C2+S1+L1 `47/47`（224 assertions）、Agent full `1409/1409`（24069 assertions）
 通过，targeted ESLint/Prettier/Bun build 通过。
 
-当前仍为 zero-provider checkpoint：真实 `.env`/credential/DeepSeek/Qwen、正式 marker/journal/report/artifact/
-recovery claim、Docker/API/browser、Trace、业务写入均为 `0`。真正 adapter constructor 只允许在 durable
-reservation 后执行；marker 前只做 module-owned capability 的 shape/lineage/family/call 检查。source commit 推送后，
-必须重新接受当前 source 的 DeepSeek/Qwen 数据边界并给出 exact authorization，才可执行唯一一次 L1 controlled-Live；
-成功也只形成 transport diagnostic authority，不解锁 semantic/product/main。
+首次受控入口在 root `.env` composition 以 `credential_configuration_invalid / unknown_key` 停止：共享根 `.env` 含正常
+项目配置字段，并使用宿主兼容别名 `Qwen_API_KEY`。该次尝试没有读取 credential、调用 Provider、创建 marker/journal/
+report/artifact/recovery claim 或写入产品数据。当前已落地 selective root profile：只提取
+`DEEPSEEK_API_KEY` 与 `QWEN_API_KEY`/`Qwen_API_KEY`/`DASHSCOPE_API_KEY`，其它项目字段不进入 projection；多个 Qwen
+alias 同时存在时 `alias_conflict` fail-closed。strict synthetic parser 的 unknown-field contract 保持不变。
+
+修复提交推送后，必须重新接受当前 source 的 DeepSeek/Qwen 数据边界并给出新的 exact authorization，才可执行唯一一次
+L1 controlled-Live；成功也只形成 transport diagnostic authority，不解锁 semantic/product/main。当前停止门与诊断证据见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`。
 

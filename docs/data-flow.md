@@ -6,10 +6,13 @@ DeepSeek/Qwen data boundary -> exact authorization -> root .env bounded projecti
 exclusive marker/reservation -> adapter construction -> rewrite -> qwen -> final_response -> durable publication`。
 > marker 前不构造第一方 adapter、不把 raw key 放入 runtime/report/journal/artifact；首错 breaker、suffix no-dispatch、
 > no-retry 与 reserved/dispatch crash-only recovery 均由 L1 runner 固定。当前 zero-provider 回归为 L1 `12/12`、
-> C1+C2+S1+L1 `44/44`、Agent full `1406/1406`；真实 `.env`/credential/Provider、正式 evidence、Docker/API/browser、
-> Trace、BackgroundJob、Outbox 与业务写入仍为 `0`。提交并推送后才可在新 source 上执行本次唯一 controlled canary；
-> 即使成功也只形成 transport diagnostic authority，不等同于 Retriever/FinalResponse 语义或产品可用。
+> C1+C2+S1+L1 `47/47`、Agent full `1409/1409`；真实 `.env`/credential/Provider、正式 evidence、Docker/API/browser、
+> Trace、BackgroundJob、Outbox 与业务写入仍为 `0`。首次受控入口曾在共享 root `.env` composition 以 `unknown_key`
+> 停止；现在 launcher 只选择性提取 `DEEPSEEK_API_KEY` 与 `QWEN_API_KEY`/`Qwen_API_KEY`/`DASHSCOPE_API_KEY`，其它
+> 项目字段不进入 projection。修复提交并推送后才可在新 source 上重新申请本次唯一 controlled canary；即使成功也只
+> 形成 transport diagnostic authority，不等同于 Retriever/FinalResponse 语义或产品可用。
 > 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`。
+> 诊断见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
 > 当前 S1（2026-08-07）：C2 durability 之上的三个 bounded synthetic first-party adapter 复用同一
 > `rewrite -> qwen -> final_response` runner seam。success flow 的 runner wire 与 adapter/provider wire 分别为
