@@ -1,6 +1,6 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 设计
 
-> 状态：T0/T1/T2/T3-A 与 T3-C zero-provider guard 已完成；T3-B controlled canary 已执行一次并以配置失败 durable seal
+> 状态：T0/T1/T2/T3-A 与 T3-C zero-provider guard 已完成；T3-B controlled canary 已执行一次并以配置失败 durable seal；Transport Re-entry V2 D0 已完成
 > 日期：2026-08-06
 > Lineage：`phase-6.9.8-retriever-final-response-transport-evidence-v1`
 > 基线：`drb/phase-6-9-8-retriever-final-response-contract`（继续使用现有 Phase 6.9.8 基线，不创建嵌套分支）
@@ -206,6 +206,21 @@ script，不创建 formal evidence。focused `2/2`（10 assertions）、typechec
 `zero_provider_transport_evidence_t3_configuration_guard / qualityAuthority=none`。它只防止配置入口回归，不恢复 T3
 一次性名额，也不形成 Provider、semantic、产品或 main authority。
 
+## 8.2 Transport Re-entry V2 D0（新独立路线）
+
+T3 的一次性名额已消费，T3-C 不能授权重跑。新的
+`phase-6.9.8-retriever-final-response-transport-reentry-v2` lineage 已在 zero-provider 边界冻结：root launcher
+显式绑定仓库根 `.env`，只把 `DEEPSEEK_API_KEY`/`QWEN_API_KEY` 投影为 runtime core 的 dedicated capability；
+exact argv/source/T2+T3-C/proxy/data-boundary/authorization 先于 credential composition，configuration failure 在
+marker 前停止。未来 L1 仍固定 `rewrite -> qwen -> final_response`、最多 3 calls、`0.024096 CNY` cap、首错 breaker
+和 no-retry；transport success 也不等于 semantic/product authority。
+
+D0 不读取真实 `.env`、credential，不调用 Provider，不创建 formal evidence，authority 固定为
+`zero_provider_transport_reentry_v2_design / qualityAuthority=none`。详见
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-reentry-v2.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md`。
+
 ## 9. 实施顺序
 
 1. T0：本 ADR/设计与实施计划，冻结事实、边界、矩阵和停止条件（已完成）；
@@ -216,6 +231,7 @@ script，不创建 formal evidence。focused `2/2`（10 assertions）、typechec
    `transport_evidence_t3_admission_ready`）；
 5. T3-B（已执行并封存）：最多 3-slot transport canary 在 credential configuration gate 失败；单次 durable seal，不能直接进入产品。
 6. T3-C（已完成）：zero-provider configuration composition guard，防止 package/root `.env` 入口回归。
+7. T3-D（已完成）：Transport Re-entry V2 D0，冻结新 identity、credential projection、gate/预算/停止边界；下一步 C1。
 
 每个任务单独提交并推送；T1/T2/T3-A/T3-B/T3-C 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、
 data-flow、AI behavior acceptance 和本设计/计划。T3-B 只在本次精确授权后 late-bind credential；本次名额已消费。
@@ -228,8 +244,9 @@ T3-A 的 zero-provider 条件已满足；T3-B 唯一 run 已在 credential confi
 
 Transport Evidence Recovery 当前只允许：读取既有 marker/journal/report/artifact、运行 strict validator、同步文档和
 进行 zero-provider 设计审查。禁止 retry/resume/replay/backfill、seal/recovery、curl、单 case 或追加 Provider 探测。
-若未来产品路线仍需要真实 Retriever/FinalResponse 语义，必须另立任务并重新定义 source、数据边界、预算、权限和产品
-验收；不能从本 T3 失败自动进入 R6、R7/main、Phase 6.9.9/6.9.10/6.10、Phase 8/9 或博客收尾。
+若未来产品路线仍需要真实 Retriever/FinalResponse 语义，必须沿 V2 新路线完成 C1/C2/S1，并重新定义 source、数据
+边界、预算、权限和产品验收；不能从本 T3 失败自动进入 R6、R7/main、Phase 6.9.9/6.9.10/6.10、Phase 8/9 或博客
+收尾。没有新的 exact authorization 前不得执行 V2 L1。
 
 ## 11. 回顾时可以问
 

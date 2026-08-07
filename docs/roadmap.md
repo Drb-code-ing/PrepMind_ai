@@ -1,5 +1,15 @@
 # PrepMind AI 学习与开发路线图
 
+> 当前原子任务（2026-08-07）：Phase 6.9.8 Transport Re-entry V2 D0 zero-provider design 已完成。新 lineage
+> `phase-6.9.8-retriever-final-response-transport-reentry-v2` 不复用旧 T3 marker/authorization/evidence；root launcher
+> 未来只在 exact args/source/T2+T3-C/proxy/data-boundary/authorization 后读取 `DEEPSEEK_API_KEY`/`QWEN_API_KEY`，
+> 并投影为 runtime core 的 module-owned dedicated capability。Configuration failure 在 marker 前停止；未来 L1 固定
+> `rewrite -> qwen -> final_response`、最多 3 calls、总 cap `0.024096 CNY`、首错 breaker/no-retry。D0 未读取真实
+> `.env`/credential、未调用 Provider 或创建 formal evidence，authority=`zero_provider_transport_reentry_v2_design /
+> qualityAuthority=none`；下一任务仅 C1 zero-provider implementation。设计与验收见
+> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md`。
+>
 > 当前原子任务（2026-08-07）：Phase 6.9.8 Transport Evidence Recovery T3 controlled canary 已按一次性授权执行并失败封存。
 > source admission 绑定 branch/HEAD/upstream/origin/approved ref、clean tree、formal artifact=0、T2 gate 与 source
 > bundle SHA；三槽位顺序固定为 `rewrite -> qwen -> final_response`，最多 3 slots、预算上限 `0.024096 CNY`、首错
@@ -75,7 +85,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                             |
 | Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                     |
 | Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成      |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 T3 配置失败封存；Recovery T0--T3-C 完成 |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 T3 配置失败封存；Re-entry V2 D0 完成，下一步 C1 |
 | Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                          |
 | Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成              |
 | Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                             |

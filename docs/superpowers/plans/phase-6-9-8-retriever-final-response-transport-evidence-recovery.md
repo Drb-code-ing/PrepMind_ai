@@ -1,7 +1,7 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Evidence Recovery 实施计划
 
 > 设计来源：[Transport Evidence Recovery 设计](../specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md)
-> 当前状态：T1/T2/T3-A 与 T3-C zero-provider guard 已完成；T3-B controlled canary 已按一次性授权执行并以配置失败 durable seal；没有新增 Provider 请求，qualityAuthority 仍为 `none`
+> 当前状态：T1/T2/T3-A 与 T3-C zero-provider guard 已完成；T3-B controlled canary 已按一次性授权执行并以配置失败 durable seal；Transport Re-entry V2 D0 zero-provider design 已完成，没有新增 Provider 请求，qualityAuthority 仍为 `none`
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > 当前 authority：`zero_provider_transport_evidence_t3_configuration_guard / qualityAuthority=none`（T3 失败已不可变封存）
 
@@ -91,6 +91,17 @@ typecheck/lint/`git diff --check` 通过。authority 固定为
 `zero_provider_transport_evidence_t3_configuration_guard / qualityAuthority=none`。完整记录见
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md`。
 
+### T3-D：Transport Re-entry V2 D0（已完成，zero-provider）
+
+旧 T3 一次性名额已消费，不能由显式 `.env` 修复或 T3-C guard 恢复。新的
+`phase-6.9.8-retriever-final-response-transport-reentry-v2` lineage 已冻结独立 confirmation、evidence prefix、
+root launcher → dedicated projection 边界、credential-before-marker configuration preflight、三槽预算/timeout、
+首错 breaker 与后续 C1/C2/S1/L1/P1 顺序。D0 不读取真实 `.env`、credential，不调用 Provider，不创建正式 evidence；
+authority=`zero_provider_transport_reentry_v2_design / qualityAuthority=none`。完整记录见
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-reentry-v2.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md`。
+
 ## 3. 文件与权限边界
 
 | 责任                         | 允许                                                            | 禁止                                                  |
@@ -140,6 +151,7 @@ bun --env-file=.env --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:
 - T3-A：zero-provider admission/runner、focused tests 与本验收记录单独提交并推送当前功能分支（已完成）；
 - T3-B：唯一 controlled canary、crash-only seal、失败验收记录与环境加载修复分别提交并推送当前功能分支；
 - T3-C：configuration composition zero-provider guard 与验收记录单独提交并推送当前功能分支；
+- T3-D：Transport Re-entry V2 D0 设计、计划与 zero-provider 验收记录单独提交并推送当前功能分支；
 - 每次提交后推送当前功能分支并核对 `HEAD == upstream == origin`；
 - T1/T2/T3-A/T3-B/T3-C 完成后同步 AGENTS、DEVLOG、README、roadmap、acceptance checklist、dev-start、data-flow、AI behavior
   acceptance 与本设计/计划；
@@ -149,7 +161,8 @@ bun --env-file=.env --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:
 
 任一 gate 失败，停止在当前 T 任务并记录 bounded diagnostic；本次 T3-B 已在 credential configuration gate 停止并
 durable seal。它只形成 transport/evidence authority；Retriever/FinalResponse semantic、产品 Docker/API/browser、
-Trace、SLA 和 main 仍需单独授权与验收，且不得把本次失败改写为 Provider 根因。
+Trace、SLA 和 main 仍需单独授权与验收，且不得把本次失败改写为 Provider 根因。V2 D0 只形成新的 zero-provider
+设计 authority；下一步仅允许 C1 zero-provider implementation，没有新的 exact authorization 前不得执行 V2 L1。
 
 ## 8. Reader Testing 问题
 

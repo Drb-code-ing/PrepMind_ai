@@ -76,6 +76,24 @@ bun --filter @repo/agent eval:phase-6-9-8:transport-evidence:t3:validate
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-evidence-t3-configuration.test.ts
 ```
 
+## 0C. Phase 6.9.8 Transport Re-entry V2 D0（当前）
+
+旧 T3 不得重跑。新的 `phase-6.9.8-retriever-final-response-transport-reentry-v2` 已完成 D0 zero-provider design：
+
+- root launcher 未来只在 exact args/source/T2+T3-C/proxy/data-boundary/authorization 通过后读取
+  `DEEPSEEK_API_KEY` 与 `QWEN_API_KEY`；
+- runtime core 只消费 module-owned、single-use dedicated projection，不读取 `process.env` 或其它 Agent/product key；
+- configuration failure 在 marker 前停止，不消费 V2 一次性 marker；
+- future L1 固定 `rewrite -> qwen -> final_response`、最多 3 calls、`0.024096 CNY` cap、首错 breaker/no-retry；
+- D0 Provider/credential/formal evidence/Docker/API/browser/业务写入均为 `0`，不形成 semantic/product/main authority。
+
+当前只允许实现 C1 zero-provider launcher/projection contract。没有新的数据边界接受与 exact authorization 前，不得
+执行 V2 L1；不得把本 D0 或 T3-C 当成 Provider health。设计、计划与验收：
+
+- `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md`
+- `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-reentry-v2.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md`
+
 ## 0. Phase 6.9.5 历史 Product-Acceptance checkpoint（非当前阻断）
 
 > 当前状态索引（2026-07-20）：V19 及本节以下 V8/V9 文本均为不可改写的历史 checkpoint，不可把其“未完成/不得进入产品验收”理解为当前状态。V10 仍是唯一语义质量 authority；V22 的 `operation_failed -> recovered` 保留为独立历史。修复 Trace 计时耦合后，独立 DeepSeek V4 Pro Docker API 与可见 `/plan` 验收为 `candidate_applied`；main default-off replay 已通过，gate 保持关闭、合成账户/Trace 已清理。详见 `docs/acceptance/2026-07-20-phase-6-9-5-review-planner-production.md`。

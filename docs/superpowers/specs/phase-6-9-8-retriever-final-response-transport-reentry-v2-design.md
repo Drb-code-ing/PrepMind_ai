@@ -1,0 +1,176 @@
+# Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 设计
+
+> 日期：2026-08-07
+> 状态：D0 zero-provider design 已冻结；C1/C2/S1/L1/P1 尚未开始
+> 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
+> Lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
+> Authority：`zero_provider_transport_reentry_v2_design / qualityAuthority=none`
+
+## 1. 决策摘要
+
+Transport Evidence Recovery T3 的唯一 controlled canary 已在
+`configuration_invalid` 封存，旧 run、marker、journal、artifact、授权和一次性名额均不可重用。T3-C
+只提供了静态配置入口 guard，不能把修复假设升级为真实 Provider 证据。
+
+本设计建立全新的 V2 re-entry lineage，目标是先验证“配置组合、凭据隔离、source/proxy gate 和 crash-only
+边界”能够在零 Provider 条件下稳定工作，然后才决定是否申请一次新的最多三槽 transport canary。V2
+不重跑 T3，不恢复旧 artifact，不接入 `/api/chat`，不启动 Docker/API/browser，不修改业务数据。
+
+## 2. 目标与非目标
+
+### 2.1 目标
+
+- 用新 namespace、new confirmation、new marker/journal/artifact 和新 source manifest 隔离旧 T3；
+- 把 root `.env` 的 operator-friendly generic keys 只在受控 launcher 内投影为 V2 dedicated credential，
+  使 runtime core 不读取产品 gate、其它 Agent key 或任意 `process.env`；
+- 在 credential 读取前完成 exact args、source、T2/T3-C parity、proxy 和数据边界 gate；
+- 在 Provider authority 消费前完成 credential shape/configuration preflight；configuration failure 不创建
+  marker、不启动 Provider、不污染正式 evidence；
+- 固定三槽顺序 `rewrite -> qwen -> final_response`、独立预算、首错 breaker、dispatch-before-call journal、
+  hard-link artifact、strict validator 与 crash-only seal；
+- 明确区分 transport evidence、semantic quality、产品验收和 main authority。
+
+### 2.2 非目标
+
+- 不读取或改写 T3/R5/Task 9C 的 sealed artifact、marker、journal、tag、SHA 或 validator；
+- 不自动读取真实 `.env`、credential 或调用 Provider；D0/C1/C2/S1 全部使用 synthetic env/ports；
+- 不执行真实 Retriever/FinalResponse 语义评测、不计算质量门、P95、verified cost 或产品 SLA；
+- 不把 root generic key 的存在写成模型可用，不把 proxy ready 写成 Provider health；
+- 不在 V2 完成前进入 Task 10/11、产品 Docker/API/browser、`main`、Phase 6.10 或博客收尾。
+
+## 3. 独立身份与不可复用边界
+
+V2 顶层 identity 固定为：
+
+```text
+phase-6.9.8-retriever-final-response-transport-reentry-v2
+```
+
+未来受控入口的固定确认文本只在代码/验收中以常量存在，不在 D0 执行：
+
+```text
+I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_TRANSPORT_REENTRY_V2_DEEPSEEK_AND_QWEN_DATA_BOUNDARY
+I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_TRANSPORT_REENTRY_V2_CONTROLLED_CANARY_ONCE
+```
+
+V2 证据路径使用独立前缀：
+
+```text
+.tmp/phase-6-9-8-retriever-final-response-transport-reentry-v2.once.json
+.tmp/phase-6-9-8-retriever-final-response-transport-reentry-v2.journal.jsonl
+.tmp/phase-6-9-8-retriever-final-response-transport-reentry-v2-<runId>.json
+.tmp/phase-6-9-8-retriever-final-response-transport-reentry-v2.recovery.json
+```
+
+任何 V2 reader/validator 必须双向拒绝旧 T3、R5、Task 9C 和其它 Agent lineage 的 version、confirmation、
+marker、journal、artifact 和 recovery claim。V2 只读复用纯 parser、wire projection、fsync、hard-link 和
+source parity 工具，不导入旧 top-level authority。
+
+## 4. Credential composition 与权限边界
+
+### 4.1 两层入口
+
+V2 将 operator convenience 与 runtime isolation 分成两层：
+
+1. **root launcher**：由仓库根 `package.json` 的命令启动，但不使用会在进程启动前注入全部变量的 ambient
+   `bun --env-file`。只有 exact data-boundary + authorization 通过后，launcher 才根据自身 `import.meta.url`
+   解析仓库根 `.env`，用有界 parser 提取两个宿主兼容输入：`DEEPSEEK_API_KEY` 与 `QWEN_API_KEY`；只保存在授权
+   进程内存，不输出、不写日志。
+2. **V2 runtime core**：只接收 module-owned、single-use 的 dedicated projection capability，不读取
+   `process.env`，不接收 generic key、其它 Agent key、gate、URL、model、retry 或 persistence port。
+
+Parser 只接受 UTF-8/UTF-8 BOM、CRLF/LF、单行 `KEY=value` 与有界单/双引号值；不做变量插值、不接受 multiline，
+冲突重复键、空值、越界、非 ASCII、未知 key 派生错误、accessor-backed 或 extra-field 均 fail-closed，raw file
+和 raw value 不进入 report。Launcher 把一个 DeepSeek 宿主 key 投影为两个 capability-scoped 字段（rewrite 与
+FinalResponse），把 Qwen 宿主 key 投影为 embedding 字段；投影不会改变底层 secret，也不会把 generic key 注入
+Web/server/worker/admin 或产品 Chat。
+
+### 4.2 读取顺序
+
+```text
+exact argv
+  -> source branch/HEAD/upstream/origin parity
+  -> T2 + T3-C zero-provider parity
+  -> fresh proxy preflight
+  -> data-boundary acceptance
+  -> exact authorization
+  -> resolve root .env from launcher location
+  -> bounded root-env parse/credential composition
+  -> dedicated capability projection
+  -> exclusive marker/reservation
+  -> provider slots
+```
+
+任何前置 gate 失败都不得读取 credential。credential composition 失败发生在 marker 前，因此不消费 V2
+一次性 marker；只有 marker durable reservation 后才允许构造第一方 transport。该顺序与旧 T3 不同，是本 V2
+re-entry 的主要架构修复，但不改写旧 T3 的事实。
+
+### 4.3 观察与持久化权限
+
+| 模块 | 可做 | 禁止 |
+| --- | --- | --- |
+| root launcher | 读取固定 generic key、生成一次性 dedicated projection、输出 bounded status | 输出 key/value、读取其它 env、写业务/Trace、调用 Provider |
+| V2 runtime core | 消费一次 projection、运行固定三槽、写 V2 evidence | 读取 `process.env`、接受调用方 URL/model/fetch、改写旧 lineage |
+| transport adapters | 使用固定 model/endpoint/timeout/预算，签发 provider wire | 读取 credential、重试、写 marker/journal、改变 owner/answer |
+| crash-only seal | 读取 durable prefix 并发布同一 attempt 的 bounded terminal | 读取 credential、构造 transport、补发 Provider call、recovery 成功结果 |
+| 产品 `/api/chat` | 维持 default-off 现状 | 接入 V2、创建 BackgroundJob/Outbox/Trace 或业务写入 |
+
+## 5. 固定 canary contract（仅未来 L1）
+
+V2 未来 L1 最多三个 Provider slots，固定顺序和预算，不接受 CLI 覆盖：
+
+| slot | adapter | model/endpoint | hard timeout | input/output | cost cap |
+| --- | --- | --- | ---: | ---: | ---: |
+| 1 | DeepSeek rewrite | `deepseek-v4-pro` / fixed `/v1/chat/completions` | 4000ms | 1200 / 160 | `0.005 CNY` |
+| 2 | Qwen embedding | `text-embedding-v4` / fixed Beijing compatible endpoint | 5500ms | fixed synthetic text / 1536 | `0.004096 CNY` |
+| 3 | DeepSeek FinalResponse stream | `deepseek-v4-pro` / fixed stream endpoint | 20000ms | 2500 / 1200 | `0.015 CNY` |
+
+总 cap 固定 `0.024096 CNY`。每个 slot 最多一次；首个 strict/transport failure 打开 breaker，未启动 suffix
+保留在分母；不 retry/resume/replay/backfill。输入使用 fact-free synthetic payload，不携带用户正文、真实题目、
+知识库 chunk 或产品 Trace。
+
+V2 L1 的通过最多只能形成
+`controlled_live_transport_evidence_reentry_v2 / qualityAuthority=none` transport authority：必须同时有
+strict response、verified usage、wire/stage 完整、artifact validator `ok=true` 和无安全/预算/持久化异常；即使
+通过，也不能直接宣称 Retriever/FinalResponse semantic 或产品可用。
+
+## 6. 阶段与交付顺序
+
+| 阶段 | 交付 | Provider calls | 解锁 |
+| --- | --- | ---: | --- |
+| D0 | 本设计、计划、停止边界和 reader questions | 0 | C1 |
+| C1 | root-launcher path/credential projection contract、hostile-input tests | 0 | C2 |
+| C2 | V2 runner、marker/journal/artifact、strict validator、crash-only seal | 0 | S1 |
+| S1 | reviewed Mock/static、source parity、独立复审 | 0 | L1 授权门 |
+| L1 | 新数据边界 + exact authorization 下唯一三槽 controlled canary | ≤3 | 仅 transport authority 或失败封存 |
+| P1 | 依据 L1 终态冻结小样本 semantic gate | 0 | 新的语义路线决策 |
+
+每个阶段单独提交并推送当前 feature branch；不从该分支再开嵌套分支，不合并 `main`，除非后续形成完整
+semantic/product authority 并完成 Docker/API/browser/main 回放。
+
+## 7. Zero-provider D0/C1 通过定义
+
+- `providerCalls=0`、`credentialReads=0`、formal marker/journal/artifact/recovery claim=`0`；
+- synthetic env fixture 能证明 root launcher 的 `.env` 路径来自自身位置，而不是 package cwd 或 ambient process env；
+- parser 对 BOM/CRLF/引号/重复键/插值/多行/未知字段保持固定 fail-closed 行为；
+- hostile ambient `process.env` 即使预先注入同名或其它 Agent key，也不能成为 V2 credential 来源；
+- hostile/accessor/extra-field/empty/alias-conflict credential input 全部 fail-closed，且 raw value 不进入输出；
+- dedicated projection capability 为 module-owned、single-use、lineage-bound，伪造、复用、跨 family/call 均拒绝；
+- T3 validator 只读通过，T3/R5/Task 9C SHA parity 不变；
+- 文档明确记录：D0/C1 不证明 Provider health、模型语义、产品/API/browser、SLA 或 main。
+
+## 8. 停止门
+
+任一 gate、预算、wire、journal、artifact、validator 或安全边界失败，停止当前阶段并封存 bounded diagnostic；
+不能自动推进下一阶段。L1 一次性名额一旦 marker durable 即消费，无论结果成功或失败均不得重跑。
+
+当前 D0 完成后，下一原子任务仅为 C1 zero-provider implementation；没有新的 exact authorization 前不得执行 L1，
+不得读取真实 `.env`、credential 或调用 Provider。
+
+## 9. Reader questions
+
+1. 为什么 generic root key 可以作为 operator input，却不能进入 V2 runtime core 或产品容器？
+2. 为什么 V2 要在 marker 前完成 configuration preflight，而旧 T3 的 sealed 结果不能被修复后重跑？
+3. 为什么三槽 transport 全部成功仍不能证明 Retriever/FinalResponse 的语义质量？
+4. 哪些字段会被持久化，哪些 raw/provider/credential 信息必须永久丢弃？
+5. 为什么 V2 必须使用新 confirmation、source manifest 和 evidence prefix？

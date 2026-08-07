@@ -1,5 +1,21 @@
 # PrepMind AI 开发日志
 
+> 2026-08-07 — Phase 6.9.8 Transport Re-entry V2 D0 zero-provider design 已完成：
+>
+> 在旧 T3 `configuration_invalid` 一次性失败封存后，冻结全新 lineage
+> `phase-6.9.8-retriever-final-response-transport-reentry-v2`。新路线把根 `.env` operator input 与 runtime capability
+> 分层：future root launcher 只在 exact args/source/T2+T3-C/proxy/data-boundary/authorization 通过后读取
+> `DEEPSEEK_API_KEY`/`QWEN_API_KEY`，再投影为 module-owned、single-use dedicated capability；configuration failure
+> 在 marker 前收口，不消费 V2 一次性 marker。
+>
+> 未来 L1 固定 `rewrite -> qwen -> final_response`、最多 3 calls、`0.024096 CNY` cap、4000/5500/20000ms hard
+> timeout、首错 breaker 与 no-retry。D0 自身 Provider/credential/formal evidence/业务写入均为 `0`，authority=
+> `zero_provider_transport_reentry_v2_design / qualityAuthority=none`；下一原子任务仅 C1 zero-provider
+> launcher/projection contract，没有新数据边界接受和 exact authorization 前不得执行 L1。设计、计划与验收见
+> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md`、
+> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-reentry-v2.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md`。
+
 > 2026-08-07 — T3 失败诊断口径复核：
 >
 > 对 Transport Evidence Recovery T3 的设计与验收文字做了独立证据复核。sealed fact 仅为
