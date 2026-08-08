@@ -12,19 +12,25 @@
 > [`L1 implementation checkpoint`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md)
 > 与 [`L1 root-env diagnosis`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md)。
 >
-> 当前 P1 G2 zero-provider runner/durability 已完成：在从最新 `main` `a12db738` 派生的普通分支
-> `drb/phase-6-9-8-g2-runner-durability` 上固定执行 `8` 条 zero-call guard、`6` 条 rewrite、`6` 条 FinalResponse，
-> 最大并发 `1`、candidate invocation 上限 `12`。source admission、opaque single-use capability、exclusive marker、
-> reservation-before-dispatch、fsynced hash-chain journal、hard-link publication、strict validator 与 crash-only prefix
-> recovery 均已落地。focused `5/5`、Agent full `1419/1419`，synthetic CLI `candidateInvocations=12`、`journalRecords=72`、
-> validator `ok=true`；全程 `providerCalls=0 / credentialReads=0 / formalEvidence=0`，不读根 `.env`、不启动 Docker/API/browser、
-> 不写 Trace/BackgroundJob/Outbox 或业务数据，authority=`zero_provider_retriever_final_response_p1_g2_runner_durability`、
-> `qualityAuthority=none`。下一原子任务为从最新已推送 `main` 新建分支推进 S2 reviewed Mock/static。详见
+> 当前 P1 S2 reviewed Mock/static 已完成：在从已推送 `main / origin/main = 0c2faf1d` 派生的普通分支
+> `drb/phase-6-9-8-p1-s2-reviewed-mock` 上，实际穿过 Retriever original/query-rewrite、synthetic Qwen port、
+> verified-evidence projector、FinalResponse stream、strict validator 与 local merger。固定 `8` 条 zero-call guard、
+> `6` 条 rewrite、`6` 条 FinalResponse，最大并发 `1`、candidate invocations `12`；节点计数为 Retriever original `18`、
+> candidate `6`、projector `6`、FinalResponse `6`、local merger `12`。正常结果为 `8/8` guard、`16/16` strict/wire/
+> synthetic usage、semantic `1/1/1`；gate=`p1_mock_quality_not_evidence`、authority=
+> `zero_provider_retriever_final_response_p1_s2_reviewed_mock`、`qualityAuthority=none`。factory SHA=`sha256:8ad0a12ae7bd6365873631cb4908b41888617b9599fdd6865cf7e45c788f0e7d`、
+> report SHA=`cfb48cb8108768ace9b8e5c5714344f2be74e16300d6997a5e874085275b9db5`。全程 `providerCalls=0 / credentialReads=0 /
+> formalEvidence=0`，synthetic usage 不代表供应商计量或账单；不读根 `.env`、不启动 Docker/API/browser、不写
+> Trace/BackgroundJob/Outbox 或业务数据。S2 focused `4/4`、G1+G2 `10/10`、Agent full `1423/1423`，typecheck/lint/
+> Prettier/diff check 通过。详见
+> [`S2 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md)、
 > [`G2 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md)、
 > [`G1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md)、
 > [`P1 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)、
 > [`P1 计划`](docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md) 与
-> [`P1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md)。
+> [`P1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md)。下一步是完成分支文档/source
+> parity 后合并 `main` 并在 `main` 二次回归；L2 semantic canary 仍需重新接受当次 DeepSeek/Qwen 数据边界并给出新的
+> exact authorization。
 
 > 历史回执（2026-08-07）：Transport Re-entry V2 S1 reviewed Mock/static 已完成。C2 zero-provider runner/durability
 > 已先完成；新的
@@ -87,7 +93,8 @@ contract、可判别性、admission、调度与 durability 前置验证，T3 con
 实现 re-entry 的配置隔离、dedicated projection、runner、durability 与 L1 production-shaped launcher；唯一 L1 run
 `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 已以 `transport_reentry_v2_l1_controlled_canary_passed` durable seal，
 `3/3` slots、`3` Provider calls、费用 `0.000573 CNY`、validator `ok=true`。该结果仅为 transport diagnostic authority；
-不得重跑/追加探测或据此进入产品/main 语义验收；P1 G1 与 G2 随后均在独立 zero-provider 分支完成，当前下一步为 S2。
+不得重跑/追加探测或据此进入产品/main 语义验收；P1 G1、G2 与 S2 随后均在独立 zero-provider 分支完成，当前以顶部
+S2 验收和 main 合并回归停止门为准。
 G1/G2 结果见 [`G1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md) 与
 [`G2 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md)。
 
@@ -191,7 +198,7 @@ evidence 仍为 0；上述为 R4 historical checkpoint。R5 唯一 controlled-Li
 | Phase 6.9.8 V2-C2 | opaque configuration、三槽 runner、exclusive marker、journal/artifact、crash-only durability        | 已完成（zero-provider）             |
 | Phase 6.9.8 V2-S1 | 三个 synthetic first-party adapter、wire/usage/fault matrix、reviewed Mock/static                   | 已完成（Mock-only）                 |
 | Phase 6.9.8 V2-L1 | 唯一三槽 controlled transport canary（新 source/data-boundary/authorization）                       | 已完成（transport diagnostic-only） |
-| Phase 6.9.8 P1    | 语义 gate 设计：8 guard、6 rewrite、6 FinalResponse、权限/并发/失败收口                             | 已完成设计（zero-provider）         |
+| Phase 6.9.8 P1    | 语义 gate：G1 contract/baseline、G2 durability、S2 reviewed Mock；8 guard、6 rewrite、6 FinalResponse        | 已完成（S2 Mock-only；待 main 回归） |
 | Phase 7           | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit              | 核心工程化已完成                    |
 | Phase 7.8.5       | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固                            | 已完成                              |
 | Phase 7.23        | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                            | 已完成                              |

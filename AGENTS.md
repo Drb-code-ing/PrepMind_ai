@@ -1,23 +1,28 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前任务：Phase 6.9.8 P1 G2 zero-provider runner/durability 已完成（2026-08-08）
+## 当前任务：Phase 6.9.8 P1 S2 reviewed Mock/static 已完成（2026-08-08）
 
-G2 在从最新 `main` `a12db738` 派生的普通分支
-`drb/phase-6-9-8-g2-runner-durability` 上完成，并已通过 focused、Agent full、typecheck、lint、Prettier 与
-`git diff --check`。它把 G1 的静态 semantic contract 推进为固定 one-shot runner：先执行 `8` 条 zero-call guard，
-再按固定顺序串行执行 `6` 条 rewrite 与 `6` 条 FinalResponse lane；最大并发 `1`，candidate invocation 上限 `12`。
+S2 在从已推送 `main / origin/main = 0c2faf1d` 派生的普通分支
+`drb/phase-6-9-8-p1-s2-reviewed-mock` 上完成。它把 G2 runner 接到实际 Retriever original/query-rewrite、synthetic
+Qwen search port、verified-evidence projector、FinalResponse stream、strict validator 与 local merger；固定 `8` 条
+zero-call guard、`6` rewrite + `6` FinalResponse lane、`12` candidate invocation、最大并发 `1`。
 
-G2 authority=`zero_provider_retriever_final_response_p1_g2_runner_durability`、`qualityAuthority=none`；
-`providerCalls=0`、`credentialReads=0`、`formalEvidence=0`，不读根 `.env`，不启动 Docker/API/browser，不写
-Trace、BackgroundJob、Outbox 或业务数据。durability 已包含 source admission、opaque single-use capability、
-exclusive marker、reservation-before-dispatch、fsynced hash-chain journal、strict lane/report validator、hard-link
-publication 与 crash-only prefix recovery。focused `5/5`（23 assertions）、Agent full `1419/1419`（24157 expect()，
-176 files）通过；synthetic CLI 的 `candidateInvocations=12`、`journalRecords=72`、validator `ok=true`，且正式 evidence
-仍为 `0`。完整记录见
-`docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。
+S2 authority=`zero_provider_retriever_final_response_p1_s2_reviewed_mock`、gate=`p1_mock_quality_not_evidence`、
+`qualityAuthority=none`。正常 checkpoint 为 `8/8` guard、`16/16` strict/wire/synthetic usage、semantic `1/1/1`；
+`providerCalls=0`、`credentialReads=0`、synthetic Qwen port `17`、正式 marker/journal/artifact/recovery claim 与
+approved tag 均为 `0`。synthetic usage 明确为 `usageAuthority=synthetic_estimate`，`verifiedProviderUsageSamples=0`、
+`verifiedProviderCostCny=null`，不代表供应商计量或账单。factory SHA=`sha256:8ad0a12ae7bd6365873631cb4908b41888617b9599fdd6865cf7e45c788f0e7d`，
+report SHA=`cfb48cb8108768ace9b8e5c5714344f2be74e16300d6997a5e874085275b9db5`。完整记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
 
-下一原子任务是 S2 reviewed Mock/static：必须从已推送的最新 `main` 新建普通 `drb/` 分支，不从 G2 分支再开分支，
-不使用 worktree。S2 仍 zero-provider，完成前不得申请 L2；不得重跑已封存的 L1/T3/R5/Task 9C/SR5 evidence。
+已通过 S2 focused `4/4`（73 assertions）、G1+G2 focused `10/10`（50 assertions）、Agent full `1423/1423`
+（24241 expect()，177 files）、typecheck、lint、Prettier 与 `git diff --check`。本阶段未读取根 `.env`，不启动
+Docker/API/browser，不写 Trace、BackgroundJob、Outbox 或业务数据。final_11 的 required-citation compatibility 只
+是经过冻结 hash/contract 验证的 S2 diagnostic，不改写 G1/G2 authority。
+
+下一原子任务是完成本分支文档与源码 parity 后推送、合并 `main` 并在 `main` 二次回归；之后如需 L2 semantic canary，
+必须重新接受当次 DeepSeek/Qwen 数据边界并给出新的 exact authorization。不得重跑已封存的 L1/T3/R5/Task 9C/SR5 evidence，
+不使用 worktree，Docker 容器、镜像和卷保持原状。
 
 ## 历史封存：Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live（2026-08-08）
 
@@ -36,8 +41,8 @@ Docker/API/browser、Trace、BackgroundJob/Outbox、业务写入或 `main` autho
 此前 root `.env` 的 `unknown_key` 是本次修复前的 configuration-only 历史诊断；selective root profile 与 zero-provider
 实现验收仍保留在 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`
 与 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`，不改写其
-当时的 `providerCalls=0` 事实。P1 设计随后在从最新 `main` 派生的普通分支上冻结，G1/G2 已在独立分支完成；当前下一原子
-任务是从最新 `main` 新建分支推进 S2 reviewed Mock/static。设计、计划和验收见
+当时的 `providerCalls=0` 事实。P1 设计随后在从最新 `main` 派生的普通分支上冻结，G1/G2/S2 已分别完成；该历史段落中
+“下一任务为 S2”仅描述当时的 checkpoint，当前状态以本文件顶部为准。设计、计划和验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与

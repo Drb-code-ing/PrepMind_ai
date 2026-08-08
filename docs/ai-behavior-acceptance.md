@@ -29,10 +29,10 @@ Live 前 implementation 与 root-env 诊断仍分别见
 Root admission 诊断记录：
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
-## Phase 6.9.8 P1/G1/G2 zero-provider semantic-gate（当前）
+## Phase 6.9.8 P1/G1/G2/S2 zero-provider semantic-gate（当前）
 
-L1 的真实 transport success 已 durable seal，但 `qualityAuthority=none`；当前行为验收已完成 G1 合同和 G2
-one-shot runner/durability，仍不把 L1 或 synthetic 结果当作回答质量或产品可用性证据。G2 固定先跑 `8` 条 zero-call
+L1 的真实 transport success 已 durable seal，但 `qualityAuthority=none`；当前行为验收已完成 G1 合同、G2
+one-shot runner/durability 和 S2 reviewed Mock/static，仍不把 L1 或 synthetic 结果当作回答质量或产品可用性证据。G2 固定先跑 `8` 条 zero-call
 guard，再以最大并发 `1` 串行跑 `6` 条 query-rewrite 与 `6` 条 FinalResponse；每条 lane 最多一次 candidate invocation，
 总上限 `12`。candidate 只接收 bounded projection，expected、baseline、case identity、citation、tool 与质量阈值只能由
 后置 scorer/本地 authority 使用。
@@ -44,17 +44,27 @@ safety/budget/transport/schema/usage/stale failure 才打开首错 breaker。foc
 synthetic CLI `candidateInvocations=12`、`journalRecords=72`、`validator.ok=true`，但 `providerCalls=0 / credentialReads=0 /
 formalEvidence=0`，未启动 Docker/API/browser、未写 Trace、BackgroundJob、Outbox 或业务数据。
 
+S2 随后让同一 runner 真实穿过 Retriever original/query-rewrite、synthetic Qwen search port、verified-evidence projector、
+FinalResponse stream、strict validator 和 local merger。固定 `8/8` guard、`16/16` strict/wire/synthetic usage、semantic
+`1/1/1`，gate=`p1_mock_quality_not_evidence`、authority=`zero_provider_retriever_final_response_p1_s2_reviewed_mock`、
+`qualityAuthority=none`；synthetic usage 的 `usageAuthority=synthetic_estimate` 仅是诊断估算，
+`verifiedProviderUsageSamples=0`、`verifiedProviderCostCny=null`，不能写成 DeepSeek/Qwen 计量或账单。S2 focused `4/4`、
+G1+G2 focused `10/10`、Agent full `1423/1423`，正式 marker/journal/artifact/recovery claim、credential、Provider 与
+产品数据均为 `0`。final_11 compatibility 只在冻结 manifest/policy/baseline/input/oracle/projector descriptor 后提供
+citation-recall diagnostic，不改变 G1/G2 或 S2 gate。
+
 质量门仍固定为：Recall@5 `>=0.90`、nDCG@5 `>=0.85`、eligible subset uplift `>=0.08`、critical recall `=1`、intent
 preservation `>=0.95`、grounded rubric `>=0.90`、citation precision `=1`、required citation recall `>=0.90`、critical
 notice recall `=1`，unsafe rewrite/false tool success/false citation/safety failure 全为 `0`。六条语义 lane 只记录
-median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。下一步从最新已推送 `main` 新建分支推进 S2
-reviewed Mock/static；未来 L2 仍必须重新接受当次 DeepSeek/Qwen 数据边界并给出 exact authorization。完整设计、计划与验收见：
+median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。完成本分支文档 parity、推送并合并 `main` 后须在
+`main` 再做 focused 回归；未来 L2 仍必须重新接受当次 DeepSeek/Qwen 数据边界并给出新的 exact authorization。完整设计、计划与验收见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`
 - `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`
 
 ## Phase 6.9.8 Transport Re-entry V2 S1 历史边界
 

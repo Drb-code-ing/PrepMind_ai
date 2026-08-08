@@ -1,7 +1,7 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 G2 zero-provider runner/durability 已完成，下一步从最新已推送 `main`
-> 新建普通分支推进 S2 reviewed Mock/static。
+> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 S2 reviewed Mock/static 已完成，当前在
+> `drb/phase-6-9-8-p1-s2-reviewed-mock` 完成文档 parity、推送并合并 `main`，随后在 `main` 二次回归。
 > Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。
 > run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上以
 > `transport_reentry_v2_l1_controlled_canary_passed` 收口，`3` slots、Provider calls `3`、usage `145/28/173`、费用
@@ -16,8 +16,11 @@
 > first-party adapter、wire/usage/fault matrix 与 reviewed Mock/static；S1 authority 为
 > `zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。S1 source admission 已修复历史 `.tmp` 误计并在
 > clean branch/HEAD/upstream/origin 上完成 `git_verified / formalArtifactCount=0` 回放；focused（S1+C2）`22/22`、
-> Agent full `1394/1394`。V2 L1 已随后完成并封存；P1 G1 与 G2 已以独立 zero-provider lineage 收口，G2 focused `5/5`、
-> Agent full `1419/1419`，synthetic runner validator `ok=true`、formal evidence `0`。下一任务为 S2 reviewed Mock/static。
+> Agent full `1394/1394`。V2 L1 已随后完成并封存；P1 G1、G2 与 S2 已以独立 zero-provider lineage 收口。S2
+> focused `4/4`、G1+G2 focused `10/10`、Agent full `1423/1423`，synthetic runner/validator `ok=true`、formal evidence `0`；
+> gate=`p1_mock_quality_not_evidence`、`qualityAuthority=none`。S2 验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`；完成 main 回归后，下一条受控路线
+> 只能在重新接受 DeepSeek/Qwen 数据边界并取得新的 exact L2 authorization 后启动。
 > G2 验收、设计、计划、L1 sealed 与 C1/C2 验收见
 > `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md` 与
@@ -105,7 +108,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                             |
 | Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                     |
 | Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成      |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 P1/G1/G2 完成；下一步 S2 zero-provider |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 P1/G1/G2/S2 完成（S2 Mock-only）；main 回归后再申请 L2 |
 | Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                          |
 | Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成              |
 | Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                             |
@@ -694,7 +697,7 @@ qualityAuthority=none`；该 checkpoint 当时只解锁 R4，后续 R4 已完成
   `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 `ee3dbf91...` 上以
   `transport_reentry_v2_l1_controlled_canary_passed` durable seal，Provider calls=`3`、费用=`0.000573 CNY`、
   validator=`ok=true`、authority 仅为 transport diagnostic。成功不进入产品/Docker/API/browser/`main` 语义验收；P1
-  P1 G1 与 G2 zero-provider manifest/subset baseline/strict runner/durability 已完成；G2 focused `5/5`、Agent full `1419/1419`、formal evidence `0`，下一步是 S2 reviewed Mock/static。implementation 历史 checkpoint 与 sealed 证据分别见
+  P1 G1 与 G2 zero-provider manifest/subset baseline/strict runner/durability 已完成；G2 focused `5/5`、Agent full `1419/1419`、formal evidence `0`，该段记录的是 S2 之前的历史 checkpoint，随后 S2 reviewed Mock/static 已完成。implementation 历史 checkpoint 与 sealed 证据分别见
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md` 与
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`；P1 设计、计划与验收见
   `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、

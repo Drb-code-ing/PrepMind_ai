@@ -1,5 +1,31 @@
 # PrepMind AI 开发日志
 
+> 2026-08-08 — Phase 6.9.8 P1 S2 reviewed Mock/static 已完成：
+>
+> 在从已推送 `main / origin/main = 0c2faf1d` 派生的普通分支
+> `drb/phase-6-9-8-p1-s2-reviewed-mock` 上，新增 reviewed Mock 评测并把 G2 one-shot runner 接到实际
+> Retriever original/query-rewrite、synthetic Qwen search port、verified-evidence projector、FinalResponse stream、
+> strict validator 与 local merger。固定 `8` 条 zero-call guard、`6` 条 rewrite + `6` 条 FinalResponse lane、
+> candidate invocation `12`、最大并发 `1`；正常 checkpoint 为 guard `8/8`、strict/wire/synthetic usage `16/16/16`、
+> Tutor/Organizer/Combined semantic `1/1/1`。节点计数为 Retriever original `18`、candidate `6`、projector `6`、
+> FinalResponse `6`、local merger `12`，synthetic Qwen port calls `17`。
+>
+> S2 gate=`p1_mock_quality_not_evidence`、authority=`zero_provider_retriever_final_response_p1_s2_reviewed_mock`、
+> `qualityAuthority=none`。`usageAuthority=synthetic_estimate` 只用于 bounded diagnostic；
+> `verifiedProviderUsageSamples=0`、`verifiedProviderCostCny=null`，不得解释为真实 Provider 计量或账单。
+> factory SHA=`sha256:8ad0a12ae7bd6365873631cb4908b41888617b9599fdd6865cf7e45c788f0e7d`，report SHA=
+> `cfb48cb8108768ace9b8e5c5714344f2be74e16300d6997a5e874085275b9db5`；final_11 compatibility SHA=
+> `b492487db888a2e2d89810faac8cc7b0e50c36b464fb6eb6cfa9a4bc4680a532` 仅是冻结 contract 的 citation-recall
+> diagnostic，不改写 G1/G2 authority。
+>
+> S2 focused `4/4`（73 assertions）、G1+G2 focused `10/10`（50 assertions）、Agent full `1423/1423`
+>（24241 expect()，177 files）、typecheck/lint/Prettier/diff check 全通过。全程 `providerCalls=0`、
+> `credentialReads=0`、formal marker/journal/artifact/recovery claim=`0`，未读取根 `.env`、未启动 Docker/API/browser、
+> 未写 Trace/BackgroundJob/Outbox 或业务数据。完整验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
+> 下一步是完成相关文档 parity、推送并合并 `main` 后在 `main` 二次回归；若申请 L2，必须重新接受当次
+> DeepSeek/Qwen 数据边界并给出新的 exact authorization，不能重跑既有封存 evidence。
+
 > 2026-08-08 — Phase 6.9.8 P1 G2 zero-provider runner/durability 已完成：
 >
 > G2 从已合并 `main` `a12db738` 新建普通分支 `drb/phase-6-9-8-g2-runner-durability`，未使用 worktree。实现独立
@@ -16,8 +42,8 @@
 > `550b9729e15e218bb6619d7594ac25f1981336c8eae5a549bc1117ff456d995d`。全程 `providerCalls=0`、`credentialReads=0`、
 > `formalEvidence=0`，未读根 `.env`、未启动 Docker/API/browser、未写 Trace/BackgroundJob/Outbox/业务数据；authority=
 > `zero_provider_retriever_final_response_p1_g2_runner_durability / qualityAuthority=none`。详细验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。下一步从最新已推送 `main` 新建
-> 分支推进 S2 reviewed Mock/static；完成前不申请 L2 或执行真实 Provider。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。该条是 G2 当时的历史 checkpoint；随后
+> S2 reviewed Mock/static 已在独立分支完成，当前状态以本日志顶部的 S2 记录为准。
 
 > 2026-08-08 — Phase 6.9.8 P1 G1 zero-provider contract/baseline/scorer 已完成：
 >
