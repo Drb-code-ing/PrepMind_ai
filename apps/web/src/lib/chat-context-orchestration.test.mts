@@ -9,6 +9,7 @@ import {
   logChatRouteFailureSafely,
   parseConversationContextPrepareTimeout,
   runChatAccessAndContextPreparation,
+  runChatContextPreparation,
 } from './chat-context-orchestration.ts';
 
 const prepared = {
@@ -71,12 +72,36 @@ test('prepares with the strict request and propagated request signal', async () 
   );
 
   assert.equal(result.ok, true);
-  assert.deepEqual(
-    (captured as { request: unknown }).request,
-    { conversationId: 'conv_1', maxInputTokens: 2500 },
-  );
+  assert.deepEqual((captured as { request: unknown }).request, {
+    conversationId: 'conv_1',
+    maxInputTokens: 2500,
+  });
   assert.equal((captured as { accessToken: string }).accessToken, 'token_1');
   assert.ok((captured as { signal: AbortSignal }).signal instanceof AbortSignal);
+});
+
+test('prepares an already-authorized canonical token without a second access decision', async () => {
+  const controller = new AbortController();
+  let captured: unknown;
+  const result = await runChatContextPreparation(
+    {
+      accessToken: 'canonical_token',
+      conversationId: 'conv_canonical',
+      maxInputTokens: 2500,
+      requestSignal: controller.signal,
+      timeoutValue: '12000',
+    },
+    {
+      prepare: async (input) => {
+        captured = input;
+        return prepared;
+      },
+    },
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal((captured as { accessToken: string }).accessToken, 'canonical_token');
+  assert.equal((captured as { signal: AbortSignal }).signal instanceof AbortSignal, true);
 });
 
 test('returns fixed degraded context when prepare throws', async () => {

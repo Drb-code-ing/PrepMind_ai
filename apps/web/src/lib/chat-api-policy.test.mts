@@ -44,6 +44,40 @@ test('normalizes user and assistant messages while preserving a valid access tok
   }
 });
 
+test('rejects client-supplied identity fields instead of silently stripping them', () => {
+  for (const field of ['userId', 'ownerId', 'principal']) {
+    const result = parseChatApiRequestBody({
+      messages: [{ role: 'user', content: 'hello' }],
+      [field]: field === 'principal' ? { kind: 'authenticated' } : 'attacker_owner',
+    });
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.status, 400);
+      assert.match(result.error, /identity/i);
+    }
+  }
+});
+
+test('rejects malformed access-token values at the request boundary', () => {
+  for (const accessToken of [42, 'token with spaces', 'x'.repeat(8_193)]) {
+    const result = parseChatApiRequestBody({
+      messages: [{ role: 'user', content: 'hello' }],
+      accessToken,
+    });
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.status, 400);
+  }
+});
+
+test('treats a whitespace-only access token as absent instead of authenticated', () => {
+  const result = parseChatApiRequestBody({
+    messages: [{ role: 'user', content: 'hello' }],
+    accessToken: '   ',
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.data.accessToken, null);
+});
+
 test('allows missing or null conversation ids for a first chat turn', () => {
   for (const conversationId of [undefined, null]) {
     const result = parseChatApiRequestBody({
@@ -135,6 +169,17 @@ test('does not require an access token for mock chat requests', async () => {
   assert.deepEqual(await validateChatLiveAccess('mock', null, async () => false), { ok: true });
 });
 
+test('validates any non-empty Mock token instead of silently treating it as anonymous', async () => {
+  let calls = 0;
+  const result = await validateChatLiveAccess('mock', 'invalid-token', async () => {
+    calls += 1;
+    return false;
+  });
+  assert.equal(calls, 1);
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.status, 401);
+});
+
 test('rejects live chat when the body token fails server-side validation', async () => {
   const result = await validateChatLiveAccess('live', 'anything', async () => false);
 
@@ -153,10 +198,10 @@ test('allows live chat when the token passes server-side validation', async () =
   assert.deepEqual(result, { ok: true });
 });
 
-test('only searches knowledge when the agent decision requires RAG and a token exists', () => {
+test('only searches knowledge when the canonical principal is authenticated', () => {
   assert.equal(
     shouldSearchKnowledgeForChat({
-      accessToken: 'token',
+      authenticated: true,
       requiresRag: true,
       latestUserText: 'hello',
     }),
@@ -164,7 +209,7 @@ test('only searches knowledge when the agent decision requires RAG and a token e
   );
   assert.equal(
     shouldSearchKnowledgeForChat({
-      accessToken: 'token',
+      authenticated: true,
       requiresRag: false,
       latestUserText: 'hello',
     }),
@@ -172,7 +217,7 @@ test('only searches knowledge when the agent decision requires RAG and a token e
   );
   assert.equal(
     shouldSearchKnowledgeForChat({
-      accessToken: null,
+      authenticated: false,
       requiresRag: true,
       latestUserText: 'answer from my notes',
     }),
@@ -183,7 +228,7 @@ test('only searches knowledge when the agent decision requires RAG and a token e
 test('searches knowledge for explicit notes intent even when RouterAgent does not require RAG', () => {
   assert.equal(
     shouldSearchKnowledgeForChat({
-      accessToken: 'token',
+      authenticated: true,
       requiresRag: false,
       latestUserText: 'Please answer from my notes.',
     }),

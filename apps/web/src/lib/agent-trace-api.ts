@@ -3,12 +3,18 @@ import {
   agentTraceDetailResponseSchema,
   agentTraceListQuerySchema,
   agentTraceListResponseSchema,
+  agentTraceRealtimeFinalizeRequestSchema,
+  agentTraceRealtimePrepareRequestSchema,
+  agentTraceRealtimeStartRequestSchema,
   agentTraceSummaryQuerySchema,
   agentTraceSummaryResponseSchema,
   type AgentTraceCreateRequest,
   type AgentTraceDetailResponse,
   type AgentTraceListQuery,
   type AgentTraceListResponse,
+  type AgentTraceRealtimeFinalizeRequest,
+  type AgentTraceRealtimePrepareRequest,
+  type AgentTraceRealtimeStartRequest,
   type AgentTraceSummaryQuery,
   type AgentTraceSummaryResponse,
 } from '@repo/types/api/agent-trace';
@@ -18,11 +24,13 @@ type AgentTraceRequestOptions = {
 };
 
 type AgentTraceApiClient = {
-  get<T>(
+  get<T>(path: string, options?: { accessToken?: string | null; signal?: AbortSignal }): Promise<T>;
+  post<T>(
     path: string,
+    body?: unknown,
     options?: { accessToken?: string | null; signal?: AbortSignal },
   ): Promise<T>;
-  post<T>(
+  patch<T>(
     path: string,
     body?: unknown,
     options?: { accessToken?: string | null; signal?: AbortSignal },
@@ -62,10 +70,7 @@ export function createAgentTraceApi(client: AgentTraceApiClient) {
       );
     },
 
-    async getTrace(
-      accessToken: string,
-      runId: string,
-    ): Promise<AgentTraceDetailResponse> {
+    async getTrace(accessToken: string, runId: string): Promise<AgentTraceDetailResponse> {
       return agentTraceDetailResponseSchema.parse(
         await client.get<unknown>(`/agent-traces/${encodeURIComponent(runId)}`, {
           accessToken,
@@ -84,6 +89,51 @@ export function createAgentTraceApi(client: AgentTraceApiClient) {
         signal: options.signal,
       });
 
+      return agentTraceDetailResponseSchema.parse(response);
+    },
+
+    async startRealtimeTrace(
+      accessToken: string,
+      body: AgentTraceRealtimeStartRequest,
+      options: AgentTraceRequestOptions = {},
+    ): Promise<AgentTraceDetailResponse> {
+      const payload = agentTraceRealtimeStartRequestSchema.parse(body);
+      const response = await client.post<unknown>('/agent-traces/realtime', payload, {
+        accessToken,
+        signal: options.signal,
+      });
+      return agentTraceDetailResponseSchema.parse(response);
+    },
+
+    async finalizeRealtimeTrace(
+      accessToken: string,
+      runId: string,
+      body: AgentTraceRealtimeFinalizeRequest,
+      options: AgentTraceRequestOptions = {},
+    ): Promise<AgentTraceDetailResponse> {
+      const payload = agentTraceRealtimeFinalizeRequestSchema.parse(body);
+      if (payload.runId !== runId) throw new Error('REALTIME_TRACE_RUN_ID_MISMATCH');
+      const response = await client.patch<unknown>(
+        `/agent-traces/realtime/${encodeURIComponent(runId)}/terminal`,
+        payload,
+        { accessToken, signal: options.signal },
+      );
+      return agentTraceDetailResponseSchema.parse(response);
+    },
+
+    async prepareRealtimeTrace(
+      accessToken: string,
+      runId: string,
+      body: AgentTraceRealtimePrepareRequest,
+      options: AgentTraceRequestOptions = {},
+    ): Promise<AgentTraceDetailResponse> {
+      const payload = agentTraceRealtimePrepareRequestSchema.parse(body);
+      if (payload.runId !== runId) throw new Error('REALTIME_TRACE_RUN_ID_MISMATCH');
+      const response = await client.patch<unknown>(
+        `/agent-traces/realtime/${encodeURIComponent(runId)}/prepare`,
+        payload,
+        { accessToken, signal: options.signal },
+      );
       return agentTraceDetailResponseSchema.parse(response);
     },
   };

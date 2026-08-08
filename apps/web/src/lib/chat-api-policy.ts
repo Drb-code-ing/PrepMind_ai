@@ -14,6 +14,9 @@ type PolicyError = {
   error: string;
 };
 
+const FORBIDDEN_IDENTITY_FIELDS = ['userId', 'ownerId', 'principal'] as const;
+const MAX_ACCESS_TOKEN_LENGTH = 8_192;
+
 export function parseChatApiRequestBody(
   body: unknown,
 ): PolicyOk<ParsedChatApiRequestBody> | PolicyError {
@@ -26,6 +29,15 @@ export function parseChatApiRequestBody(
   }
 
   const record = body as Record<string, unknown>;
+  if (
+    FORBIDDEN_IDENTITY_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(record, field))
+  ) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Client-supplied identity fields are forbidden.',
+    };
+  }
   const rawMessages = record.messages;
 
   if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
@@ -38,8 +50,10 @@ export function parseChatApiRequestBody(
 
   const messages: ChatContextMessage[] = [];
   const conversationId = normalizeConversationId(record.conversationId);
+  const accessToken = normalizeAccessToken(record.accessToken);
 
   if (!conversationId.ok) return conversationId;
+  if (!accessToken.ok) return accessToken;
 
   for (const rawMessage of rawMessages) {
     if (!rawMessage || typeof rawMessage !== 'object') {
@@ -79,14 +93,12 @@ export function parseChatApiRequestBody(
       messages,
       conversationId: conversationId.value,
       activeContext: normalizeActiveStudyContext(record.activeContext),
-      accessToken: normalizeAccessToken(record.accessToken),
+      accessToken: accessToken.value,
     },
   };
 }
 
-function normalizeConversationId(
-  value: unknown,
-): { ok: true; value: string | null } | PolicyError {
+function normalizeConversationId(value: unknown): { ok: true; value: string | null } | PolicyError {
   if (value === undefined || value === null) return { ok: true, value: null };
   if (typeof value !== 'string') {
     return { ok: false, status: 400, error: 'conversationId must be a string.' };
@@ -105,11 +117,8 @@ export async function validateChatLiveAccess(
   accessToken: string | null,
   verifyAccessToken: (accessToken: string) => Promise<boolean>,
 ): Promise<PolicyOk | PolicyError> {
-  if (mode === 'mock') {
-    return { ok: true };
-  }
-
   if (!accessToken) {
+    if (mode === 'mock') return { ok: true };
     return {
       ok: false,
       status: 401,
@@ -128,11 +137,11 @@ export async function validateChatLiveAccess(
 }
 
 export function shouldSearchKnowledgeForChat(input: {
-  accessToken: string | null;
+  authenticated: boolean;
   requiresRag: boolean;
   latestUserText?: string;
 }) {
-  if (!input.accessToken) return false;
+  if (!input.authenticated) return false;
   return input.requiresRag || hasExplicitKnowledgeIntent(input.latestUserText ?? '');
 }
 
@@ -140,17 +149,29 @@ function hasExplicitKnowledgeIntent(text: string) {
   const normalized = text.trim().toLowerCase();
   if (!normalized) return false;
 
-  return [
-    'notes',
-    'knowledge base',
-    'my uploaded',
-    'uploaded document',
-    'reference material',
-  ].some((keyword) => normalized.includes(keyword));
+  return ['notes', 'knowledge base', 'my uploaded', 'uploaded document', 'reference material'].some(
+    (keyword) => normalized.includes(keyword),
+  );
 }
 
-function normalizeAccessToken(value: unknown) {
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
+function normalizeAccessToken(value: unknown): { ok: true; value: string | null } | PolicyError {
+  if (value === undefined || value === null) return { ok: true, value: null };
+  if (typeof value !== 'string') {
+    return { ok: false, status: 400, error: 'accessToken must be a string.' };
+  }
+
+  const normalized = value.trim();
+  if (!normalized) return { ok: true, value: null };
+  if (
+    normalized.length > MAX_ACCESS_TOKEN_LENGTH ||
+    [...normalized].some((character) => {
+      const code = character.charCodeAt(0);
+      return code < 0x21 || code > 0x7e;
+    })
+  ) {
+    return { ok: false, status: 400, error: 'accessToken is malformed.' };
+  }
+  return { ok: true, value: normalized };
 }
 
 function normalizeActiveStudyContext(value: unknown): ActiveStudyContext | null {

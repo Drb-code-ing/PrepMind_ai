@@ -17,6 +17,7 @@ const routeLabels: Record<AgentRoute, string> = {
 };
 
 const statusLabels: Record<AgentTraceStatus, string> = {
+  running: '运行中',
   completed: '已完成',
   degraded: '已降级',
   failed: '失败',
@@ -42,9 +43,7 @@ export function getAgentTraceRouteLabel(route: AgentRoute | null | undefined) {
   return route ? routeLabels[route] : '未路由';
 }
 
-export function getAgentTraceVerifierStatusLabel(
-  status: AgentTraceVerifierStatus | undefined,
-) {
+export function getAgentTraceVerifierStatusLabel(status: AgentTraceVerifierStatus | undefined) {
   return status ? verifierLabels[status] : '未执行';
 }
 
@@ -78,6 +77,7 @@ export function formatAgentTraceDateTime(value: string | null | undefined) {
 }
 
 export function getAgentTraceStatusClassName(status: AgentTraceStatus) {
+  if (status === 'running') return 'bg-sky-50 text-sky-700 ring-sky-100';
   if (status === 'completed') return 'bg-emerald-50 text-emerald-700 ring-emerald-100';
   if (status === 'degraded') return 'bg-amber-50 text-amber-700 ring-amber-100';
   return 'bg-red-50 text-red-700 ring-red-100';

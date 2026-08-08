@@ -1,8 +1,96 @@
 # PrepMind AI 数据流
 
-> 当前版本：2026-08-03。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
+> 当前 L1 controlled-Live sealed（2026-08-08）：V2 已从 S1 reviewed Mock/static 收口到唯一可受控执行的
+> production-shaped launcher。固定入口顺序为 `exact argv -> source/remote parity -> loopback proxy preflight ->
+DeepSeek/Qwen data boundary -> exact authorization -> root .env bounded projection -> capability shape check ->
+exclusive marker/reservation -> adapter construction -> rewrite -> qwen -> final_response -> durable publication`。
+> marker 前不构造第一方 adapter、不把 raw key 放入 runtime/report/journal/artifact；首错 breaker、suffix no-dispatch、
+> no-retry 与 reserved/dispatch crash-only recovery 均由 L1 runner 固定。唯一 run
+> `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 三槽全部完成，Provider calls=`3`、usage=`145/28/173`、费用=`0.000573 CNY`，
+> journal=`16`、validator=`ok=true`，authority 仅为 transport diagnostic、`qualityAuthority=none`。
+> 该结果不等同于 Retriever/FinalResponse 语义、产品 `/api/chat`、Docker/API/browser、Trace、BackgroundJob、Outbox
+> 或业务写入可用；implementation 与 root-env diagnosis 是 Live 前历史 checkpoint，sealed 证据见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
+
+> 当前 S1（2026-08-07）：C2 durability 之上的三个 bounded synthetic first-party adapter 复用同一
+> `rewrite -> qwen -> final_response` runner seam。success flow 的 runner wire 与 adapter/provider wire 分别为
+> `3/3/3/3`，usage=`480/120/600`，synthetic port calls=`3`，正式 Provider/credential/formal evidence 均为 `0`。
+> timeout/transport/schema/usage 首错 breaker 与 `abort_before_qwen` 均 fail-closed；临时 marker/journal/artifact 只存在
+> isolated temp root 并在 case 后清理。S1 gate=`transport_reentry_v2_s1_mock_quality_not_evidence`、
+> authority=`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。这条流不进入真实 `.env`、Provider、
+> `/api/chat`、Trace、BackgroundJob、Outbox、Docker/browser 或 main。S1 source admission 只统计当前 V2 正式路径占用，
+> 忽略历史 lineage/普通日志并对非 `ENOENT` 读取错误 fail-closed；clean-source CLI 已以
+> `git_verified / formalArtifactCount=0` 回放，当前停在 V2 L1 exact authorization 门。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
+
+> C2 历史设计（2026-08-07）：Transport Re-entry V2 C2 已完成 zero-provider runner/durability flow：
+> `exact argv -> source/T2+T3-C parity -> fresh proxy -> data boundary -> authorization -> launcher-location root-env
+parser -> dedicated projection -> opaque configuration -> exclusive marker -> reservation -> three-slot journal ->
+hard-link artifact -> strict validator/crash-only recovery`。C2 synthetic path 不读取真实 `.env`/credential、不调用
+> Provider、不写正式 evidence、Trace、BackgroundJob、Outbox 或业务表；configuration failure 在 marker 前收口，首错
+> breaker 不 retry，publication recovery 不重放 port call。S1 已在上方完成；没有新的 exact authorization 前不执行 V2 L1。
+> 设计见 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与
+> C2 验收记录；C1 launcher/projection 的历史边界见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md`。
+
+> 历史封存（2026-08-07）：Transport Evidence Recovery T3 controlled canary 已一次性失败封存。数据流为
+> `argv -> source/T2 admission -> fresh proxy nonce -> data boundary -> exact authorization -> reservation -> late credential gate`；
+> 三槽位固定 `rewrite -> qwen -> final_response`，本次在首个 slot 前停止，planned/started/completed=`3/0/0`，
+> Provider/credential/fetch=`0/0/0`，三个 suffix lane 为 `not_started_quality_breaker`。Authority 为
+> `controlled_live_transport_evidence_t3 / qualityAuthority=none`，journal `7`、validator `ok=true`。该流不进入 `/api/chat`、
+> BackgroundJob、Outbox、Docker、browser 或 main；T3 名额不得重跑。详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
+> T3-C 又以 zero-provider 静态 guard 固定 package cwd 到根 `.env` 的显式路径和 seal CLI 的无 credential/Provider port 边界；
+> 不读取实际 `.env`、不调用 Provider、不创建 evidence。详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md`。
+
+> R5 sealed result（2026-08-06）：唯一 run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已从 canonical source admission
+> 进入真实 DeepSeek/Qwen adapter；16 guards 通过，首个 rewrite pair 的三次 Provider call 成功，第二个 pair 的
+> DeepSeek rewrite 在 `provider_dispatch / unknown` 失败，breaker 后 59 slots 未启动。External calls `4`（Qwen `3`、
+> DeepSeek `1`），gate=`architecture_recovery_quality_gate_failed / qualityAuthority=none`，journal `237`、validator
+> `ok=true`、artifact SHA=`423e3f2e...43b1e5`。这条数据流证据只说明 bounded dispatch failure 与安全收口，不进入
+> `/api/chat` 产品语义、Trace、BackgroundJob、Outbox、Docker/browser 或 main authority；R6 继续阻断。
+
+> R5 Live 前数据流 checkpoint（已由上方 sealed run 收口）：Architecture Recovery R5 已完成实现、独立复审与
+> zero-provider 回归。固定顺序为 `16 guards`（zero-call）→ 16 个
+> rewrite pair（DeepSeek rewrite → Qwen original/candidate retrieval）→ 16 个 DeepSeek FinalResponse stream，
+> 共 64 个 Provider slots；首个失败打开 breaker，未启动调用不补跑。三项 credential 在授权 CLI 子进程内 late-bind，
+> 不进入产品 Chat、server、worker、Docker 或浏览器。Provider/runner observation 仍由三个模块私有 single-use
+> capability 签发；本地负责 owner、evidence、citation、usage/cost、terminal 和 gate。R5 Live 前 providerCalls、
+> credentialReads、marker/journal/artifact 与业务写入均为 0；本次 Live 失败后只保留 bounded sealed evidence，R6
+> 仍阻断。结果与边界见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
+
+> Transport Evidence Recovery T0/T1/T2/T3-A 已冻结并实现独立数据流：synthetic input → bounded adapter seam → strict
+> stage/boundary/wire parser → no-raw snapshot → synthetic durability publication/recovery。T2 固定
+> `30` matrix + `15` classifier fixture，并验证 partial/terminal prefix、existing-artifact publication、multiple-marker、
+> hard-link 与 Windows/Bun fsync 边界；focused `11/11`、Agent `1348/1348`、typecheck/lint/Prettier 通过。全程不读取
+> credential、不调用 Provider、不写 `/api/chat`、Trace、BackgroundJob、Outbox 或业务表，formal evidence=0，
+> authority=`zero_provider_transport_evidence_t2 / qualityAuthority=none`。唯一 T3 controlled 已在 configuration gate 失败
+> 并封存，补充提交 `3d903055` 只修复 package script 的显式根 `.env` 加载，不改变已消费的 run。设计、T2/T3 验收见
+> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
+
+> 当前版本：2026-08-07。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。
 >
-> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成，当前唯一下一任务是 Phase 6.9.8 RetrieverAgent / FinalResponseAgent 通信 contract。
+> 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--8 随后完成。Task 7 已把 canonical auth、Retriever/query rewrite、Verifier、本地 evidence projector、FinalResponse stream 与 realtime Trace 串联进 `/api/chat`；Task 8 又以固定 48-case reviewed Mock/static 验证 guard/rewrite/FinalResponse `16/16/16`、rewrite nDCG uplift `0.43076385233` 与 FinalResponse grounded/citation/critical notice `1`。Task 8 authority 仅 `zero_provider_retriever_final_response_reviewed_mock_static / qualityAuthority=none`，Provider/credential/Qwen 与正式 evidence=0。Task 9A 又冻结 Qwen 北京区 official price/endpoint/usage、1536 维 strict direct transport 与 `262144 tokens / 0.131072 CNY` cap；全部测试使用 injected fetch，真实 Provider/credential/evidence=0。Task 9B 又完成 16 guard + 64-call runner、双 Provider accounting、source admission、durability/validator/CLI；Reviewed Mock 仍为 `task9b_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/approved tag/正式 evidence=0。唯一 Task 9C run `28b5f92f...` 已以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：第二条 DeepSeek rewrite 在 dispatch 后命中本地 `schema_invalid`，仅执行 `5/64` Provider calls，其余 59 次被 breaker 阻止；journal `134`、validator `ok=true`。一次性名额已消费，Task 10/11、产品/main 继续阻断。
+
+> Phase 6.9.8 Architecture Recovery R0--R4 后续状态：R0 已冻结三类调用阶段机、`providerWire/runnerWire` 双层观察、
+> no-raw/no-hash bounded diagnostic、新 lineage/source admission、durability 与 R1--R7 路线。R1 又以
+> `zero_provider_retriever_final_response_architecture_recovery_tdd / qualityAuthority=none` 实现 strict diagnostic、
+> opaque rewrite session 与第一方 V7 terminal wire snapshot 只读投影；Provider observation 不接收调用方状态，
+> forged/reused/active capability 均 fail-closed。R2 再以
+> `zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none` 增加 Qwen/
+> FinalResponse 两个第一方 wire family、single-use recovery session 与 embedding/stream/terminal/usage fault matrix；
+> 首个畸形 stream event 固定为 `response_observed + stream_event_invalid`。R3 再以
+> `zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission / qualityAuthority=none`
+> 落成固定 16-guard/64-call runner、三个模块私有 observation、双 wire accounting、source admission、hash-chain
+> journal、hard-link artifact、strict validator 与 crash-only recovery。R4 又把 Task 8 production node/ledger reviewed
+> Mock 接入 R3 runner，得到 guards `16/16` zero-call、双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/
+> FinalResponse `16/16`；gate 仅 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。R0--R4
+> 未读取 credential、调用 Provider 或创建正式 Recovery evidence；该 R0--R4 checkpoint 已由下方唯一 R5 sealed run
+> 收口，不能把 Mock authority 当作 R5 质量通过。
 
 ## 1. 当前边界
 
@@ -11,6 +99,7 @@
 - 错题组织层职责：`WrongQuestionSubjectGroup` / `WrongQuestionDeck` / `WrongQuestionDeckItem` 只负责学科卡片、专题 deck 和错题归属视图，不替代 WrongQuestion / Card / ReviewLog / ReviewTask 事实来源。
 - 本地缓存职责：Dexie 负责快速恢复、离线兜底、乐观更新、旧图片预览和 mutation queue。
 - AI 代理职责：`/api/chat` 与 `/api/ocr` 仍由 Next.js API Route 代理 AI 服务；`/api/chat` 开发默认 mock，live 调用需要显式双开关。
+- Chat access 职责：`/api/chat` 只把 `/auth/me` strict `AuthUser.id` 作为 authenticated canonical owner；raw bearer 只存在 WeakMap capability，并与 auth response、原始 Request、execution context 三个引用绑定。无 token Mock 只允许 anonymous 普通 Chat；无 token Live、invalid token、cross-request/owner binding 均在 Agent runtime 前 fail-closed。
 - 图片存储职责：新 OCR 图片通过 NestJS `/uploads/images` 上传到 MinIO。
 - 复习系统职责：错题可生成 FSRS 复习卡，Card / ReviewLog / ReviewTask / ReviewPreference 以 PostgreSQL 为权威来源。
 - 长期记忆职责：`UserMemoryCandidate` / `UserMemory` 以 PostgreSQL 为权威来源；MemoryAgent 只生成候选，候选必须经用户确认后才成为正式记忆。
@@ -22,9 +111,43 @@
 - OpenAPI debug docs 职责：Phase 7.4 adds Swagger / OpenAPI debug docs；Phase 7.5 为核心写接口补充中文说明和安全 request body 示例。`/api-docs` 和 `/api-docs-json` 默认在非 production 开启，production 默认关闭。`SWAGGER_ENABLED=true` 只适合受控环境、内网或临时诊断，不放宽 `JwtAuthGuard`，也不改变任一业务 API 的 userId 隔离、写入语义或 response envelope。
 - RAG 知识库职责：Phase 5.6 已完成 `Document` / `Chunk` 数据模型、`vector(1536)` 索引预留、knowledge API contract、`/knowledge/documents` 上传/列表/详情/删除/替换 API、`POST /knowledge/documents/:id/process` 文档处理 API、`POST /knowledge/search` 检索 API、`/api/chat` 知识库上下文注入与 Markdown citations，以及 `/knowledge` 前端资料工作台；Phase 7.2 已补齐 chunk safety metadata、检索结果安全信号、Chat prompt 前过滤和 Verifier 保守 guidance。
 - 资料管理 Agent 职责：KnowledgeDedupAgent / KnowledgeOrganizerAgent 已可从同一 owner snapshot 生成 deterministic facts、owner-scoped Qwen Chunk embedding shortlist，并在完整安全投影和双 stale fence 后选择性调用受限 DeepSeek V4 Pro candidate；本地 merger 始终重建真实 ID、时间、recommendation 与权限。`/knowledge-agent/suggestions` 是认证、用户隔离、在线只读 API，不自动合并、删除、替换、重命名或分类资料；默认 gate 关闭时仍返回 deterministic 建议。
-- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、阈值 guard、运行 recorder、graph descriptor、业务 policy 以及 Router/Verifier structured-model candidate；package 不读取 env、不直接写库，真实 executor 只由 server-only composition root 注入。当前 11 个 graph 名称仍是 descriptor，Retriever/FinalResponse 职责隐含于 RAG/Chat 链路，Tool-Using Orchestrator 尚未实现。
-- Agent 评测职责：`@repo/agent` 的 Phase 6.9 eval contract 统一 case run、summary 和模型路径启用决策；seed baseline 只运行纯 deterministic policy，不访问网络、数据库、Docker 或 API key。Orchestrator 当前只有 expectation-only case，不能被当作已实现能力。
+- Agent 职责：`@repo/agent` 提供 Agent state、ActionProposal contract、RouterAgent、正式 RetrieverAgent node、阈值 guard、运行 recorder、graph descriptor、业务 policy 以及 Router/Verifier structured-model candidate；package 不读取 env、不直接写库，真实 executor 只由 server-only composition root 注入。Task 7 已在 `/api/chat` 接入 Retriever、default-off query rewrite、Verifier/evidence projector 与正式 FinalResponse stream；模型只建议 query/正文，本地仍决定 eligibility、original/rewrite、owner、`topK/minScore`、filter、citation 与 terminal。当前 11 个 graph 名称仍只是 descriptor，Tool-Using Orchestrator 尚未实现。
+- Agent 评测职责：`@repo/agent` 的 Phase 6.9 eval contract 统一 case run、summary 和模型路径启用决策；Retriever original-query baseline 使用 16 guard + 16 runtime 固定 fake search，Provider/Qwen/rewrite/FinalResponse calls=0，authority 仅 `deterministic_baseline_only`。Task 8 另用独立 16+16+16 manifest，让 actual 穿过 production rewrite/FinalResponse 路径并由后置 scorer 复算；prompt-only Mock 不读取 expected/oracle，gate 固定 `mock_quality_not_evidence / qualityAuthority=none`，不能冒充真实模型、P95、verified cost 或产品质量。其它 seed baseline 同样不访问网络、数据库、Docker 或 API key。Orchestrator 当前只有 expectation-only case，不能被当作已实现能力。
 - Model Agent Runtime 职责：`@repo/ai` 只接收调用方注入的 Mock responder 或结构化 executor，统一 Zod schema、不可变 run budget、超时/取消、安全错误和脱敏 Trace。package 不读取 env；API key 与 base URL 只存在于 composition root 创建的 executor closure。V7 R1 新增的 V4 Pro direct adapter 仍只是一种 `StructuredModelExecutor`；V9 R4 reviewed Mock 让正式 Tutor/Organizer candidate 穿过该 adapter，但只注入进程内 synthetic fetch。V9 R5 唯一 Live 证明两条 lane 能进入第一方 durable dispatch 边界，但没有 Provider response，因此不形成语义、usage、费用或产品 authority。其 wire capability 只暴露固定 stage/category/counter，不暴露 fetch、response 或 raw error。调用方先解析 live 双开关，runtime 再检查 `liveCallsEnabled`；结果与 Trace 不包含完整 prompt、完整输出、provider 原始错误、API key、base URL 或 stack。
+- Qwen Task 9 transport 职责：`@repo/ai` 的 `qwen-text-embedding-v4-provider-v1` 只负责北京区 OpenAI-compatible
+  direct transport，不读取 env、不 retry、不拥有 runner timeout/source admission/durability。Config 固定北京业务空间
+  或 legacy host、`/compatible-mode/v1`、`text-embedding-v4/1536` 与官方价格 profile；response 固定 exact
+  index/vector/`prompt_tokens == total_tokens`，费用按 `0.5 CNY / 1M input tokens` 本地重算。Injected fetch 永久
+  `synthetic_test`。Task 9A 没有替换产品 Nest `EmbeddingService` 或 knowledge API。
+- Task 9B eval runner 职责：独立 Task 9 lineage 固定 16 guard + 64-call schedule；每个 rewrite pair 串行经过
+  original Qwen、DeepSeek rewrite、candidate Qwen，全部 pair 收口后再执行 16 个 DeepSeek FinalResponse。Qwen/
+  DeepSeek 各 32 次并独立记录 attempt/dispatch/response/verified usage/token/CNY；任一分母或 terminal 不完整时相关
+  aggregate 为 `null`。Source admission、双 opaque capability、exclusive marker、dispatch-before-call hash-chain
+  journal、hard-link artifact、strict validator 与 crash-only seal 只解决唯一评测的执行和证据可靠性。Task 9B
+  Reviewed Mock 永久 `qualityAuthority=none`；只有 Task 9C 才可能在 fresh 授权后调用真实 Qwen/DeepSeek。
+- Task 9C sealed Live 职责：唯一 run `28b5f92f...` 已按 source/data-boundary/authorization/3-credential/marker
+  顺序运行并正常发布 evidence。Guard `16/16` zero-call；Qwen `3/3/3/3`、DeepSeek `2/2/1/1`，第二条
+  DeepSeek rewrite `schema_invalid / 1/1/0/0` 后 breaker 将剩余 59 次调用收为 not-started。正式 semantic/P95/
+  token/CNY aggregate 全 `null`，gate 为 `task9_quality_gate_failed / qualityAuthority=none`。它只形成失败前缀和
+  durability authority，不形成 Retriever/FinalResponse 产品或质量 authority；一次性名额已消费且不得重跑。
+- Phase 6.9.8 Architecture Recovery R0--R4 职责：新 lineage 只定义独立评测 diagnostic/durability 信任边界，不进入当前产品数据流。R0
+  把第一方 adapter 的 Provider dispatch/response/usage 与 harness/runner 的本地返回生命周期分开，并为 rewrite、
+  Qwen embedding/ranking、FinalResponse stream/terminal/citation 分别冻结 strict stage/reason。R1 已落地 rewrite
+  子图；R2 又落地 Qwen/FinalResponse 子图。三个 session 都绑定一次性真实 family capability，Provider boundary
+  只由 terminal frozen snapshot 推导；第一条畸形 stream event 是 response observed 后的 event invalid，不是
+  response missing。R3 已将 runtime/candidate/local-authority/ranking/citation/Trace/cost/delivery/result 接入固定
+  source-admitted runner/validator；三类 runner observation 由各模块私有 WeakMap 单次签发，不能由共享调用方自报。
+  Diagnostic 只能包含 fixed enum/bucket 与 `rawDataRetained=false`，不能保存 raw、raw-derived hash、prompt/query/chunk/
+  answer、unknown key、credential、URL 或 raw error。R0--R4 external `providerCalls=0`，R4 reviewed Mock 形成的
+  authority 固定为 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`，只证明本地结构自洽，
+  不形成 Live、产品或 main authority。
+- Phase 6.9.8 Architecture Recovery R5 职责：在独立 source/tag/data-boundary/approval 下，一次性串联真实 DeepSeek
+  rewrite、Qwen original/candidate embedding retrieval 与 DeepSeek FinalResponse stream。固定 16 guard + 64 call
+  slots；DeepSeek 只生成 bounded rewrittenQuery/answer，Qwen 只提供 vector/usage，所有 owner、topK/filter、evidence
+  projection、citation、terminal、verified usage/cost 与 gate 仍由本地 authority 重建。固定 corpus 不读取
+  `retrievalAnchor/requiredTerms/recentTurns/activeContext` 生成 target；missing/extra/duplicate citation、suspicious
+  verifier、超预算和未知调用数均 fail-closed。R5 Live 前不进入 `/api/chat`、Trace、BackgroundJob、Outbox、Docker、
+  browser 或业务写入；本次 gate 失败只形成该 lineage 的一次失败 sealed evidence，R6 仍阻断。
 - Provider Transport Diagnostic 职责：Recovery R1 的新 adapter 只在实例内存中保存 frozen `version + subtype`，用 own data descriptor 和最多四层 cause 将 fetch throw 映射为九个固定类别；公共 runtime/error/Trace 仍只接收原有 `transport`。Recovery R2 仅在独立 zero-network canary runner 中用模块内 synthetic responder 消费该 adapter。Recovery R3 的真实 composition 仍与产品 Tutor/Organizer 分离，只能在 exact confirmation、专用 credential、clean/tracking source 和未消费 marker 同时满足时构造一次 transport；结果只进入 diagnostic-only artifact，不能反向诊断 V9，也不能自动成为 Provider 外部健康或 Agent 语义事实。
 - Provider Canary V2 职责：C1 的 proxy attestation 只存在于当前进程并只能消费一次；C2 public CLI 固定执行 preflight -> source -> approval/dedicated credential -> exclusive marker -> single fact-free dispatch -> terminal -> publication，不接受 transport 或输出注入。Marker、hash-chain journal 与 hard-link artifact 只解决一次性执行和证据 durability，不负责 Tutor/Organizer 语义、产品接线或业务写入。唯一 L1 已以 `complete / strict_response_with_verified_usage` 封存，但仍为 `qualityAuthority=none`；它只向 P1 提供一次 Provider health diagnostic，不得成为 semantic 或产品输入。
 - Small-sample G2 职责：public CLI 只接收 `args + AbortSignal`，固定 preflight -> source -> approval -> dedicated credential -> marker -> guards -> pairs -> publication；G2 当时要求未来 L2 source admission 绑定专用 approved tag，S2 本身不创建该 tag。Runner 先执行 8 guards，再串行推进 8 pairs，pair 内 Tutor/Organizer lane 各自拥有 budget/abort/timeout/terminal。Crash-only seal 只补当前开放/待锚定 pair 的零-wire reservation 并立即 `attempted_aborted`，后续 pair 为 `not_started_quality_breaker`；不读取 credential、不构造 transport、不调用 Provider，也不是 resume/replay。G2 只形成 `zero_provider_runner_durability`。
@@ -84,13 +207,19 @@
 用户输入文本
   -> ChatInputBar
   -> /api/chat
+  -> parse bounded request + provider mode/config metadata（尚不创建 runtime）
+  -> canonical Chat access
+       -> 无 token Mock：request-scoped anonymous context，认证 0 次
+       -> 任意非空 token：/auth/me 恰好一次，owner 只取 strict AuthUser.id
+       -> 无 token Live / invalid token / abort / binding failure：runtime 前终止
+  -> provider configured gate
+  -> authenticated 时用同一 opaque bearer 准备 Conversation context
   -> server-only Agent bundle 创建 Router/Verifier runtime、共享预算与独立 Tutor runtime/预算
   -> chat-agent-runtime 先执行 deterministic Router eligibility；歧义请求可调用 Router model candidate
   -> final tutor route 时先执行 Tutor policy；隐含/上下文/冲突意图可调用 Tutor model candidate
-  -> 有 accessToken 时检索知识库，命中后先执行 deterministic safety，再按 semantic-needed eligibility 调用 Verifier model candidate
-  -> resolveChatProviderStatus() 基于 env 与开发调试开关判断 mock / live
+  -> authenticated principal 时用同一 bearer 检索知识库；命中后先执行 deterministic safety，再按 semantic-needed eligibility 调用 Verifier model candidate
   -> buildChatRequestBudget() 统一预算 system prompt、activeStudyContext、近期聊天历史
-  -> 有 accessToken 时 best-effort 写入 /agent-traces 脱敏观测元数据
+  -> authenticated principal 时用同一 bearer best-effort 写入 /agent-traces 脱敏观测元数据
   -> mock data stream 或 OpenAI / DeepSeek SSE；request abort 传播到最终 streamText
   -> StreamingMarkdownRenderer 渐进渲染
   -> Dexie messages 本地缓存
@@ -119,14 +248,14 @@
 - `/api/chat` 使用同一个 `req.signal` 取消 conversation prepare、Tutor candidate 与最终 `streamText.abortSignal`；客户端断开后不继续生成最终流。已完成的上游调用不会伪装成未发生，Trace/usage 仍按各自 admission contract 处理。
 - `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Tutor 与 WrongQuestionOrganizer 的 V1--V9 Live 均已失败封存，产品验收没有启动。V9 R0--R4 证明 option selection、runner/durability 与 reviewed Mock 的 zero-provider 工程边界；唯一 R5 又只证明两条 lane 进入 durable dispatch 后在 response 前 transport/abort，仍没有真实语义、usage、费用、产品或质量 authority，也不证明 Router/API/最终流式 Chat 或 Organizer 产品真实质量。Memory 与其余未完成节点仍按各自后续任务推进。
 - `ConversationState` 已由 prepare 与 Chat history 读写/恢复；`ConversationSummary` 在 prepare 中按 12 条/70% 触发并持久化，摘要源只包含 USER/ASSISTANT。模型调用期间不持有数据库事务；成功输出经过常见凭据与 usage 检查后，Serializable 事务只复核目标水位内消息 hash，并用 summaryVersion + 旧水位 CAS 写入。更高 order 的新消息不使当前目标 stale，目标范围正文变化则拒绝推进。
-- Web request 携带 optional `conversationId`：首轮没有 id 时不调用 prepare，Chat sync 返回 id 后第二轮才进入。`/api/chat` 固定先完成 request/provider/live auth，再在 access token + id 同时存在时调用 prepare；默认 timeout 10 秒且限定 1~15 秒，并组合 request abort。network/timeout/5xx/schema failure 只生成固定 `degraded`，不泄露 raw error/token/summary，也不阻断 Mock streaming。
+- Web request 携带 optional `conversationId`：首轮没有 id 时不调用 prepare，Chat sync 返回 id 后第二轮才进入。`/api/chat` 固定先完成 bounded request/provider metadata 与 canonical `/auth/me` projection，再在 authenticated principal + id 同时存在时用同一 opaque bearer 调用 prepare；默认 timeout 10 秒且限定 1~15 秒，并传播同一个 request abort。network/timeout/5xx/schema failure 只生成固定 `degraded`，不泄露 raw error/token/summary，也不阻断 Mock streaming。
 - Context assembler 的 mandatory 是 base system prompt 与 latest non-empty user；Agent guidance、untrusted state guidance、OCR、recent complete turns、safe RAG、summary 是独立 bounded layer。agent/state 合计最多 10% 且分别记 token/drop metadata；OCR 当前题优先，recent 不留孤立旧 user/assistant，RAG 空间不足整层 drop 并同步清空 hits/verifier/safety/citations，summary 仅在确有 history dropped 时考虑。optional layer 不制造 413；summary 未纳入不回滚数据库水位。
 - Mock/live response 只通过 `x-prepmind-conversation-summary-status`、`x-prepmind-conversation-summary-version` 和 `x-prepmind-context-dropped-layers` 暴露固定状态；Agent Trace 只记录实际 conversationId、计数、版本与 bounded codes，不保存 summary、prompt、RAG chunk 或 state 正文。
 - PostgreSQL 继续是 ConversationState/ConversationSummary 权威源，Redis 只做服务端 public-state cache，Dexie v9 `conversationStates` 只保存 `activeGoal`、`activeQuestionId`、stateVersion、expiresAt、updatedAt 与身份键。local write/clear 按 user 串行，serverVersion 不低于 local 才覆盖；过期、坏 schema、key/user mismatch、logout/clear 与迟到请求均 fail-safe。Dexie 不存 summary、pending proposal、tool names、prompt 或 token，也不根据 activeQuestionId 伪造 OCR 题面。
 - Phase 6.9.3.5 已验证真实 OpenAI-compatible structured output 边界：共享 executor 对 strict object generation 固定使用 JSON mode，再交给 Zod schema、不可变预算、超时和 live 双开关；provider 原始错误、key 和 base URL 仍不出 adapter。DeepSeek Live summary 成功后，Web 只把安全 summary buffer 交给 assembler；Trace 记录 `summary=true` 与 `layerTokens=m/a/s/o/r/k/y`，不复制 summary/prompt/chunk。Mock/Live 验收结束后 server/web 恢复 Mock，合成用户、权威数据、Redis cache 与浏览器站点数据均清理。
 - ReviewAgent / PlannerAgent / MemoryAgent 不在每次 Chat 中自动执行；复习建议只通过 `/review-agent/suggestions` 在计划和今日任务界面读取，长期记忆只在 `/profile` 显式管理。
 - 当前不在 `/api/chat` 读取 `/user-memories`，也不把 `UserMemory` 自动注入 Chat prompt。
-- `/api/chat` 在有 access token 时会 best-effort 构造 Agent Trace payload 并调用 `/agent-traces`；trace 写入失败不影响流式回答，只通过 `x-prepmind-agent-trace-recorded=false` 暴露。
+- `/api/chat` 只有在 access token 已认证并形成 canonical principal 后才会 best-effort 构造 Agent Trace payload，并用同一 opaque bearer 调用 `/agent-traces`；anonymous 不创建 owner Trace，写入失败不影响流式回答，只通过 `x-prepmind-agent-trace-recorded=false` 暴露。
 - Agent Trace payload 在写入前会裁剪并脱敏用户输入预览、step summary 和错误信息；服务端也会再次裁剪和脱敏，防止保存 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`Authorization: Bearer ...` 或 `Cookie: ...` 等敏感片段。
 - `/agent-trace` 的 token 与成本只做估算，用于调试 Agent 链路和观察趋势，不作为供应商真实账单或财务凭证。
 - Chat / OCR 展示层的格式化不回写 `activeStudyContext`。
@@ -169,7 +298,7 @@ Agent Trace 边界：
 - Trace 是在线账号级观测能力，不进入 Dexie `mutationQueue`；离线或弱网时不补写历史 trace。
 - Trace 不保存完整 prompt、完整模型回答、完整 RAG chunk、access token、refresh token 或 API key。
 - `inputPreview`、`inputSummary`、`outputSummary` 和 `errorMessage` 只用于调试摘要，长度受 schema 与服务端双重限制。
-- 现有 fixed deterministic eval set 位于 `@repo/agent`，用于回归已实现 policy，不替代 live 输出体验验收。最终治理范围是 11 个逻辑节点加 Tool-Using Orchestrator；Retriever、FinalResponse 和 Orchestrator 仍需正式 node/graph contract 与独立验收。
+- 现有 fixed deterministic eval set 位于 `@repo/agent`，用于回归已实现 policy，不替代 live 输出体验验收。最终治理范围是 11 个逻辑节点加 Tool-Using Orchestrator；Retriever 已有正式 zero-provider node/port/baseline、evidence projector 与 query rewrite candidate，但仍需 Chat composition、paired quality gate、Live、产品和 graph 独立验收。FinalResponse 和 Orchestrator 仍需正式 node/graph contract 与独立验收。
 
 ## 4. RAG 知识库数据流
 
@@ -246,14 +375,42 @@ Phase 5.0 已完成 RAG 设计，Phase 5.1 已完成数据模型与 shared contr
 ```text
 用户提问
   -> ChatRuntimeProvider 将 accessToken 放入 /api/chat 请求体
-  -> /api/chat 使用最新用户消息调用 /knowledge/search
-  -> 无 token / 无资料 / 未命中 / 检索失败：普通 AI 回答
+  -> /api/chat 先经 /auth/me 建立 authenticated canonical principal
+  -> 使用同一绑定 bearer + 最新用户消息调用 /knowledge/search
+  -> anonymous / 无效 token / 无资料 / 未命中 / 检索失败：不进入 owner RAG 或继续普通 AI 回答
   -> 命中知识库：先过滤 high-risk chunks，medium-risk chunks 只作为可疑原文引用
   -> 调用 KnowledgeVerifierAgent 评估 raw retrieved chunks 与 safety metadata
   -> 注入过滤后的 chunks 与 verifier / safety guidance 到 system prompt
   -> AI 回答，并在助手消息末尾追加 Markdown 参考资料
   -> suspicious / conflict / insufficient 时追加“资料核对提示”
 ```
+
+Task 3 formal Retriever 数据流（尚未替换上面的 legacy Chat RAG composition）：
+
+```text
+authenticated AgentExecutionContextV1 + RetrieverRequestV1
+  -> exact runId/requestId/deadline/policy/context reference checks
+  -> anonymous / unsafe / credential / abort / expired deadline / policy drift
+       -> search=0 / rewrite=0 / fixed failed-or-skipped result
+  -> create opaque RetrieverSearchPortV1 bound to the exact context reference
+       -> WeakMap retains executor + scope; public port exposes schema version only
+  -> Web server-only adapter reads the same canonical bearer for this execution
+       -> POST trusted-base-url/knowledge/search
+       -> body={query, topK:8, minScore:0.72}; no ownerId/token/filter override
+       -> Nest JwtAuthGuard + CurrentUser resolves owner
+       -> Qwen 1536 embedding + PostgreSQL vector/keyword hybrid search + DONE filter
+       -> optional response requestId must equal current requestId
+  -> strict clone/schema -> duplicate merge -> stable score/tie ordering -> topK
+       -> blocked body replaced with fixed placeholder
+       -> strict RetrieverResultV1
+  -> safe Trace summary = query SHA + policy + hitCount + latency + fixed reason
+       -> no query/chunk body/owner/token
+```
+
+Task 3 的 PostgreSQL E2E 使用 fake 1536 embedding，因此上图的正式 Qwen 分支只描述现有后端 runtime contract，
+不是该 Task 的 Provider 执行证据。Task 3 完成时正式 Retriever node 尚未接入 `/api/chat`，当时只解锁 Task 4
+VerifiedEvidenceBundle/evidence projector；Task 4/5/6 现已完成，但正式 Retriever/FinalResponse 仍未接产品
+`/api/chat`，必须由 Task 7 完成 composition 与 terminal Trace。
 
 资料管理建议默认关闭 gate 时的 fallback 数据流：
 
@@ -947,8 +1104,287 @@ Architecture Recovery Provider Canary V2（D0/C1/C2/S1/L1 complete）
        -> Trace mock/completed/cost=0；top-level Mock token estimate is not Provider usage
        -> exact two-user/business/Outbox/browser cleanup；window remains visible at /login
        -> all Agent/replay/Live gates=false；no SR5 rerun；no SR6 replay re-enable
-  -> current next：Phase 6.9.8 RetrieverAgent / FinalResponseAgent formalization and communication contract
+  -> Phase 6.9.8 Task 0--8 complete：design + contracts + Chat access + Retriever/evidence/rewrite + final stream + composition/Trace + reviewed Mock/static
+  -> Task 9A complete：Qwen Beijing official price/endpoint/usage + strict direct transport / providerCalls=0
+  -> Task 9B complete：16 guards + 64 calls + dual-provider accounting + admission/durability/validator / providerCalls=0
+  -> Task 9C sealed failure：run 28b5f92f... / task9_quality_gate_failed / qualityAuthority=none
+       -> guard 16/16；Provider 5/64；rewrite strict 1/16；FinalResponse strict 0/16
+       -> rewrite_02 DeepSeek schema_invalid / wire 1/1/0/0；remaining 59 not-started
+       -> journal 134 / evidence_published / validator ok / recovery claim null
+       -> no retry/resume/replay/backfill；Task 10/11 and product/main remain blocked
+  -> Architecture Recovery R0--R4 complete / providerCalls=0 / qualityAuthority=none
+       -> three bounded diagnostic families -> module-private single-use observations
+       -> 16 guard first -> 16 serial rewrite pairs -> 16 FinalResponse -> 64 fixed call slots
+       -> runnerWire reservation/dispatch/harness-return/verified-result
+       -> providerWire executor/dispatch/response/verified-usage
+       -> first failure breaker；incomplete semantic/P95/token/CNY = null
+       -> source admission + exclusive marker + fsynced hash-chain journal
+       -> exclusive temp/hard-link artifact + strict validator + crash-only publication recovery
+       -> formal tag/marker/journal/artifact/claim = 0；R4 reviewed Mock/static completed
+  -> Architecture Recovery R4 complete / providerCalls=0 / qualityAuthority=none
+       -> Task 8 production node/ledger -> bounded projection -> R3 synthetic runner
+       -> guards 16/16 zero-call；rewrite/FinalResponse 16/16；diagnostic 64 applied
+       -> runnerWire/providerWire 64/64/64/64；synthetic cost 0.02951 CNY
+       -> aggregateVerifiedProviderCostCny null；formal evidence 0
+       -> gate architecture_recovery_mock_quality_not_evidence
+  -> Architecture Recovery R5 sealed failure / run 34eb99be... / qualityAuthority=none
+       -> guards 16/16 zero-call；external Provider calls 4 (Qwen 3 + DeepSeek 1)
+       -> second-pair DeepSeek provider_dispatch / unknown；diagnostic 5 terminal = 4 applied + 1 failed
+       -> rewrite strict 1/16；FinalResponse 0/16；remaining 59 not-started
+       -> semantic/P95/verified aggregate usage and cost null
+       -> journal 237 / evidence_published / validator ok / recovery claim null
+       -> no retry/resume/replay/backfill/seal/probe；R6/product/main/Phase 6.9.9+ remain blocked
 ```
+
+## Phase 6.9.8 Task 0--9C 数据流（含 Chat composition、Qwen transport 与 sealed Live failure）
+
+```text
+Next /api/chat composition root
+  -> authenticate through Nest JWT authority
+       -> AgentExecutionContextV1.principal
+       -> ownerId remains local；never enters DTO/model/header/Trace
+       -> invalid token = 401；anonymous owner/live path = provider zero-call
+  -> minimal realtime Trace start（RUNNING + pending/zero placeholders）
+  -> RouterAgent local/model hybrid decision
+       -> canonical requiresRag + route；model cannot open owner access
+  -> RetrieverAgent（Task 3 node/port + Task 5 candidate；Task 7 composition active）
+       -> optional default-off DeepSeek V4 Pro bounded query rewrite candidate
+            -> local eligibility + gate + budget + timeout + abort
+            -> model returns rewrittenQuery only
+            -> local validator/merger selects original or rewritten query
+       -> composition-held credential calls authenticated /knowledge/search
+            -> Qwen text-embedding-v4 / 1536
+            -> PostgreSQL vector + keyword hybrid search
+            -> Chunk.userId + Document.userId + Document.status=DONE
+       -> strict RetrieverResultV1；no owner/query/chunk body in Trace
+  -> KnowledgeVerifierAgent? + deterministic SafetyGuard
+       -> local evidence projector（Task 4 contract；Task 7 composition active）
+       -> VerifiedEvidenceBundleV1 max 4 entries
+       -> blocked/cross-owner/credential/injection/unknown-safety body removed
+  -> realtime Trace prepare（fixed summaries/counts + preparation digest）
+  -> FinalResponseAgent（Task 6 node/adapter；Task 7 composition active）
+       -> model-visible evidence only citationId/non-sensitive ordinal sourceLabel/excerpt/trustLabel
+       -> DeepSeek V4 Pro non-thinking streaming body
+       -> local renderer owns citation events and tool-execution status
+       -> local runtime owns verified usage/cost/finish reason
+       -> exactly one server-ledger completed/failed/aborted terminal；not a network-delivery guarantee
+  -> Agent Trace terminal finalization
+       -> running before stream；finished only after terminal
+       -> TTFT/total/verified usage separated from estimates
+       -> trace unavailable keeps delivered answer but removes quality authority
+       -> finalize CAS；prepare ACK uncertain 时只可原子补写同一 preparation
+       -> Response/body parent abort cancels the exact request scope and underlying reader
+
+Task 1 actual shared-contract effect
+  -> @repo/agent/realtime-chat + root export
+  -> safe plain snapshot -> strict Zod -> cross-field invariants -> deep-frozen value
+  -> authenticated owner bound to one opaque auth receipt/request/bearer reference
+  -> AbortSignal remains non-enumerable process-local control, absent from serialized DTO
+  -> VerifiedEvidenceBundle accepted only through local constructor; model projection exposes
+     citationId/sourceLabel/excerpt/trustLabel only
+  -> stream ledger validates exact sequence, one terminal, citationId -> sourceLabel authority,
+     and pre-token/partial/abort failure invariants
+  -> Task 1 当时未修改 apps/web + apps/server runtime；该历史边界不由后续任务倒写
+  -> providerCalls=0 / credentialReads=0 / Docker=0 / browser=0
+  -> no BackgroundJob or Outbox for synchronous request/stream
+  -> future async generation requires BackgroundJob + Durable Outbox + idempotency key together
+  -> Task 1 当时只解锁 Task 2 canonical principal / Chat access
+
+Task 2 actual canonical Chat access effect
+  -> bounded request + provider metadata（no runtime）
+  -> no-token Mock => anonymous_${requestId} / authCalls=0
+  -> no-token Live => 401 before runtime
+  -> non-empty Mock/Live token => exactly one /auth/me
+       -> strict AuthUser.id => only authenticated owner authority
+       -> invalid/expired/malformed => fixed 401
+       -> pre/auth-time abort => fixed 499
+  -> WeakMap bearer capability + auth response/request/executionContext reference binding
+       -> clone / cross-owner / cross-request / forged access => fail-closed
+  -> provider configured gate -> Conversation prepare -> Agent runtime creation
+  -> authenticated Conversation/RAG/owner Trace reuse the same bound bearer
+  -> request body userId/ownerId/principal rejected；owner/token absent from prompt/header/Trace
+  -> concurrent reverse auth completion remains request/owner/token isolated
+  -> providerCalls=0 / credentialReads=0 / Docker=0 / browser=0
+  -> Task 2 historical boundary：Retriever/FinalResponse nodes were still absent；Task 3 was unlocked
+
+Task 3 actual Retriever effect
+  -> packages/rag opaque WeakMap port; exact execution-context reference binding
+  -> @repo/agent Retriever node with fixed topK=8/minScore=0.72/knowledge_document/DONE
+  -> original query only；rewrite gate_off / attempted=false
+  -> Web adapter reads canonical bearer per execution and calls authenticated /knowledge/search
+       -> owner absent from body；backend JWT/CurrentUser remains authority
+       -> trusted env URL only；optional response requestId exact correlation
+  -> single search; strict clone/schema; stable dedupe/ranking/tie; fixed safe degradation
+  -> blocked chunk body replaced before public result; Trace stores query SHA, no raw body/owner/token
+  -> deterministic 16 guard + 16 runtime baseline
+       -> manifest 8a1788aa...654d / report a1478f22...6442
+       -> Recall@5=1 / nDCG@5=0.813219437888 / Top1=0.571428571429
+       -> expected no-hit=1 / critical target recall=1
+       -> Qwen/rewrite/FinalResponse/Provider calls=0
+       -> qualityAuthority=deterministic_baseline_only
+  -> PostgreSQL owner-isolation E2E uses fixed fake 1536 embedding; not product/Provider authority
+  -> no Chat product wiring or terminal Trace yet；Task 4 does not replace legacy Chat RAG composition
+
+Task 4 actual evidence projector effect
+  -> formal Retriever result -> exact AgentExecutionContextV1 WeakMap binding
+  -> deterministic owner/SafetyGuard removes blocked/unknown/injection/credential/high-risk/control/cross-owner body
+  -> Verifier trusted/suspicious/conflict/insufficient/skipped + unavailable can only preserve or tighten
+  -> VerifiedEvidenceBundle max 4 entries × 700 UTF-16 code units
+       -> stable score/tie sorting + documentId/chunkId citation identity
+       -> local sourceLabel = 资料 1..N
+  -> model projection only citationId/sourceLabel/excerpt/trustLabel
+  -> local structured allowlist/citation + legacy-compatible Markdown fragment
+  -> ragIncluded=false drops bundle/allowlist/citation/Markdown as one layer
+  -> FinalResponse request/model projection requires the same exact context and run/request/deadline
+  -> Trace summary only fixed disposition/status/reason/counts；no evidence body/owner/token/credential
+  -> providerCalls=0 / credentialReads=0 / Docker=0 / browser=0
+  -> authority=zero_provider_verified_evidence_projector
+  -> only Task 5 Retriever query rewrite candidate unlocked
+
+Task 5 actual query rewrite effect
+  -> retriever-query-rewrite-model-candidate-v1 / DeepSeek V4 Pro non-thinking strict { rewrittenQuery }
+  -> requiresRag + authenticated principal + exact execution-context binding before any runtime access
+  -> original / every recent turn / active question / active goal scanned as separate complete safety fields
+  -> standalone/no-context, explicit query, unsafe/credential/instruction, abort/deadline, invalid config = zero-call
+  -> fixed local policy remains topK=8 / minScore=0.72 / knowledge_document / DONE
+  -> fresh isolated 1 call / 1200 input / 160 output / 0.005 CNY budget per invocation
+  -> Web-only lazy credential/runtime factory；Compose does not expose the component key to server/worker/admin
+  -> at most one structured invocation / no retry
+  -> local validator preserves entity/formula/number/constraint/context anchors and selects original or rewrite
+  -> runtime/schema/usage/abort/validator failure searches with original query
+  -> observation contains no query/turn/context/prompt/owner/credential/endpoint/raw error
+  -> reviewed Mock qualityAuthority=none；Provider/Qwen calls=0
+  -> no /api/chat product wiring, Docker/API/browser/main authority, BackgroundJob or Outbox
+  -> authority=zero_provider_retriever_query_rewrite_candidate
+  -> Task 5 当时只解锁 Task 6 FinalResponseAgent + stream contract
+
+Task 6 actual FinalResponse stream effect
+  -> @repo/ai fixed DeepSeek V4 Pro non-thinking streaming adapter
+       -> exact /v1/chat/completions / stream=true / include_usage=true / max output 1200
+       -> no reasoning / tools / source / file / retry；strict finish + verified usage parity
+  -> @repo/agent formal FinalResponse node
+       -> authenticated + exact execution-context binding + full-field safety before executor
+       -> deadline + parent abort + 20000ms timeout / one call / 2500 input / 1200 output / 0.015 CNY
+       -> no-RAG/trusted/conflict/insufficient consume only locally projected model fields
+       -> local citationId/sourceLabel allowlist；model cannot create citation/tool authority
+       -> first-token failure is honest unavailable；post-token failure retains partial text without citation success
+       -> server ledger seals contiguous sequence and exactly one completed/failed/aborted terminal
+       -> citation/completed delivery failure records client_disconnected without rewriting local completed authority
+       -> this is not a network exactly-once guarantee and never schedules a background retry
+  -> Web server-only default-off config/runtime + dedicated component credential
+       -> Compose injects gate/timeout/key into web only；generic/sibling credentials cannot substitute
+  -> providerCalls=0 / credentialReads=0 / product Docker/API/browser=0
+  -> no /api/chat composition / terminal Trace / 48-case / controlled-Live / main authority
+  -> authority=zero_provider_final_response_stream_contract / qualityAuthority=none
+  -> Task 6 historical checkpoint only unlocked Task 7
+
+Task 7 actual Chat composition + terminal Trace effect
+  -> canonical auth before every authenticated Agent/runtime capability
+  -> anonymous Mock exits before Provider config and all Agent runtimes
+  -> minimal realtime Trace start -> context/Router/Tutor/Retriever/Verifier/evidence -> prepare -> stream -> finalize
+  -> start stores no query/chunk/owner/token/prompt/answer and uses pending/zero placeholders
+  -> prepare stores fixed node/status/reason/count summaries only；digest makes retries idempotent
+  -> finalize CAS permits exactly one terminal；legacy overwrite/late prepare/conflicting retry returns 409
+  -> Retriever transport/schema failure continues as no-RAG；ragIncluded=false clears bundle/citation/Markdown together
+  -> principal binding invalid=403；abort=499；other invalid composition=400
+  -> AI SDK text channel carries body + local citation Markdown + honest failure text only
+  -> sequence/citation lockstep/terminal-last/exactly-one terminal fail-closed
+  -> Response.body.cancel and parent request abort both cancel the underlying reader once and clean listeners
+  -> synchronous path creates no BackgroundJob/Outbox and performs no background replay
+  -> providerCalls=0；model gates default-off；qualityAuthority=none
+  -> DB E2E updated but environment_blocked because Redis/PostgreSQL were not running
+  -> no Docker/API/browser/48-case/controlled-Live/main authority
+  -> authority=zero_provider_chat_composition_terminal_trace
+  -> Task 7 当时只解锁 Task 8；该 Task 现已完成
+
+Task 8 actual reviewed Mock/static effect
+  -> independent phase-6.9.8-retriever-final-response-v1 lineage
+       -> fixed 16 guard + 16 rewrite + 16 FinalResponse = 48 cases
+       -> manifest/policy/factory/report SHA 3734b698...31d8 / e7f19f34...1464 / d9fa0ddc...c51 / 02294586...1be
+  -> guard cases cross production eligibility/context authority
+       -> 16/16 pass + 16/16 zero-call
+  -> rewrite pairs cross production Retriever node twice
+       -> original query -> fixed ranked fake search
+       -> actual bounded prompt -> prompt-only Mock runtime -> local validator/merger -> same search authority
+       -> strict/usage/runtime 16/16/16
+       -> Recall@5 0.875 -> 1；nDCG@5 0.56923614767 -> 1；uplift 0.43076385233
+       -> critical recall / intent preservation 1/1；unsafe rewrite=0
+  -> FinalResponse cases cross Retriever + evidence projector + strict request + production node/ledger
+       -> actual bounded stream prompt -> prompt-only Mock executor；expected enters post-run scorer only
+       -> strict/terminal/usage 16/16/16
+       -> grounded/citation precision/citation recall/critical notice 1/1/1/1
+       -> false tool success / false citation 0/0
+  -> synthetic DeepSeek estimate 0.027366 CNY；P95/Qwen verified/aggregate verified cost=null
+  -> report excludes prompt/answer/owner/chunk/credential/raw error；canonical bytes + SHA strict validation
+  -> provider/credential/Qwen calls 0/0/0；formal marker/journal/evidence/recovery 0/0/0/0
+  -> source admission checks Git root/branch/HEAD/upstream/origin/clean + recomputes exact-commit blob bundle SHA
+       -> repo ignore policy excludes only local .codex/ state；other untracked/tracked drift remains dirty
+       -> forged SHA / ref drift / dirty tree / missing blob fail-closed
+       -> sourceAdmissionExecuted=false；not Task 9 admission
+  -> mock_quality_not_evidence / qualityAuthority=none
+  -> Task 8 did not authorize Live；Task 9A later fills Qwen transport/price only
+
+Task 9A actual Qwen transport effect
+  -> official Beijing profile qwen-text-embedding-v4-cn-beijing-cny-2026-08-05
+       -> text-embedding-v4 / 1536 / 0.5 CNY per 1M input tokens
+       -> workspace or legacy Beijing endpoint only；exact /compatible-mode/v1/embeddings
+  -> request 1..10 trimmed strings；Task 9 runner remains one query per call
+       -> direct fetch exactly once / no retry / caller AbortSignal / redirect=error
+  -> response exact list/model/id/data/usage
+       -> unique continuous index -> ordered 1536 finite non-zero vectors
+       -> prompt_tokens == total_tokens <= inputCount × 8192
+       -> local verified CNY recomputation；no raw provider error retention
+  -> injected fetch => synthetic_test；real Provider/credential/formal evidence=0
+  -> Task 9 worst-case Qwen budget 32 calls / 262144 input tokens / 0.131072 CNY
+  -> authority=zero_provider_qwen_embedding_transport_price_contract / qualityAuthority=none
+  -> Task 9B runner/durability subsequently completed
+
+Task 9B fixed eval effect
+  -> 16 guards first / all zero-call
+  -> 16 rewrite pairs serial
+       -> original retrieval：Qwen text-embedding-v4
+       -> query rewrite：DeepSeek V4 Pro non-thinking
+       -> candidate retrieval：Qwen text-embedding-v4
+  -> 16 FinalResponse after every pair：DeepSeek V4 Pro non-thinking stream
+  -> fixed call schedule 64
+       -> Qwen 32 / 262144 input tokens max / 0.131072 CNY max
+       -> DeepSeek 32 / 0.32 CNY max
+       -> aggregate 0.451072 CNY max
+       -> incomplete denominator/usage/price/terminal => related aggregate=null
+  -> source admission
+       -> branch == fixed branch
+       -> HEAD == upstream == origin branch == approved source tag commit
+       -> clean tree + formal Task 9C files=0 + exact-commit source bundle SHA
+       -> runner/reservation consume separate WeakMap capabilities once
+       -> reservation rechecks live source observation before marker
+  -> durability
+       -> exclusive marker -> attempt_reserved
+       -> call_reserved -> dispatch_started -> response_received -> usage_verified -> call_terminal
+       -> run_terminal -> publication_started -> hard-link artifact -> evidence_published
+       -> strict validator recomputes journal/report/gate/logical+physical SHA/allowed files
+       -> crash-only seal closes durable prefix；no credential/transport/retry/resume/replay/backfill
+  -> Reviewed Mock
+       -> Qwen/DeepSeek wire+usage 32/32/32/32 each
+       -> rewrite nDCG 0.56923614767 -> 1；FinalResponse/safety full pass
+       -> task9b_mock_quality_not_evidence / qualityAuthority=none
+  -> real Provider/credential/Qwen external/formal evidence 0/0/0/0
+  -> Task 9C later consumed the only Live admission
+       -> source/tag commit 66a009dd... / source bundle 2c1b2bb3... / 3 credential reads
+       -> 16/16 guards；4 calls succeeded / 1 failed / 59 not_started_quality_breaker
+       -> Qwen 3/3/3/3；DeepSeek 2/2/1/1
+       -> rewrite_02 DeepSeek strict schema/contract failed after dispatch；outer wire 1/1/0/0
+       -> semantic/P95/provider aggregate cost null；task9_quality_gate_failed / qualityAuthority=none
+       -> 134-record journal -> evidence_published；validator ok；no recovery claim
+       -> one-shot consumed；no retry/seal/probe；Task 10/11 and Docker/main remain blocked
+```
+
+Task 6--9C 完整证据见
+`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
+`docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md` 与
+`docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`。
 
 ```text
 P1/G1/G2 Small-sample Semantic Gate（design + contract/baseline + durability / providerCalls=0）

@@ -5,6 +5,9 @@ import {
   agentTraceCreateRequestSchema,
   agentTraceDetailResponseSchema,
   agentTraceListResponseSchema,
+  agentTraceRealtimeFinalizeRequestSchema,
+  agentTraceRealtimePrepareRequestSchema,
+  agentTraceRealtimeStartRequestSchema,
   agentTraceSummaryResponseSchema,
   type AgentTraceCreateRequest,
 } from '@repo/types/api/agent-trace';
@@ -133,6 +136,163 @@ describe('AgentTracesController (e2e)', () => {
       .get(`/agent-traces/${runId}`)
       .set('Authorization', `Bearer ${other.accessToken}`)
       .expect(404);
+  });
+
+  it('seals realtime Trace with monotonic terminal CAS and unique direct modelCallId', async () => {
+    const owner = await registerAndLogin('agent-traces-realtime-owner');
+    const other = await registerAndLogin('agent-traces-realtime-other');
+    const runId = `trace-realtime-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const modelCallId = `model-call-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const start = realtimeStartPayload(runId, modelCallId);
+
+    const startResponse = await request(server)
+      .post('/agent-traces/realtime')
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(start)
+      .expect(201);
+    const running = agentTraceDetailResponseSchema.parse(
+      getSuccessData(startResponse),
+    );
+    expect(running.run.status).toBe('running');
+    expect(running.run.modelCallId).toBe(modelCallId);
+    expect(running.run.route).toBeNull();
+    expect(running.run.modelProvider).toBe('pending');
+    expect(running.run.inputPreview).toBeUndefined();
+    expect(running.run.inputHash).toBeUndefined();
+    expect(running.run.finishedAt).toBeNull();
+    expect(running.steps).toEqual([]);
+
+    await request(server)
+      .post('/agent-traces/realtime')
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(start)
+      .expect(201);
+    await request(server)
+      .post('/agent-traces')
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(createTracePayload(runId))
+      .expect(409);
+    await request(server)
+      .post('/agent-traces/realtime')
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(realtimeStartPayload(`${runId}-other`, modelCallId))
+      .expect(409);
+
+    const preparation = realtimePreparePayload(start);
+    const preparedResponse = await request(server)
+      .patch(`/agent-traces/realtime/${runId}/prepare`)
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(preparation)
+      .expect(200);
+    const preparedRaw = getSuccessData<{ run: Record<string, unknown> }>(
+      preparedResponse,
+    );
+    expect(Object.hasOwn(preparedRaw.run, 'realtimePreparedAt')).toBe(false);
+    expect(Object.hasOwn(preparedRaw.run, 'realtimePreparationDigest')).toBe(
+      false,
+    );
+    await request(server)
+      .patch(`/agent-traces/realtime/${runId}/prepare`)
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(preparation)
+      .expect(200);
+    await request(server)
+      .patch(`/agent-traces/realtime/${runId}/prepare`)
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send({
+        ...preparation,
+        preparation: {
+          ...preparation.preparation,
+          modelName: 'tampered-model',
+        },
+      })
+      .expect(409);
+
+    const terminal = realtimeFinalizePayload(start);
+    await request(server)
+      .patch(`/agent-traces/realtime/${runId}/terminal`)
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send({
+        ...terminal,
+        preparation: { ...terminal.preparation, modelName: 'tampered-model' },
+      })
+      .expect(409);
+    const terminalResponse = await request(server)
+      .patch(`/agent-traces/realtime/${runId}/terminal`)
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(terminal)
+      .expect(200);
+    const completed = agentTraceDetailResponseSchema.parse(
+      getSuccessData(terminalResponse),
+    );
+    expect(completed.run.status).toBe('completed');
+    expect(completed.run.firstTokenLatencyMs).toBe(40);
+    expect(completed.run.verifiedInputTokens).toBe(256);
+    expect(completed.run.verifiedCostCny).toBe(0.00096);
+
+    await request(server)
+      .patch(`/agent-traces/realtime/${runId}/terminal`)
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(terminal)
+      .expect(200);
+    await request(server)
+      .patch(`/agent-traces/realtime/${runId}/terminal`)
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send({ ...terminal, totalDurationMs: terminal.totalDurationMs + 1 })
+      .expect(409);
+    await request(server)
+      .post('/agent-traces/realtime')
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(start)
+      .expect(409);
+    await request(server)
+      .post('/agent-traces')
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(createTracePayload(runId))
+      .expect(409);
+    await request(server)
+      .patch(`/agent-traces/realtime/${runId}/prepare`)
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(preparation)
+      .expect(409);
+    await request(server)
+      .patch(`/agent-traces/realtime/${runId}/terminal`)
+      .set('Authorization', `Bearer ${other.accessToken}`)
+      .send(terminal)
+      .expect(404);
+
+    const concurrentRunId = `${runId}-concurrent`;
+    const concurrentStart = realtimeStartPayload(
+      concurrentRunId,
+      `${modelCallId}-concurrent`,
+    );
+    await request(server)
+      .post('/agent-traces/realtime')
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(concurrentStart)
+      .expect(201);
+    await request(server)
+      .patch(`/agent-traces/realtime/${concurrentRunId}/prepare`)
+      .set('Authorization', `Bearer ${owner.accessToken}`)
+      .send(realtimePreparePayload(concurrentStart))
+      .expect(200);
+    const concurrentTerminal = realtimeFinalizePayload(concurrentStart);
+    const concurrentResults = await Promise.all([
+      request(server)
+        .patch(`/agent-traces/realtime/${concurrentRunId}/terminal`)
+        .set('Authorization', `Bearer ${owner.accessToken}`)
+        .send(concurrentTerminal),
+      request(server)
+        .patch(`/agent-traces/realtime/${concurrentRunId}/terminal`)
+        .set('Authorization', `Bearer ${owner.accessToken}`)
+        .send({
+          ...concurrentTerminal,
+          totalDurationMs: concurrentTerminal.totalDurationMs + 1,
+        }),
+    ]);
+    expect(concurrentResults.map(({ status }) => status).sort()).toEqual([
+      200, 409,
+    ]);
   });
 
   it('atomically replaces command_pending steps for the same owner and runId', async () => {
@@ -311,6 +471,90 @@ function commandTracePayload(
           state === 'pending'
             ? 'state=pending;admission=trace_persisted'
             : 'state=applied;authority=local_command',
+        errorMessage: null,
+      },
+    ],
+  });
+}
+
+function realtimeStartPayload(runId: string, modelCallId: string) {
+  const base = createTracePayload(runId);
+  return agentTraceRealtimeStartRequestSchema.parse({
+    runId,
+    modelCallId,
+    conversationId: null,
+    mode: 'mock',
+    startedAt: base.startedAt,
+  });
+}
+
+function realtimePreparePayload(
+  start: ReturnType<typeof realtimeStartPayload>,
+) {
+  return agentTraceRealtimePrepareRequestSchema.parse({
+    runId: start.runId,
+    modelCallId: start.modelCallId,
+    preparation: {
+      route: 'rag_answer',
+      confidence: 0.91,
+      modelProvider: 'mock',
+      modelName: 'mock-local-v1',
+      inputTokenEstimate: 500,
+      outputTokenEstimate: 1200,
+      maxOutputTokens: 1200,
+      pricingKnown: false,
+      costEstimate: 0,
+      ragHitCount: 1,
+      verifierStatus: 'trusted',
+      verifierChunkCount: 1,
+      degraded: false,
+      preparedAt: '2026-06-28T08:00:01.000Z',
+      steps: [
+        {
+          node: 'RouterAgent',
+          status: 'completed',
+          startedAt: start.startedAt,
+          finishedAt: '2026-06-28T08:00:00.020Z',
+          durationMs: 20,
+          inputSummary: 'scope=canonical_route',
+          outputSummary: 'route=rag_answer',
+          errorMessage: null,
+        },
+      ],
+    },
+  });
+}
+
+function realtimeFinalizePayload(
+  start: ReturnType<typeof realtimeStartPayload>,
+) {
+  const preparation = realtimePreparePayload(start);
+  return agentTraceRealtimeFinalizeRequestSchema.parse({
+    runId: start.runId,
+    modelCallId: start.modelCallId,
+    status: 'completed',
+    pricingKnown: true,
+    degraded: false,
+    finishedAt: '2026-06-28T08:00:02.000Z',
+    totalDurationMs: 2000,
+    firstTokenLatencyMs: 40,
+    finishReason: 'stop',
+    verifiedInputTokens: 256,
+    verifiedOutputTokens: 32,
+    priceProfile: 'deepseek-v4-pro-cny-2026-07-15',
+    verifiedCostCny: 0.00096,
+    qualityAuthority: 'none',
+    preparation: preparation.preparation,
+    steps: [
+      ...preparation.preparation.steps,
+      {
+        node: 'FinalResponseAgent',
+        status: 'completed',
+        startedAt: '2026-06-28T08:00:01.000Z',
+        finishedAt: '2026-06-28T08:00:02.000Z',
+        durationMs: 1000,
+        inputSummary: 'scope=final_response',
+        outputSummary: 'disposition=completed finish=stop',
         errorMessage: null,
       },
     ],

@@ -26,14 +26,11 @@ register(
   import.meta.url,
 );
 
-const { orchestrateChatModelAgents } = await import(
-  './chat-model-agent-orchestration.ts'
-);
+const { orchestrateChatModelAgents } = await import('./chat-model-agent-orchestration.ts');
 
 const ELIGIBLE_ROUTER_TEXT =
   '\u7ed3\u5408\u6211\u7684\u7b14\u8bb0\u8bb2\u4e00\u4e0b\u8fd9\u9053\u9898\u3002';
-const CONFLICT_QUERY =
-  '\u673a\u4f1a\u6210\u672c\u7684\u5b9a\u4e49\u662f\u4ec0\u4e48\uff1f';
+const CONFLICT_QUERY = '\u673a\u4f1a\u6210\u672c\u7684\u5b9a\u4e49\u662f\u4ec0\u4e48\uff1f';
 const CANARY = 'CANARY_RAW_ROUTER_FAILURE_prompt_key_url';
 
 test('orchestration helper is explicitly server-only', async () => {
@@ -110,9 +107,7 @@ test('continues the exact Router budget and signal through an actual verifier se
     bundle,
     messages: [{ role: 'user', content: ELIGIBLE_ROUTER_TEXT }],
     activeContext: null,
-    runId: 'run_orchestration_shared',
-    userId: 'user_shared',
-    signal: controller.signal,
+    executionContext: executionContext('run_orchestration_shared', controller.signal),
   });
 
   assert.equal(createBudgetCalls, 1);
@@ -186,9 +181,7 @@ test('disabled gates never touch hostile runtimes and preserve one continuous bu
     bundle,
     messages: [{ role: 'user', content: ELIGIBLE_ROUTER_TEXT }],
     activeContext: null,
-    runId: 'run_orchestration_disabled',
-    userId: 'user_disabled',
-    signal: controller.signal,
+    executionContext: executionContext('run_orchestration_disabled', controller.signal),
   });
 
   assert.equal(createBudgetCalls, 1);
@@ -254,17 +247,12 @@ test('returns a safe verifier context when the eligible Router runtime fails', a
     bundle,
     messages: [{ role: 'user', content: ELIGIBLE_ROUTER_TEXT }],
     activeContext: null,
-    runId: 'run_orchestration_fallback',
-    userId: 'user_fallback',
-    signal: new AbortController().signal,
+    executionContext: executionContext('run_orchestration_fallback'),
   });
 
   assert.equal(routerInvokes, 1);
   assert.equal(result.agentExecution.decision.route, 'rag_answer');
-  assert.notEqual(
-    result.agentExecution.routerObservation.disposition,
-    'candidate_applied',
-  );
+  assert.notEqual(result.agentExecution.routerObservation.disposition, 'candidate_applied');
   assert.equal(result.verifierModel.budget, result.agentExecution.budget);
   assert.equal(JSON.stringify(result).includes(CANARY), false);
 });
@@ -272,11 +260,7 @@ test('returns a safe verifier context when the eligible Router runtime fails', a
 function makeBundle(
   overrides: Pick<
     ChatModelAgentRuntimeBundle,
-    | 'routerEnabled'
-    | 'verifierEnabled'
-    | 'routerRuntime'
-    | 'verifierRuntime'
-    | 'createBudget'
+    'routerEnabled' | 'verifierEnabled' | 'routerRuntime' | 'verifierRuntime' | 'createBudget'
   >,
 ): ChatModelAgentRuntimeBundle {
   return {
@@ -294,6 +278,16 @@ function makeBundle(
       configured: true,
     },
   };
+}
+
+function executionContext(runId: string, signal: AbortSignal = new AbortController().signal) {
+  return Object.freeze({
+    runId,
+    requestId: `request_${runId}`,
+    principal: Object.freeze({ kind: 'anonymous' as const }),
+    deadlineAt: '2026-08-04T12:00:00.000Z',
+    signal,
+  });
 }
 
 function throwingRuntime(message: string): ModelAgentRuntime {

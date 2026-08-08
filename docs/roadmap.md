@@ -1,8 +1,81 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V9 controlled-Live 均已以 `quality_gate_failed` 封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard；pair 0 两条 lane 各 dispatch 一次但均无 Provider response，Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全 `null`。Marker/journal/evidence 已 seal，validator `ok=true/filesChecked=1`，无 recovery claim；R6/R7/main、Phase 6.9.8 与后续阶段被阻断。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
+> 当前原子任务（2026-08-08）：Phase 6.9.8 Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。
+> run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上以
+> `transport_reentry_v2_l1_controlled_canary_passed` 收口，`3` slots、Provider calls `3`、usage `145/28/173`、费用
+> `0.000573 CNY`、journal `16`、validator `ok=true`；authority 仅为 transport diagnostic、`qualityAuthority=none`。
+> 一次性名额已消费，禁止 retry/resume/replay/backfill、recovery/seal 或追加 Provider 探测。
+> 新 lineage `phase-6.9.8-retriever-final-response-transport-reentry-v2` 不复用旧 T3 marker/authorization/evidence；C1
+> 先完成 root launcher 与 dedicated projection，C2 再将三项 projection 收口为 opaque single-use configuration
+> capability，并落地 `rewrite -> qwen -> final_response` 固定三槽、exclusive marker、reservation-before-dispatch、
+> fsynced hash-chain journal、hard-link artifact、strict validator 和 crash-only recovery。C2 focused `15/15`、Agent
+> full `1387/1387`；真实 `.env`/credential、Provider、formal evidence、Docker/API/browser 与业务写入均为 `0`，
+> authority=`zero_provider_transport_reentry_v2_c2 / qualityAuthority=none`。S1 随后已完成三个 bounded synthetic
+> first-party adapter、wire/usage/fault matrix 与 reviewed Mock/static；S1 authority 为
+> `zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。S1 source admission 已修复历史 `.tmp` 误计并在
+> clean branch/HEAD/upstream/origin 上完成 `git_verified / formalArtifactCount=0` 回放；focused（S1+C2）`22/22`、
+> Agent full `1394/1394`。V2 L1 已随后完成并封存，下一任务仅为 P1 zero-provider semantic-gate；设计、计划、L1 sealed
+> 与 C1/C2 验收见
+> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
+> S1 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
+> L1 zero-provider implementation 与 root-env diagnosis 验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
 >
-> 用户已作出独立路线决策：停止继续复制 V10/V11 runner/lineage，先执行 Phase 6.9.7 Architecture Recovery。Recovery R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 Full-gate L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。Full-gate Schema Recovery SR0--SR4 随后完成 zero-provider 设计、TDD、robustness、独立 runner/durability 与 reviewed Mock/static；SR4 仍只有 Mock authority。唯一 SR5 controlled-Live run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已得到 guards `24/24`、strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`、paired P95 `2240ms`、费用 `0.067632 CNY`，并以 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal；journal `628`、validator `ok=true`、recovery claim=0。SR6 随后在 `providerCalls=0` 边界完成 Tutor/Organizer Docker/API/可见浏览器/Trace/forced-failure/权限隔离与精确清理；`sr5_sealed_replay` 只绑定 SR5 artifact SHA 并从当前 bounded prompt 生成 deterministic Mock，不重放 Provider response。SR7 又完成 main 合并、远程发布与 default-off Docker/API/可见浏览器/Trace/精确清理；精确 step-check 路由修复后为 `tutor/step_check`，candidate zero-call/0-token/`LIVE_CALLS_DISABLED`。SR5/L3/SR4 authority 均保持不可变。Phase 6.9.7 已完成，当前唯一下一原子任务是 Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化与通信 contract；Phase 6.10 与后续阶段仍阻断。
+> 历史封存结果（2026-08-07）：Phase 6.9.8 Transport Evidence Recovery T3 controlled canary 已按一次性授权执行并失败封存。
+> source admission 绑定 branch/HEAD/upstream/origin/approved ref、clean tree、formal artifact=0、T2 gate 与 source
+> bundle SHA；三槽位顺序固定为 `rewrite -> qwen -> final_response`，最多 3 slots、预算上限 `0.024096 CNY`、首错
+> breaker、fresh proxy nonce 与 exact data-boundary/authorization reader 均已通过 focused `12/12`（49 assertions）。
+> Agent full `1360/1360`（23805 expect()，169 files）、typecheck/lint/Prettier/`git diff --check` 通过；唯一 T3 run
+> `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 late-bound credential gate 以
+> `transport_evidence_t3_controlled_canary_failed` 停止，planned/started/completed=`3/0/0`，breaker reason=`configuration`，
+> Provider calls=`0`、credential reads=`0`，三个 suffix lane 均为 `not_started_quality_breaker`。Journal `7`、validator
+> `ok=true`，report logical SHA=`8d529bb7...4875d1`，physical artifact SHA=`50beb053...7ee9c`，authority=
+> `controlled_live_transport_evidence_t3 / qualityAuthority=none`。这是 CLI/configuration 失败，不归因 Provider 根因，
+> 不解锁产品 Docker/API/browser 或 main。完整记录见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
+> 随后 T3-C zero-provider configuration guard 已完成，focused `2/2`；它只防止 package/root `.env` 入口回归，不读取真实
+> `.env`、不调用 Provider、不恢复 T3 名额。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md`。
+
+> R5 结果（2026-08-06）：唯一 controlled-Live run `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已 durable seal，但
+> `architecture_recovery_quality_gate_failed / qualityAuthority=none`。guards `16/16` zero-call；第二个 rewrite pair
+> 的 DeepSeek 在 `provider_dispatch / unknown` 失败，external calls `4`（Qwen `3`、DeepSeek `1`），breaker 后 `59`
+> slots 未启动；rewrite strict `1/16`、FinalResponse `0/16`，semantic/P95/verified aggregate 全 `null`。validator
+> `ok=true / bundle_valid`，journal `237`，artifact SHA=`423e3f2e...43b1e5`，一次性名额已消费，R6 产品验收继续阻断。
+> 该 evidence 不归因 Provider 根因，也不形成产品/main authority。
+
+> R5 实现 checkpoint（已由上方 sealed run 收口）：Retriever / FinalResponse Architecture Recovery R5 已完成实现、独立复审与
+> zero-provider 回归。固定 `16 guards + 16 rewrite pairs + 16 FinalResponse =
+64 slots`，focused/CLI/Agent 回归分别为 `18/18`、`6/6`、`1329/1329`；citation coverage、固定检索 fixture、
+> conservative verifier projection、usage/cost budget 与 crash-only 异常边界均已修复并验证。用户已接受 DeepSeek/Qwen
+> 数据边界并授权唯一 R5 controlled-Live；正式 run 已封存，但不形成产品 authority。
+> R5 结果无论通过或失败都只封存一次；只有 gate pass 才解锁 R6 产品 Docker/API/可见浏览器验收。详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
+
+> Transport Evidence Recovery T0/T1/T2/T3-A 已完成：T0 冻结独立 zero-provider contract，T1/T2 已落地 strict no-raw parser、
+> 双 wire 校验、三 family 私有 single-consume capability、30-case/15-classifier matrix 与 synthetic durability；focused
+> `11/11`、Agent `1348/1348`、typecheck/lint/Prettier 通过。全程未读取 credential、未调用 Provider、未创建 formal
+> evidence，authority=`zero_provider_transport_evidence_t2 / qualityAuthority=none`。T2/T3-A 不解锁 R6/R7/main，也不是
+> R5 retry；T3 controlled 已消费一次性名额并在 credential configuration gate 失败封存，禁止重跑或追加探测。补充提交
+> `3d903055` 已将受控 package script 绑定仓库根 `.env`，但不改变本次终态。
+> T3-C 又以静态 guard 固定该路径与 seal CLI 的无 credential/Provider port 边界，authority=`zero_provider_transport_evidence_t3_configuration_guard`。
+> 设计与计划见 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-evidence-recovery-design.md` 与
+> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`。
+
+> 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V9 controlled-Live 均已以 `quality_gate_failed` 封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard；pair 0 两条 lane 各 dispatch 一次但均无 Provider response，Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全 `null`。Marker/journal/evidence 已 seal，validator `ok=true/filesChecked=1`，无 recovery claim；V9 当时的 R6/R7/main 与后续阶段被阻断，后续另行进入 Architecture/Schema Recovery 路线。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
+>
+> 用户已作出独立路线决策：停止继续复制 V10/V11 runner/lineage，先执行 Phase 6.9.7 Architecture Recovery。Recovery R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 Full-gate L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。Full-gate Schema Recovery SR0--SR4 随后完成 zero-provider 设计、TDD、robustness、独立 runner/durability 与 reviewed Mock/static；SR4 仍只有 Mock authority。唯一 SR5 controlled-Live run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已得到 guards `24/24`、strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`、paired P95 `2240ms`、费用 `0.067632 CNY`，并以 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal；journal `628`、validator `ok=true`、recovery claim=0。SR6 随后在 `providerCalls=0` 边界完成 Tutor/Organizer Docker/API/可见浏览器/Trace/forced-failure/权限隔离与精确清理；`sr5_sealed_replay` 只绑定 SR5 artifact SHA 并从当前 bounded prompt 生成 deterministic Mock，不重放 Provider response。SR7 又完成 main 合并、远程发布与 default-off Docker/API/可见浏览器/Trace/精确清理；精确 step-check 路由修复后为 `tutor/step_check`，candidate zero-call/0-token/`LIVE_CALLS_DISABLED`。SR5/L3/SR4 authority 均保持不可变。Phase 6.9.7 已完成。Phase 6.9.8 Task 0--8 已依次完成设计、shared strict contracts、canonical principal / Chat access、Retriever original-query baseline、exact-context evidence projector、default-off query rewrite candidate、FinalResponse stream contract、`/api/chat` composition/terminal Trace 与 48-case reviewed Mock/static。Task 8 authority 为 `zero_provider_retriever_final_response_reviewed_mock_static / qualityAuthority=none`，guard/rewrite/FinalResponse 均 `16/16`，rewrite nDCG@5 从专项 original `0.56923614767` 提升至 `1`，FinalResponse grounded/citation/critical notice 均为 `1`；Provider/credential/Qwen 与正式 evidence=0。Task 9A 又以 `zero_provider_qwen_embedding_transport_price_contract` 冻结 Qwen 北京区官方 price/endpoint/usage、1536 维 strict direct transport 与 `262144 tokens / 0.131072 CNY` cap，仍未读取 credential 或调用 Provider。Task 9B 又以 `zero_provider_retriever_final_response_runner_durability` 完成 16 guard + 64-call runner、双 Provider accounting、source admission、durability/validator/CLI；Reviewed Mock 仍为 `task9b_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/approved tag/正式 evidence=0。唯一 Task 9C run `28b5f92f...` 已以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：guard `16/16`、Provider `5/64`，第二条 DeepSeek rewrite `schema_invalid / 1/1/0/0` 后其余 59 次 not-started；journal `134`、validator `ok=true`。一次性名额已消费且不得重跑，Task 10/11、产品/main、Phase 6.9.9/6.9.10/6.10 与后续阶段仍阻断。
+
+> Architecture Recovery R0--R4 已完成。R4 reviewed Mock/static 固定 guards `16/16` zero-call、双 wire
+> `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`，gate 为
+> `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`；Provider、credential、formal evidence
+> 与业务写入均为 0。其后唯一 R5 run `34eb99be...` 已以 `quality_gate_failed` 封存，R6/R7、产品
+> Docker/API/browser、main 与后续 Phase 继续阻断。
 
 ## 项目目标
 
@@ -17,23 +90,23 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 
 ## 总体路线
 
-| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                          |
-| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                        |
-| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                        |
-| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                        |
-| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                        |
-| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                        |
-| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                        |
-| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                        |
-| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                |
-| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成 |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.7 已完成；下一阶段 Phase 6.9.8      |
-| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                     |
-| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成         |
-| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                        |
-| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                        |
-| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                        |
+| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                                 |
+| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                               |
+| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                               |
+| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                               |
+| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                               |
+| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                               |
+| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                               |
+| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                               |
+| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                       |
+| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成        |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 V2 S1 Mock/static 完成；停止在 L1 授权门 |
+| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                            |
+| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成                |
+| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                               |
+| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                               |
+| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                               |
 
 ## 已完成阶段
 
@@ -190,7 +263,7 @@ Phase 5.4 已完成检索 API：
 
 Phase 5.5 已完成 Chat RAG 增强与引用展示：
 
-- `/api/chat` 在有 access token 时调用 `/knowledge/search`，使用最新用户消息构造检索请求。
+- `/api/chat` 只有在 access token 已通过 `/auth/me` 并形成 authenticated canonical principal 后才调用 `/knowledge/search`，使用最新用户消息构造检索请求。
 - 命中知识库后将 chunks 注入 system prompt，作为回答参考而不是绝对真理。
 - 助手消息末尾追加 Markdown “参考资料”，展示文档名、片段序号和相似度。
 - 无 token、无资料、无命中、检索失败或 token 预算不足时降级为普通 Chat，不阻塞用户提问。
@@ -449,7 +522,177 @@ Phase 5.6 已完成知识库页面体验打磨：
 - Phase 6.9.7 Full-gate Schema Recovery SR6：`providerCalls=0`；Tutor Chat 已切换 Schema Recovery candidate，Organizer single/batch 已切换 V9 ordinal-only candidate；success/forced failure、Mock Trace/计费、owner/locked-name/write isolation、headed browser、最终源码 Docker build/default-off 与合成数据精确清理均通过。Replay 只绑定 SR5 artifact SHA 并从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace，也不提升 SR5 semantic authority。（已完成，zero-provider product acceptance）
 - Phase 6.9.7 Full-gate Schema Recovery SR7：SR6 已由 `510bbc94` 合并 main；精确 step-check Router 修复 `43af2e85` 又由 `006f54e9` 合并。main/default-off Docker/API/可见浏览器/Trace/清理通过：Organizer 为 `local_deterministic/gate_disabled` 且不创建 Trace，Tutor 为 `route=tutor / step_check / attempted=false / 0 token / LIVE_CALLS_DISABLED`，Mock Trace 成本 0；两个合成账号与浏览器业务数据精确清理，全部 gate=false，SR5/SR6 replay 未重跑。（已完成，zero-provider main acceptance）
 - Phase 6.9.7 Architecture Recovery R4（历史路线）：它绑定已消费且无 Response 的 R3 identity，永久不得开始；后来的独立 Canary V2 L1 success 不恢复 R3/R4。小样本工作只沿新的 P1/G1/G2/S2/L2 lineage 推进。（被独立路线取代）
-- Phase 6.9.8：RetrieverAgent / FinalResponseAgent 正式化与通信 contract。（规划中）
+- Phase 6.9.8 Task 0：已冻结 `zero_provider_retriever_final_response_design`，记录真实 Nest owner-scoped Qwen
+  hybrid search、`packages/rag` stub、Chat placeholder identity、Markdown citation 与 pre-stream Trace 缺口；冻结
+  canonical principal/envelope、Retriever/VerifiedEvidenceBundle/FinalResponse contract、本地 citation/tool
+  authority、stream/abort/Trace、独立 gate/credential、48-case/Recall/nDCG/grounded/P95/token/CNY/null aggregate
+  与 Task 1--11 顺序。未改 runtime、未读 credential、未调用 Provider/Docker/browser；Task 0 当时只解锁 Task 1
+  shared Zod contracts，Task 1 已随后完成。（已完成，zero-provider design）
+- Phase 6.9.8 Task 1：已实现 shared canonical principal/envelope、Retriever request/result、local-only
+  VerifiedEvidenceBundle、FinalResponse request/model projection 与 strict stream event/ledger；authenticated
+  principal 通过 opaque receipt 绑定同一 auth response/request/bearer reference，`AbortSignal` 仅进程内传播。输入
+  先安全 clone 再 strict Zod/跨字段校验，输出 deep-freeze；root/subpath export 已落地。未接 Web/Server runtime、
+  未读 credential、未调用 Provider/Docker/browser；只解锁 Task 2 canonical principal / Chat access。（已完成，
+  zero-provider shared contract）
+- Phase 6.9.8 Task 2：已把 `/auth/me` strict `AuthUser.id` 接成 `/api/chat` 唯一 authenticated owner，删除
+  `web-chat-user`；raw bearer 只存在 WeakMap capability，并与 auth response、原始 Request、execution context
+  三引用绑定。无 token Mock 为 request-scoped anonymous，Live 无 token/invalid token/abort/binding failure 在 runtime
+  前 fail-closed；Conversation、authenticated-only RAG 与 owner Trace 复用同一 bearer，并发反序不串 owner/token。
+  全程未读 credential、未调用 Provider/Docker/browser；只解锁 Task 3 RetrieverAgent node 与 original-query
+  deterministic baseline。（已完成，zero-provider Chat access）
+- Phase 6.9.8 Task 3：已把 `packages/rag` throw stub 替换为 WeakMap exact-scope opaque search port，并在
+  `@repo/agent` 新增固定 `topK=8/minScore=0.72/knowledge_document/DONE` 的正式 Retriever node；Web
+  server-only adapter 用 Task 2 canonical bearer 调用 `/knowledge/search`，owner 仍由 Nest JWT authority 解析。
+  Original-query baseline 为 16 guards + 16 runtime，manifest/report SHA `8a1788aa...654d / a1478f22...6442`，
+  Recall@5/nDCG@5/Top1/no-hit/critical recall 为 `1/0.813219437888/0.571428571429/1/1`；Qwen/rewrite/
+  FinalResponse/Provider calls=0。仅形成 `deterministic_baseline_only`，只解锁 Task 4 evidence projector。（已完成，
+  zero-provider Retriever baseline）
+- Phase 6.9.8 Task 4：已新增 exact-context-bound 本地 evidence projector；正式 Retriever result、bundle、
+  structured citation、FinalResponse request/model projection 必须绑定同一 execution context。SafetyGuard 先删除
+  blocked/unknown/injection/credential/high-risk/control/cross-owner body，Verifier 五态与 unavailable 只能维持或
+  收紧；最多 4 条、每条 700 UTF-16，稳定 citation identity 与 `资料 1..N` 由本地生成。`ragIncluded=false` 时
+  bundle/allowlist/citation/Markdown 整层清零，Trace 只含固定状态/reason/计数。authority 仅
+  `zero_provider_verified_evidence_projector`；未接 legacy Chat composition、FinalResponseAgent、Provider、
+  Docker/browser 或 main；该 checkpoint 当时只解锁 Task 5 query rewrite candidate。（已完成，zero-provider
+  projector）
+- Phase 6.9.8 Task 5：已新增 DeepSeek V4 Pro non-thinking strict `{ rewrittenQuery }` candidate、Retriever 本地
+  eligibility/validator/merger、独立 `1 call / 1200 input / 160 output / 0.005 CNY` 预算与 Web-only default-off
+  config/runtime。standalone/no-context、anonymous、non-RAG、不安全输入、abort/deadline、无效配置与超预算均在
+  credential/runtime factory 前 zero-call；eligible 路径最多一次调用、无 retry，失败或候选不保留实体/公式/数字/
+  约束时使用 original query。模型不能修改 owner、`topK=8`、`minScore=0.72` 或 source/status filter。Compose 只向
+  `web` 投影独立 gate/timeout/key；尚未接 `/api/chat`。本 checkpoint 未读根 `.env`/credential、未调用 Provider、
+  未启动产品 Docker/API/browser；reviewed Mock 固定 `qualityAuthority=none`，只解锁 Task 6 FinalResponseAgent 与
+  stream contract。（已完成，`zero_provider_retriever_query_rewrite_candidate`）
+- Phase 6.9.8 Task 6：已新增正式 FinalResponseAgent 与独立 DeepSeek V4 Pro non-thinking streaming adapter；
+  Provider request 固定 exact `/v1/chat/completions`、`stream=true`、verified usage、1200 output、no tools/reasoning/
+  retry。Node 固定 authenticated-only、20000ms、`1/2500/1200`、`0.015 CNY`，在 executor 前执行 exact-context、
+  safety、deadline、abort、config 与预算门；本地 citation allowlist、连续 sequence 与唯一 terminal ledger 保持
+  authority，客户端断连不重写已完成 ledger，也不形成网络 exactly-once 声明。Web server-only config/runtime 与
+  Compose 只向 `web` 投影独立 default-off gate/timeout/key。本 checkpoint 未读根 `.env`/credential、未调用
+  Provider、未接 `/api/chat`，也未执行产品 Docker/API/browser、48-case、controlled-Live 或 main；authority 仅
+  `zero_provider_final_response_stream_contract / qualityAuthority=none`，只解锁 Task 7 Chat composition 与
+  terminal Trace。（已完成，zero-provider stream contract；证据见
+  `docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md`）
+- Phase 6.9.8 Task 7：已把 canonical auth、Router/Tutor、Retriever/query rewrite、Verifier、本地 evidence
+  projector、FinalResponse stream 与 terminal Trace 正式串联到 `/api/chat`。Realtime Trace 使用 minimal start、
+  prepare 与 CAS finalize；模型调用信息只在 prepare 后持久化，terminal 状态只由 finalize 收口。Response cancel 与
+  parent abort 会清理底层 reader；Retriever transport/schema failure 安全降级为 no-RAG，principal binding/abort
+  分别返回 403/499。同步流不创建 BackgroundJob/Outbox，两个模型 gate 仍 default-off，Provider calls=0；数据库
+  E2E 因本地 Redis/PostgreSQL 未运行而 `environment_blocked`，未执行 Docker/API/browser、48-case、Live 或 main。
+  authority 为 `zero_provider_chat_composition_terminal_trace / qualityAuthority=none`，只解锁 Task 8。（已完成，
+  zero-provider composition/Trace；证据见
+  `docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md`）
+- Phase 6.9.8 Task 8：已冻结独立 `16 guard + 16 rewrite + 16 FinalResponse` manifest/policy、prompt-only Mock
+  responder、strict report/scorer/canonical bytes validator、single-consume/no-retry capability 与 source admission/
+  artifact-zero contract。三组均 `16/16`；rewrite original/candidate Recall@5 为 `0.875/1`、nDCG@5 为
+  `0.56923614767/1`，FinalResponse grounded/citation precision/recall/critical notice 均为 `1`，synthetic DeepSeek
+  估算 `0.027366 CNY`。Gate 仅 `mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/Qwen 与
+  正式 marker/journal/evidence/recovery 均为 0，P95/verified aggregate cost 为 `null`。Task 8 完成后按当时边界
+  停止；后续 Task 9 拆为 zero-provider 9A/9B 与唯一 controlled-Live 9C，fresh 数据边界接受与精确一次性授权
+  只适用于 9C。（已完成，zero-provider reviewed Mock/static；证据见
+  `docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md`）
+- Phase 6.9.8 Task 9A：依据阿里云百炼官方模型/接口文档冻结北京区
+  `text-embedding-v4 / 1536 / 0.5 CNY per 1M input tokens` 与业务空间/legacy endpoint profile；新增
+  `@repo/ai` strict direct transport，固定 single-call/no-retry/AbortSignal、exact response/index、1536 维有限非零
+  向量、`prompt_tokens == total_tokens` 与本地 CNY 重算。32 次单文本 embedding 的最坏 cap 为
+  `262144 tokens / 0.131072 CNY`。Injected fault matrix、focused、AI full `337/337`、typecheck/lint 与独立复审
+  通过；未读 credential、未调用 Provider、未创建正式 evidence，authority 仅
+  `zero_provider_qwen_embedding_transport_price_contract / qualityAuthority=none`。该任务当时只解锁 Task 9B
+  runner/durability。（已完成，zero-provider；证据见
+  `docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md`）
+- Phase 6.9.8 Task 9B：新增独立 Task 9 report/scorer/gate 与固定 64-call runner：先跑 16 个 zero-call guard，
+  再串行执行 16 个 original-Qwen/rewrite-DeepSeek/candidate-Qwen pair，最后运行 16 个 DeepSeek FinalResponse。
+  Qwen/DeepSeek 各 32 次并分别记录 attempt/dispatch/response/verified usage/token/CNY，费用 cap 为
+  `0.131072 / 0.32 / total 0.451072 CNY`；任一分母或 authority 不完整使 aggregate=`null`。Source admission、
+  双 single-use capability、exclusive marker、dispatch-before-call fsynced hash-chain journal、hard-link artifact、
+  strict validator 与 crash-only seal 已落成。Reviewed Mock 得到两 Provider `32/32/32/32`、rewrite nDCG
+  `0.56923614767 -> 1` 与 FinalResponse/safety 全门通过，但 gate 固定
+  `task9b_mock_quality_not_evidence / qualityAuthority=none`；Provider/credential/approved tag/正式 evidence 均为
+  0。（已完成，zero-provider；证据见
+  `docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md`）
+- Phase 6.9.8 Task 9C：唯一 run `28b5f92f-7b16-4ec7-b9fa-7a51aa0c2ff2` 已在 approved source
+  `66a009dd...` 上正常 durable seal。Guard `16/16` zero-call；实际 Provider calls `5/64`，Qwen wire/usage
+  `3/3/3/3`、DeepSeek `2/2/1/1`。第二条 DeepSeek rewrite 在 dispatch 后以
+  `schema_invalid / wire 1/1/0/0` 失败，剩余 59 次调用为 `not_started_quality_breaker`。最终 rewrite/
+  FinalResponse strict `1/16 / 0/16`，semantic/P95/token/CNY aggregate 全 `null`；journal `134`、validator
+  `ok=true`、recovery claim=`null`。Gate 为 `task9_quality_gate_failed / qualityAuthority=none`；一次性名额已
+  消费且禁止重跑、seal/recovery 或追加 Provider 探测，Task 10/11 继续阻断。（失败封存；证据见
+  `docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`）
+- Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R0：以独立
+  `phase-6.9.8-retriever-final-response-architecture-recovery-v1` lineage 冻结三类调用阶段机、
+  `providerWire/runnerWire` 双层观察、strict bounded diagnostic、no-raw/no-hash、source admission、durability、
+  fault matrix 与 R1--R7 原子路线。R0 未修改 TypeScript、读取 credential、调用 Provider 或创建正式 evidence，
+  authority 仅 `zero_provider_retriever_final_response_architecture_recovery_design / qualityAuthority=none`。（已完成，
+  zero-provider；证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md`）
+- Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R1：落成 strict diagnostic、module-owned opaque rewrite
+  session 与第一方 V7 terminal wire snapshot 只读投影。Provider observation 不再接受 caller-supplied 状态，
+  forged/reused/active capability 均 fail-closed；focused `11/11`、AI wire/export `25/25`、Agent full `1289/1289`
+  通过。External Provider/credential/formal evidence/Docker/API/browser/business writes 全为 0；包内 local mapper
+  尚待 R3 source-admitted runner/validator 绑定。Authority 仅
+  `zero_provider_retriever_final_response_architecture_recovery_tdd / qualityAuthority=none`。（已完成，zero-provider；证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md`）
+- Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R2：新增 `qwen_retrieval/final_response_stream` 两个
+  第一方 wire family 与 single-use recovery session。Qwen 将 transport/HTTP/envelope/embedding/usage 分域；
+  FinalResponse 将 transport/HTTP/stream/terminal/false-tool/usage 分域，首个畸形 stream event 固定为
+  `response_observed + stream_event_invalid`。Focused compatibility `58/58`、AI full `345/345`、Agent full
+  `1301/1301` 通过；external Provider/credential/formal evidence/Docker/API/browser/business writes 全为 0。
+  Cost/ranking/citation/Trace/delivery/result mapper 仍待 R3 runner/validator/durability 绑定。Authority 仅
+  `zero_provider_retriever_final_response_architecture_recovery_robustness / qualityAuthority=none`；该 checkpoint 当时
+  只解锁 R3，后续 R3 已完成，Task 10/11 继续阻断。（已完成，zero-provider；证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md`）
+- Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R3：新增独立 report/gate 与固定
+  `16 guards + 16 rewrite pairs + 16 FinalResponse = 64 calls` runner，分离 `runnerWire/providerWire`，并把三条
+  第一方 observation 改为各模块私有 WeakMap 单次签发。Source admission、双 opaque capability、exclusive marker、
+  reservation-before-dispatch、fsynced hash-chain diagnostic journal、hard-link artifact、strict validator、
+  crash-only seal 与 terminal publication recovery 已落成；claim 严格绑定 `recovery_claimed.previousHash`。
+  Focused `39/39`、Agent/AI full `1318/345` 通过；Provider/credential/正式 tag/marker/journal/artifact/claim 与
+  Docker/API/browser/business writes 均为 0。Authority 仅
+  `zero_provider_retriever_final_response_architecture_recovery_runner_durability_admission /
+qualityAuthority=none`；该 checkpoint 当时只解锁 R4，后续 R4 已完成，R5 Live、产品/main 与后续阶段继续阻断。（已完成，
+  zero-provider；证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md`）
+- Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R4：Task 8 prompt-only reviewed Mock 的 production
+  Retriever/FinalResponse node 与 ledger 结果已接入 R3 runner。固定 guards `16/16` zero-call、rewrite/FinalResponse
+  `16/16`、`runnerWire/providerWire 64/64/64/64`、diagnostic `64 applied`；synthetic cost `0.02951 CNY` 只用于本地
+  预算回归，`aggregateVerifiedProviderCostCny=null`。Gate 固定
+  `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/formal evidence 与
+  Docker/API/browser/business writes 均为 0。该 checkpoint 当时仅解锁 R5 fresh admission；后续唯一 R5 已失败封存，
+  R6/R7/main 继续阻断。
+  （已完成，zero-provider；证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md`）
+- Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R5：唯一 run
+  `34eb99be-bdeb-41e5-85cf-3c651ecefc68` 已正常 durable seal，但 gate 为
+  `architecture_recovery_quality_gate_failed / qualityAuthority=none`。guards `16/16` zero-call；第二个 rewrite pair
+  的 DeepSeek 为 `provider_dispatch / unknown`，external calls `4`（Qwen `3`、DeepSeek `1`），剩余 `59` slots
+  breaker not-started；rewrite strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全 `null`。
+  Journal `237`、validator `ok=true`、artifact SHA=`423e3f2e...43b1e5`；一次性名额已消费且不得重跑，R6/R7/main
+  继续阻断。（失败封存；证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`）
+- Phase 6.9.8 Transport Evidence Recovery T0/T1/T2/T3：T0 已冻结独立 lineage、30-case zero-provider matrix、固定
+  stage/boundary/reason、no-raw 数据模型与最多 3-slot canary 决策门；T1/T2/T3-A 已完成 strict parser、双 wire、三 family
+  capability TDD、15 classifier fixture 与 synthetic durability。唯一 T3 controlled run
+  `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 late-bound credential gate 以
+  `transport_evidence_t3_controlled_canary_failed` durable seal：planned/started/completed=`3/0/0`、Provider/credential
+  `0/0`、journal `7`、validator `ok=true`、qualityAuthority=`none`。这是 configuration 失败，不归因 Provider 根因，
+  不解锁产品或 main；T3 名额不得重跑。补充提交 `3d903055` 已让 package script 显式加载根 `.env`，仅改善未来新 lineage 的
+  入口，不改变本次证据。
+  （T0/T1/T2/T3 证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md`）
+- Phase 6.9.8 Transport Re-entry V2 L1：在 S1 后新增 production-shaped launcher、fixed three-slot runner、deferred
+  adapter handoff、strict journal state machine、lineage path fence、reserved/dispatch crash-only recovery、
+  existing-artifact recovery 与 recovery-claim integrity check；随后唯一 run
+  `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 `ee3dbf91...` 上以
+  `transport_reentry_v2_l1_controlled_canary_passed` durable seal，Provider calls=`3`、费用=`0.000573 CNY`、
+  validator=`ok=true`、authority 仅为 transport diagnostic。成功不进入产品/Docker/API/browser/`main` 语义验收；下一步
+  是 P1 zero-provider semantic-gate。implementation 历史 checkpoint 与 sealed 证据分别见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。（已完成）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
 - Phase 6.10：全部 Agent 完成后再实施结构化长期记忆注入与 Episodic Memory。（规划中）
@@ -476,8 +719,19 @@ Phase 5.6 已完成知识库页面体验打磨：
 - “为什么 R3 的 `connection_refused` 与无监听 loopback 高度相关，仍不能写成唯一根因？”
 - “为什么 proxy preflight 必须在 credential、marker 和 reservation 之前，而且 ready 仍不等于 Provider health？”
 - “为什么核心 runner 必须自己强制 250ms watchdog，而不能只相信 listener probe 的 timeout 参数？”
+- “为什么现有 Qwen hybrid search 可用，RetrieverAgent 仍需要正式 contract 与 canonical principal？”
+- “为什么 original-query Recall@5=1 仍不能证明 query rewrite uplift、真实 Qwen 或产品质量门通过？”
+- “为什么 owner 不进入 Retriever search body，opaque port 仍要绑定 exact execution context？”
+- “为什么 FinalResponse model 看不到真实 documentId/chunkId，citation event 必须由本地 renderer 生成？”
+- “为什么同步 stream 当前不写 Outbox，未来异步化时又必须把 BackgroundJob/Outbox 一起设计？”
+- “为什么 Task 9C 的 runner response=0 不能直接证明 Provider response=0？”
+- “为什么 bounded diagnostic 需要覆盖 Qwen、rewrite、FinalResponse 三条链路，而且不能保存 raw hash？”
+- “为什么第一条畸形 FinalResponse stream event 是 response observed，而不是 response missing？”
+- “为什么 R2 的本地 mapper 通过后仍须 R3 runner/validator 才能形成 durability 与数值 authority？”
+- “为什么三类 runner observation 必须由各模块私有签发，而不能使用共享可调用 issuer？”
+- “为什么 `run_terminal` 后崩溃只恢复 publication，仍不能继续任何 Provider call？”
 
-V2 R7、V3 R5、V4 R6、V5 R6、V6 R5、V7 R4、V8 R5 与 V9 R5 均已失败封存，各自一次性授权已经消费且不得重跑。V8 fixed-shape 已通过真实 Provider static schema，但本地 dynamic authority 仍失败；V9 本地合法 option selection 与 reviewed Mock 工程合同已完成，但唯一 Live 在首个 pair 的 response 前 transport/sibling abort 终止，不能形成真实模型或产品可用性结论。后续独立 Architecture/Schema Recovery 已按自身 lineage 完成 SR5 semantic gate、SR6 分支产品验收与 SR7 main/default-off 验收；它们不改写上述失败历史。Phase 6.9.8 现为唯一下一阶段；Phase 6.10、Phase 8/9 与博客收尾仍不得开始。
+V2 R7、V3 R5、V4 R6、V5 R6、V6 R5、V7 R4、V8 R5 与 V9 R5 均已失败封存，各自一次性授权已经消费且不得重跑。V8 fixed-shape 已通过真实 Provider static schema，但本地 dynamic authority 仍失败；V9 本地合法 option selection 与 reviewed Mock 工程合同已完成，但唯一 Live 在首个 pair 的 response 前 transport/sibling abort 终止，不能形成真实模型或产品可用性结论。后续独立 Architecture/Schema Recovery 已按自身 lineage 完成 SR5 semantic gate、SR6 分支产品验收与 SR7 main/default-off 验收；它们不改写上述失败历史。Phase 6.9.8 Task 0--9B 工程地基已完成，唯一 Task 9C run `28b5f92f...` 又以 `task9_quality_gate_failed / qualityAuthority=none` 封存：第二条 DeepSeek rewrite 在 dispatch 后未满足本地 strict schema/contract，正式语义、P95 与完整费用 authority 均未形成。Task 9C 一次性授权已经消费且禁止重跑。独立 Architecture Recovery R0--R4 现已完成三链路/双 wire/no-raw/no-hash 设计、diagnostic robustness、runner/durability/admission 与 reviewed Mock/static；R4 仅形成 `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。R4 的 Provider/credential/formal evidence 均为 0；其后唯一 R5 run `34eb99be...` 已以 `quality_gate_failed` 封存，产品/main、Phase 6.9.9/6.9.10/6.10、Phase 8/9 与博客收尾仍不得开始；不得补跑或追加 Provider 探测。
 
 Architecture Recovery 是 V9 之后的新产品路线，不是 V9 retry 或 artifact recovery。R1 只建立未来 canary 可消费的 bounded in-memory transport subtype；它不能反向恢复 V9 raw error，也不解除产品验收与 main 阻断。R2 已用模块内 closed synthetic responder 关闭 canary contract、per-invocation 预算、no-secret artifact schema、取消竞态与 CLI fail-closed。R3 又把未来唯一真实 canary 的授权、专用凭据、source preflight、单次 durable reservation、wire terminal、不可重放 crash seal、独占发布和 validator 固定下来，但本 checkpoint 没有读取 credential 或执行 Live。R1--R3 的成功只能解释为工程合同通过，不能解释为 DeepSeek 或本机 Provider 出站健康。
 

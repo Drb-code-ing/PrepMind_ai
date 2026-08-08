@@ -2,6 +2,100 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
+## Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live sealed（2026-08-08）
+
+L1 implementation 与唯一 controlled-Live 均已完成并封存。它把 root launcher、source/proxy/data-boundary/
+authorization gate、bounded root `.env` projection、三槽真实 adapter seam、strict journal/hash-chain validator、
+hard-link publication 与 crash-only recovery 固定为一条不可扩展的 transport canary 流。真正的 dedicated key handoff
+只在 durable marker/reservation 后进入 adapter constructor；marker 前仅做 capability 的 lineage/family/call
+shape 检查。固定顺序为 `rewrite -> qwen -> final_response`，最多 3 calls、总 cap `0.024096 CNY`，首错即停止后缀。
+
+zero-provider 工程回归仍为 L1 focused `13/13`（44 assertions）、C1+C2+S1+L1 `47/47`（224 assertions）、Agent full
+`1409/1409`（24069 assertions）；该回归是 Live 前 checkpoint。唯一 sealed run
+`ce0c3257-a5d9-4389-90ec-814d5e9cde34` 的 `3/3` slots、`3` Provider calls、usage `145/28/173`、费用
+`0.000573 CNY`、journal `16`、validator `ok=true` 只形成 `controlled_live_transport_reentry_v2` transport
+diagnostic authority，`qualityAuthority=none`；不能写成“模型质量通过”或“产品可用”。
+
+首次受控入口在共享 root `.env` composition 以 `credential_configuration_invalid / unknown_key` 停止：共享文件包含正常
+项目配置，Qwen 使用宿主兼容 `Qwen_API_KEY`。该次没有 Provider call、marker/evidence 或产品写入；当前 production
+profile 已改为只选择性提取 `DEEPSEEK_API_KEY` 与 `QWEN_API_KEY`/`Qwen_API_KEY`/`DASHSCOPE_API_KEY`，并归一化为
+canonical `QWEN_API_KEY`，alias 冲突仍 fail-closed。这是 zero-provider compatibility recovery，不是模型质量或网络
+健康证据。
+
+sealed 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
+Live 前 implementation 与 root-env 诊断仍分别见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
+Root admission 诊断记录：
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
+
+## Phase 6.9.8 Transport Re-entry V2 S1 当前边界
+
+S1 是 C2 之后的 zero-provider reviewed Mock/static checkpoint。三个 bounded synthetic first-party adapter 通过同一
+`rewrite -> qwen -> final_response` runner seam；success wire 为 runner `3/3/3/3` 与 adapter/provider
+`3/3/3/3`，usage 为 `480/120/600`，synthetic port calls=`3`，正式 `providerCalls=0`、
+`credentialReads=0`、formal evidence=`0`。timeout/transport/schema/usage 首错 breaker 与
+`abort_before_qwen` fault matrix 均 fail-closed，不 retry、不补发 suffix。
+
+S1 gate=`transport_reentry_v2_s1_mock_quality_not_evidence`，authority=
+`zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。固定 factory/report SHA 为
+`sha256:c50b257b...cc20 / 8538b13c...c068`。主代理完成 source/capability/credential/provider/package 静态复核；
+三路只读子代理尝试均因服务端 `429 Too Many Requests` 超过重试上限，未形成独立复审证据，不能写成“子代理通过”。
+
+S1 source admission 只统计当前 V2 marker/journal/recovery/report/root artifact 的路径占用；历史 T3/R5/Task 9C 文件和
+普通日志不影响当前 lineage，匹配名称的文件、目录或 symlink 均阻断，非 `ENOENT` 读取错误 fail-closed。最终 clean
+source 回放为 `git_verified / formalArtifactCount=0`；该回放仍是 zero-provider source authority，不是模型质量证据。
+
+这只能证明 synthetic contract、wire/usage accounting、durability 和 no-raw 边界，不证明 DeepSeek/Qwen health、真实
+模型语义、Retriever/FinalResponse P95/SLA、`/api/chat`、Docker/API/browser、Trace、BackgroundJob/Outbox、
+业务数据或 `main`。S1 后停止在 V2 L1；L1 仍需新的数据边界接受与两条 exact authorization。
+
+验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
+
+## Phase 6.9.8 Transport Re-entry V2 C2 历史边界
+
+V2 C2 已在 C1 projection contract 之上完成 zero-provider runner/durability：三个 dedicated capability 先收口为
+single-use opaque configuration capability，随后以固定 `rewrite -> qwen -> final_response` 顺序运行 synthetic
+三槽；exclusive marker、reservation-before-dispatch、fsynced hash-chain journal、hard-link artifact、strict
+validator 与 crash-only recovery 全部由本地 contract 掌握。missing/invalid/conflict/abort/timeout/transport/schema/
+usage 的首错会打开 breaker，publication interruption 只恢复同一 terminal，不重放 dispatch。
+
+C2 focused `15/15`、Agent full `1387/1387`、typecheck/lint/Prettier 通过；真实 credential、Provider、正式 evidence、
+Docker/API/browser、Trace 与业务写入均为 `0`。authority=`zero_provider_transport_reentry_v2_c2 /
+qualityAuthority=none`。这只证明 synthetic 执行与 durability 边界，不证明 Provider health、真实模型语义、产品
+`/api/chat`、P95/SLA 或 `main`；S1 已完成；V2 L1 仍需新的数据边界接受与 exact authorization。
+
+验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
+
+## Phase 6.9.8 Transport Re-entry V2 C1 历史边界
+
+旧 T3 controlled canary 已一次性失败封存，不能由配置 guard 修复后重跑。V2 C1 已实现 root launcher → bounded
+parser → dedicated capability 的 zero-provider contract：exact gate 顺序先于 credential composition，runtime core
+不读取 `process.env`，capability 由 module-owned WeakMap/WeakSet 绑定 lineage/family/call 并单次消费；没有读取真实
+credential、调用 Provider 或执行产品 Chat。未来 L1 即使得到 strict response/verified usage，也只形成
+transport/evidence authority，不能直接写成 Retriever/FinalResponse 语义通过、`/api/chat` 可用或 main 已完成。C1
+已由上方 C2 回执收口；没有新的数据边界接受与 exact authorization 前不得执行 L1。
+
+## Phase 6.9.8 Transport Evidence Recovery T3 历史封存边界
+
+T3-A 是 zero-provider admission/runner checkpoint，不是模型质量或产品行为验收。它验证 source parity、T2 gate、
+fresh proxy nonce、DeepSeek/Qwen 数据边界与 exact authorization 的 gate 顺序，以及
+`rewrite -> qwen -> final_response` 三槽位、`0.024096 CNY` 总预算、首错 breaker 和固定未启动 suffix。focused
+`12/12`、Agent full `1360/1360`（23805 assertions，169 files）通过。
+
+随后唯一 T3 controlled canary `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 在 durable reservation 后的 late-bound credential
+gate 以 `configuration_invalid` 失败并 crash-only seal：planned/started/completed=`3/0/0`、Provider/credential=`0/0`、
+journal `7`、validator `ok=true`，authority=`controlled_live_transport_evidence_t3 / qualityAuthority=none`。这只能说明
+CLI/configuration composition 未满足，不能归因 DeepSeek/Qwen health、DNS/TLS/代理、账号/余额/权限/服务端，也不能
+证明真实 rewrite/Retriever/FinalResponse 语义、P95/verified cost 或 `/api/chat` 可用。
+
+T3 一次性名额已消费，禁止重跑、追加 Provider 探测、curl、单 case、seal/recovery 或把失败写成 semantic gate。提交
+`3d903055` 已让 package controlled script 显式加载仓库根 `.env`，但只用于未来另立 lineage，不能改变本次 T3 终态；
+继续使用 Mock/zero-provider 回归。
+
+T3-C configuration guard 已以 zero-provider 静态测试固定该 env 入口与 crash-only seal CLI 边界（`2/2`），不形成任何
+真实模型、语义或产品 authority。
+
 ## Phase 6.9.5 Review / Planner 当前边界
 
 Review/Planner 的 V10 controlled-Live 仍是唯一语义质量 authority。V22 的 `operation_failed -> recovered` 以及 V11--V21 的既有 terminal 都是不可重跑、不可复用、不可拼接的历史；V22 的终止是 API aggregate timing 与 Trace candidate-step timing 的错误精确比较，不是语义质量或计费失败。
@@ -1135,6 +1229,228 @@ V9 R4 验收见
 `docs/acceptance/phase-6-9-7-tutor-organizer-v9-r4-static-mock.md`。
 V9 R5 终态见
 `docs/acceptance/2026-07-30-phase-6-9-7-tutor-organizer-v9-controlled-live-failure.md`。
+
+## Phase 6.9.8 RetrieverAgent / FinalResponseAgent 验收合同
+
+Task 0 已以 `zero_provider_retriever_final_response_design` 冻结以下边界，但尚未实现 runtime：
+
+- identity 只能由 Nest JWT 投影到 `AgentExecutionContextV1.principal`；request/model 不能提供 ownerId，无效 token
+  返回 401，anonymous owner/live 路径在 Provider 构造前 zero-call；
+- Retriever 复用当前 authenticated `/knowledge/search` 的 Qwen 1536 embedding + PostgreSQL vector/keyword hybrid
+  search。query rewrite 只在复杂多轮 RAG query 上建议一个 bounded query，本地仍权威决定 owner/topK/minScore/
+  filter 和 original/rewrite 选择；
+- rewrite 配置固定为 default-off `RETRIEVER_QUERY_REWRITE_MODEL_ENABLED`、4000ms 与 Web-only
+  `RETRIEVER_QUERY_REWRITE_DEEPSEEK_API_KEY`；FinalResponse 配置固定为 default-off
+  `FINAL_RESPONSE_AGENT_MODEL_ENABLED`、20000ms 与 Web-only `FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY`；两者不得
+  借用 generic/其它 Agent credential；
+- deterministic SafetyGuard + Verifier 只能收紧 evidence。FinalResponse model 最多看到
+  `citationId/sourceLabel/excerpt/trustLabel`，其中 sourceLabel 是非敏感 ordinal alias；模型不能看到用户文档标题、
+  `documentId/chunkId/sourceRef/safetyCodes`。citation event、tool status、usage/cost 和 Trace terminal 由本地
+  authority 生成；
+- FinalResponse 首 token 前失败返回固定不可用响应；首 token 后失败必须标记 partial/incomplete，禁止 citation
+  和工具成功。所有 transport no retry，parent abort 贯穿整条链路且服务端 terminal exactly-once；这不承诺网络
+  恰好交付，客户端断连也不得自动重放；
+- Trace 必须先 running、stream terminal 后 finalized；估算 token 与 verified usage 分开。Trace finalization 失败
+  不撤回已发送正文，但该 run 不形成质量 authority；
+- 同步 FinalResponse 不创建 BackgroundJob/Outbox；未来异步化必须同时设计
+  `BackgroundJob + Durable Outbox + idempotency key`。
+
+正式 `phase-6.9.8-retriever-final-response-v1` 固定 48 case：16 Retriever guard、16 rewrite paired runtime、16
+FinalResponse runtime。正式门要求 owner/safety/false citation/false tool success critical failure=0，Recall@5
+`>=0.90`、nDCG@5 `>=0.85`、eligible rewrite 相对 baseline `>=+0.08`、Final grounded rubric `>=0.90`、citation
+precision `=1`、required citation recall `>=0.90`，并满足 rewrite/retrieval/TTFT/Final/Chat P95。DeepSeek 32-call
+run cap 为 `0.32 CNY`；paired search 最多 32 次 Qwen embedding。Qwen 正式价格 profile 未冻结时 cost/总成本
+aggregate 必须为 `null`，禁止进入 controlled-Live admission。
+
+Task 1 已以 `zero_provider_retriever_final_response_shared_contract` 实现上述通信地基：所有新 DTO 先执行
+hostile-accessor-safe bounded clone，再通过 strict Zod、固定 allowlist 与跨字段不变量，成功值 deep-freeze；
+authenticated principal 必须绑定同一 opaque auth receipt/request/bearer reference，`AbortSignal` 仅作为不可枚举的
+进程内控制对象。`skipped` envelope 不得携带任何 usageRef；同一 model call 只能有一个 direct attribution。
+FinalResponse model projection 固定只含安全 evidence 四字段；stream ledger 同时校验单调 sequence、唯一 terminal、
+exact `citationId -> sourceLabel` 本地映射和首 token 前后/abort 失败边界。
+
+Task 1 的历史边界保持不变：当时仍未修改 apps/web 或 apps/server runtime，只解锁 Task 2 canonical principal /
+Chat access。随后 Task 2 已删除 `web-chat-user` 并把 authenticated owner 绑定到一次 strict `/auth/me`；Task 3 已
+落地正式 Retriever node、opaque authenticated search port 与 16+16 original-query baseline；Task 4 已落地
+exact-context evidence projector、SafetyGuard/Verifier 保守收紧、本地 structured citation/Markdown adapter 与
+RAG 整层丢弃。
+
+Task 5 已以 `zero_provider_retriever_query_rewrite_candidate` 完成以下合同：
+
+- 只有 authenticated、`requiresRag=true`、复杂多轮指代且具有 active/recent context 的安全请求才可越过
+  eligibility；standalone/no-context、anonymous、non-RAG、不安全输入、abort/deadline、无效配置与超预算均在
+  credential/runtime factory 前 zero-call；
+- DeepSeek V4 Pro non-thinking 模型只返回 strict `{ rewrittenQuery }`，每次请求拥有独立
+  `1 call / 1200 input / 160 output / 0.005 CNY` 预算，最多调用一次且无 retry；
+- 本地 validator 必须保留实体、公式、数字、约束与上下文锚点；失败、schema/usage 不可信或候选不合格时使用
+  original query。模型无权修改 owner、`topK=8`、`minScore=0.72`、source/status filter；
+- 原 query、每条 recent turn、active question 与 active goal 分段完整扫描；observation 不含 query、turn、prompt、
+  owner、credential、endpoint 或 raw error；
+- 三项 default-off 配置与独立 key 只投影给 Next `web` server runtime。Task 5 未读根 `.env`/credential、未调用
+  Qwen/DeepSeek/Provider、未启动产品 Docker/API/browser，也尚未接入 `/api/chat`；reviewed Mock
+  `qualityAuthority=none`，不能证明 rewrite uplift、真实模型质量、产品可用性或 SLA。
+
+Task 6 已以 `zero_provider_final_response_stream_contract` 完成以下合同：
+
+- 正式 FinalResponseAgent 只接受 authenticated、同一 exact execution context 绑定且完整安全扫描通过的 request；
+  config、abort/deadline、输入预算均在 executor 前 fail-closed；
+- 独立 DeepSeek V4 Pro non-thinking adapter 固定 exact `/v1/chat/completions`、`stream=true`、verified usage、
+  `max_tokens=1200`、no tools/reasoning/retry；Node 固定 `20000ms / 1 call / 2500 input / 1200 output /
+0.015 CNY`；
+- citation 只来自本地 allowlist；模型不得创建 citation 或 tool-success authority。首 token 前失败为固定诚实不可用，
+  首 token 后失败只保留 partial text，不追加 citation/tool success；
+- 本地 ledger 校验连续 sequence 与唯一 terminal。Citation/completed 先在本地封存再 best-effort 投递；客户端断连
+  记录 `client_disconnected/deliveryFailed=true`，不把 completed 改写成 aborted，也不声称网络 exactly-once；
+- Web server-only config/runtime 与 Compose 只向 `web` 投影独立 default-off gate/timeout/key。Task 6 未读根
+  `.env`/credential、未调用 Provider、未接 `/api/chat`，未执行产品 Docker/API/browser、48-case、
+  controlled-Live 或 main；`qualityAuthority=none`。
+
+Task 7 已以 `zero_provider_chat_composition_terminal_trace` 完成以下合同：
+
+- `/api/chat` 按 canonical auth -> minimal RUNNING Trace -> context -> Router/Tutor -> Retriever/query rewrite ->
+  Verifier -> local evidence projector -> Trace prepare -> FinalResponse stream -> terminal finalize 串联；anonymous Mock
+  在 Provider config 和全部 Agent runtime 前直接返回；
+- realtime Trace start 只保存 run/modelCall/conversation/mode/time 与 pending/zero placeholder；prepare 只保存固定
+  node/status/reason/count summary 和 digest；finalize 通过 CAS 保证单 terminal，并可在 prepare ACK 不确定时原子补写
+  同一 preparation。Legacy overwrite、late prepare、conflicting retry 与 concurrent second finalize 均 fail-closed；
+- Retriever transport/schema failure 安全降级为 no-RAG；`ragIncluded=false` 时 bundle、allowlist、citation 与
+  Markdown 整层清零。Cross-scope principal binding 不被伪装成普通检索失败，返回 403；abort 返回 499；
+- AI SDK text channel 只承载正文、本地 citation Markdown 与诚实失败提示。Sequence、citation lockstep、唯一
+  terminal、terminal-last 由本地校验；`Response.body.cancel()` 和 parent request abort 都会取消同一 request scope
+  与底层 reader，且不会后台 replay；
+- 同步链路不创建 BackgroundJob/Outbox，两个模型 gate 继续 default-off，Provider calls=0；Task 7
+  `qualityAuthority=none`，不证明真实模型质量、P95、SLA 或产品可用性；
+- focused Web/Server/Types 与静态门已通过。数据库 E2E 已覆盖三阶段 lifecycle/concurrency，但因本地 Redis/
+  PostgreSQL 未运行而 `environment_blocked`；未执行 Docker/API/browser、48-case、controlled-Live 或 main。
+
+Task 8 已以 `zero_provider_retriever_final_response_reviewed_mock_static` 完成以下静态质量门：
+
+- 固定独立 `16 guard + 16 rewrite + 16 FinalResponse` manifest/policy；prompt-only Mock responder 不导入 manifest、
+  expected/oracle，只读取 production candidate/node 生成的 actual bounded prompt；
+- guard `16/16` 且 zero-call `16/16`；rewrite strict/usage/runtime `16/16/16`，original/candidate Recall@5 为
+  `0.875/1`、nDCG@5 为 `0.56923614767/1`，critical target recall 与 intent preservation 均为 `1`；
+- FinalResponse actual 穿过 Retriever/evidence projector/strict request/production stream ledger；strict/terminal/usage
+  `16/16/16`，grounded、citation precision/recall、critical notice 均为 `1`，false tool success/citation 为 0；
+- report 不保存 prompt、回答、owner、chunk、credential 或 raw error；canonical bytes、manifest/policy/factory/report
+  SHA 漂移 fail-closed；single-run capability 在执行前消费且无 retry/replay；
+- gate 固定 `mock_quality_not_evidence / qualityAuthority=none`。Synthetic DeepSeek estimate 为
+  `0.027366 CNY`，不是 verified bill；P95/Qwen verified/aggregate verified cost 为 `null`；
+- Provider/credential/Qwen calls 与正式 marker/journal/evidence/recovery 均为 0；source admission contract 已实现但
+  `sourceAdmissionExecuted=false`，未启动 Docker/API/browser 或形成产品/main authority。
+
+Task 9A 已以 `zero_provider_qwen_embedding_transport_price_contract / qualityAuthority=none` 完成 Qwen
+`text-embedding-v4` 独立 transport/price 合同：
+
+- 固定北京区 official endpoint/profile、1536 维、`0.5 CNY / 1M input tokens` 与 32 次调用最坏
+  `262144 tokens / 0.131072 CNY` cap；
+- direct fetch、single-call/no-retry、AbortSignal、strict response/vector/index/usage validation，费用只由本地冻结价格
+  与 verified `prompt_tokens == total_tokens` 重算；
+- injected fetch 永久标记 `synthetic_test`。Task 9A 未读取 credential、未调用 Provider、未接产品 RAG、未创建
+  approved tag/marker/journal/artifact/recovery，也不形成 Live/产品/main authority。
+
+Task 9B 已以 `zero_provider_retriever_final_response_runner_durability / qualityAuthority=none` 完成正式评测地基：
+
+- 固定 16 guard-first、16 个 original-Qwen/rewrite-DeepSeek/candidate-Qwen 串行 pair 与 16 个 FinalResponse；
+  64-call 分母中 Qwen/DeepSeek 各 32；
+- 双 Provider 分别记录 attempt/dispatch/response/verified usage/token/CNY，费用 cap 为
+  `0.131072 / 0.32 / total 0.451072 CNY`；任一分母、price、usage 或 terminal 不完整时 aggregate=`null`；
+- source parity、双 opaque single-use capability、exclusive marker、dispatch-before-call hash-chain journal、
+  hard-link artifact、strict validator 与 crash-only seal 已完成；recovery 不读取 credential、不调用 Provider、不
+  retry/resume/replay/backfill；
+- Reviewed Mock 的 guard `16/16`、两 Provider wire+usage `32/32/32/32`、rewrite nDCG uplift
+  `0.43076385233`、FinalResponse/safety 均通过，但 gate 固定
+  `task9b_mock_quality_not_evidence / qualityAuthority=none`；Provider/credential/approved tag/正式 evidence 为 0。
+
+唯一 Task 9C controlled-Live 已在 fresh DeepSeek/Qwen 数据边界接受与 exact authorization 下执行并失败封存：
+
+- run `28b5f92f...` 为 guard `16/16` zero-call，实际 `5/64` Provider calls；Qwen `3/3/3/3`、DeepSeek
+  `2/2/1/1`；
+- `rewrite_01` 完整成功，`rewrite_02` DeepSeek rewrite 在 dispatch 后以本地
+  `schema_invalid / wire 1/1/0/0` 失败，其余 59 次调用均未启动；
+- rewrite/FinalResponse strict `1/16 / 0/16`，semantic/P95/token/CNY aggregate 全 `null`；
+- gate `task9_quality_gate_failed / qualityAuthority=none`，journal `134`、validator `ok=true`、recovery
+  claim=`null`；report/artifact SHA 为
+  `c612d6f7164d5491e54422abb2e8504cbb707aeea3b641e8c57285d957b8b4a4 /
+7d45329debde6def4c5bc8bbda28609b507a71766ae06e00806e44eaf7b3614c`；
+- sealed evidence 不足以区分具体 Provider payload、candidate local rejection、Trace/usage/wire invariant 或 runner
+  result schema 分支，因此不得声称具体字段、transport、账号或服务端根因；
+- 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。产品/main 与后续
+  阶段仍未完成，Task 10/11 继续阻断。
+
+Architecture Recovery R0--R4 已完成 zero-provider AI 行为边界设计、rewrite TDD、Qwen/FinalResponse
+robustness 与 runner/durability/admission：
+
+- 不反向解释或改写 Task 9C；新 lineage 只服务未来独立恢复评测；
+- 分别定义 rewrite、Qwen retrieval、FinalResponse stream 阶段机，避免一个 `schema_invalid` 覆盖 candidate、
+  Trace、usage、wire、stream ledger 与 runner result；
+- 第一方 Provider dispatch/response/usage 与 runner harness-return/result 分开记为 `providerWire/runnerWire`；
+- diagnostic 只允许 fixed enum/bucket 与 `rawDataRetained=false`，禁止模型原文、prompt/query/chunk/answer、
+  unknown key、credential/URL/raw error 与 raw-derived hash；
+- 模型仍不能修改 owner、retrieval policy、citation allowlist、价格、预算、工具/写权限或 expected/oracle；
+- R1 的 rewrite session 只能绑定一次性真实 V7 wire capability；Provider observation 只从 terminal frozen snapshot
+  推导，caller-supplied response/usage、forged/reused/active capability 均不能提升 authority；
+- R1 synthetic tests 真实穿过第一方 direct adapter injected fetch，但 provenance 固定 `synthetic_test`；focused
+  `11/11`、AI wire/export `25/25`、Agent full `1289/1289`；
+- R2 新增 `qwen_retrieval/final_response_stream` 两个第一方 wire family 与一次性 recovery session；Qwen 将
+  Provider/envelope/embedding/usage 分域，FinalResponse 将 stream/terminal/false-tool/usage 分域；
+- 第一条实际 stream event 即使畸形，也只形成 `response_observed + stream_event_invalid`；full stream 为空才是
+  `response_not_observed`，两者都不能形成成功或正文 authority；
+- forged/reused/active/cross-family/out-of-order capability 与 hostile getter/Proxy 均 fail-closed；focused
+  compatibility `58/58`、AI full `345/345`、Agent full `1301/1301`；
+- R3 固定 `16 guards + 64 calls`，以 source-admitted guard-first runner 绑定 `providerWire/runnerWire`、本地
+  ranking/citation/Trace/delivery/result、双 Provider usage/CNY、完整分母与 aggregate-null 规则；
+- Rewrite/Qwen/FinalResponse observation 由三个模块私有 WeakMap 签发，精确绑定 `callId + phase + family`；共享
+  模块不再提供 callable issuer，forged/active/reused/cross-call/cross-family/out-of-order 全部 fail-closed；
+- exclusive marker、reservation-before-dispatch、fsynced hash-chain journal、hard-link artifact、strict validator、
+  crash-only seal 与 run-terminal publication recovery 已在临时 synthetic root 验证；正式 R3 namespace 仍为 0；
+- R0--R3 focused `39/39`、Agent full `1318/1318`、AI full `345/345`、typecheck/lint 通过；external
+  Provider/credential/approved tag/formal marker/journal/artifact/recovery claim 均为 0；
+- R4 又把 Task 8 production node/ledger 与 prompt-only reviewed Mock 接入 R3 runner，得到 guards `16/16` zero-call、
+  双 wire `64/64/64/64`、diagnostic `64 applied`、rewrite/FinalResponse `16/16`；gate 固定为
+  `architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`。Provider、credential、formal evidence
+  均为 0，synthetic cost 仅用于本地预算回归，verified provider cost 保持 `null`；
+- 其后唯一 R5 run `34eb99be...fc68` 在第二个 rewrite pair 的 DeepSeek `provider_dispatch / unknown` 后以
+  `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。External calls `4`，rewrite
+  strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`；R5 不得重跑，产品/main
+  与后续阶段继续阻断。
+- Transport Evidence Recovery T0/T1/T2/T3 已完成：T0 冻结 `30`-case zero-provider stage/boundary/reason/wire contract，
+  T1 落地 strict no-raw parser、双 wire 单调校验与 rewrite/Qwen/FinalResponse 私有 single-consume capability，T2
+  又完成 `30/30` matrix、`15/15` classifier、partial/terminal prefix 与 publication recovery、multiple-marker
+  rejection、hard-link artifact、strict validator 和 Windows/Bun fsync compatibility。T2 focused `11/11`、Agent
+  `1348/1348`、typecheck/lint/Prettier 均通过，authority 为
+  `zero_provider_transport_evidence_t2 / qualityAuthority=none`；不形成 Provider health、Agent semantic 或产品
+  authority，也不反向解释 R5 的 `provider_dispatch / unknown`。唯一 T3 controlled run
+  `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 随后在 late-bound credential gate 以 `configuration_invalid` durable seal，
+  planned/started/completed=`3/0/0`、Provider/credential=`0/0`、journal `7`、validator `ok=true`，
+  authority=`controlled_live_transport_evidence_t3 / qualityAuthority=none`。这是 CLI/configuration 失败，不归因
+  Provider 根因；T3 一次性名额已消费，不得重跑、追加探测或把它写成语义质量证据。
+
+完整设计、计划、Task 0--9C 与 Architecture Recovery R0--R5 证据见
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-agents-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-agents.md` 与
+`docs/acceptance/phase-6-9-8-task-0-retriever-final-response-contract.md`、
+`docs/acceptance/phase-6-9-8-task-1-shared-communication-contracts.md`、
+`docs/acceptance/phase-6-9-8-task-2-canonical-principal-chat-access.md`、
+`docs/acceptance/phase-6-9-8-task-3-retriever-node-deterministic-baseline.md`、
+`docs/acceptance/phase-6-9-8-task-4-verified-evidence-projector.md`、
+`docs/acceptance/phase-6-9-8-task-5-retriever-query-rewrite-candidate.md` 与
+`docs/acceptance/phase-6-9-8-task-6-final-response-stream-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-7-chat-composition-terminal-trace.md` 与
+`docs/acceptance/phase-6-9-8-task-8-retriever-final-response-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-8-task-9a-qwen-embedding-transport-price-contract.md` 与
+`docs/acceptance/phase-6-9-8-task-9b-runner-durability-admission.md` 与
+`docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`、
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-architecture-recovery-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-architecture-recovery.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r0-zero-provider-design.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r1-zero-provider-tdd.md`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r2-zero-provider-robustness.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t0-zero-provider-design.md`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t1-zero-provider-tdd.md`。
 
 ## 8. Reflexion / Critic 验收要求
 
