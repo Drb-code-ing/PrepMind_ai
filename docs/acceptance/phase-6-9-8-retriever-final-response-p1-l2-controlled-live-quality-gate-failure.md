@@ -142,7 +142,7 @@ diff check  pass
 - 产品 `/api/chat`、Docker/API/可见浏览器、Trace、业务写入、SLA 与后续 Phase 继续阻断；
 - canonical approved tag、marker、journal、report 与 root artifact 保持不可变；
 - 本次 evidence/documentation 提交晚于 approved source `fa502925`，不能反写或移动 approved tag；
-- 证据与文档已在 `1f3c0d9b` 提交，并以 `f4fac048` 合并推送到 `main`；合并后二次 zero-provider parity 已通过，详见
+- 证据在 `1f3c0d9b` 提交并以 `f4fac048` 合并，文档 parity 再以 `613cc772` 合并推送到 `main`；合并后二次 zero-provider parity 已通过，详见
   `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`；
 - 如继续修复，只能从最新 `main` 新开独立 zero-provider schema recovery/diagnostic 任务，不能把它称为本次 L2 retry。
 

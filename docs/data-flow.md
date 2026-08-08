@@ -12,7 +12,7 @@
 > `evidence_published` 收口，validator=`bundle_valid`，无 recovery claim。该流没有进入 `/api/chat`、Docker/API/browser、
 > Trace、BackgroundJob、Outbox 或产品写入，不形成 semantic/product/main authority。完整记录见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。随后文档与 root artifact
-> 已在 `1f3c0d9b` 提交并以 `f4fac048` 合并、推送到 `main`；二次零 Provider parity 见
+> 已在 `1f3c0d9b` 提交并以 `f4fac048` 合并源码/证据，文档 parity 再以 `613cc772` 合并、推送到 `main`；二次零 Provider parity 见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 
 > 当前 L1 controlled-Live sealed（2026-08-08）：V2 已从 S1 reviewed Mock/static 收口到唯一可受控执行的
