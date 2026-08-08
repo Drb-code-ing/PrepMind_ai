@@ -29,26 +29,28 @@ Live 前 implementation 与 root-env 诊断仍分别见
 Root admission 诊断记录：
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
-## Phase 6.9.8 P1 zero-provider semantic-gate（当前）
+## Phase 6.9.8 P1/G1 zero-provider semantic-gate（当前）
 
-L1 的真实 transport success 已 durable seal，但 `qualityAuthority=none`；因此当前行为验收只冻结下一条语义门，
-不把 L1 当作回答质量或产品可用性证据。P1 固定 `8` 条 zero-call guard、`6` 条 query-rewrite、`6` 条
-FinalResponse，最大并发为 `1`，candidate invocation 上限为 `12`。实际路径必须穿过 Retriever、rewrite candidate、
-evidence projector、FinalResponse 和本地 ledger/scorer；responder 只读取实际 bounded prompt，expected/oracle 只能由
-后置 scorer 读取。
+L1 的真实 transport success 已 durable seal，但 `qualityAuthority=none`；当前行为验收已完成 G1 本地语义合同，仍不把
+L1 当作回答质量或产品可用性证据。G1 固定 `8` 条 zero-call guard、`6` 条 query-rewrite、`6` 条 FinalResponse，最大
+并发为 `1`，candidate invocation 上限为 `12`。实际 projection 只向候选暴露 bounded prompt；expected、baseline、
+case identity、citation、tool 与质量阈值只能由后置 scorer/本地 authority 使用。
 
-质量门冻结为：Recall@5 `>=0.90`、nDCG@5 `>=0.85`、eligible subset uplift `>=0.08`、critical recall `=1`、
-intent preservation `>=0.95`、grounded rubric `>=0.90`、citation precision `=1`、required citation recall `>=0.90`、
-critical notice recall `=1`，unsafe rewrite/false tool success/false citation/safety failure 全为 `0`。六条语义 lane
-只记录 median/max，P95/SLA 固定为 `null`。
+G1 authority=`zero_provider_retriever_final_response_p1_g1_contract_baseline`、`qualityAuthority=none`，manifest/policy/
+baseline SHA 分别为 `f117f625...bb1ccb189`、`edaa07d1...37537f3`、`2c539b55...f5f611df`。focused `5/5`、Agent full
+`1414/1414`；`providerCalls=0 / credentialReads=0 / formalEvidence=0`，未启动 Docker/API/browser、未写 Trace、
+BackgroundJob、Outbox 或业务数据。
 
-G1/G2/S2 全程 `providerCalls=0 / credentialReads=0 / formalEvidence=0`，不启动 Docker/API/browser，不写 Trace、
-BackgroundJob、Outbox 或业务数据；S2 gate 固定 `p1_mock_quality_not_evidence / qualityAuthority=none`。未来 L2
-必须重新接受当次 DeepSeek/Qwen 数据边界并给出 exact authorization；P1 设计本身不创建 Live 门。完整设计、计划与验收见：
+质量门固定为：Recall@5 `>=0.90`、nDCG@5 `>=0.85`、eligible subset uplift `>=0.08`、critical recall `=1`、intent
+preservation `>=0.95`、grounded rubric `>=0.90`、citation precision `=1`、required citation recall `>=0.90`、critical
+notice recall `=1`，unsafe rewrite/false tool success/false citation/safety failure 全为 `0`。六条语义 lane 只记录
+median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。下一步为 G2 one-shot runner/durability；未来 L2
+仍必须重新接受当次 DeepSeek/Qwen 数据边界并给出 exact authorization。完整设计、计划与验收见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`
 - `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`
 
 ## Phase 6.9.8 Transport Re-entry V2 S1 历史边界
 
@@ -84,7 +86,7 @@ usage 的首错会打开 breaker，publication interruption 只恢复同一 term
 C2 focused `15/15`、Agent full `1387/1387`、typecheck/lint/Prettier 通过；真实 credential、Provider、正式 evidence、
 Docker/API/browser、Trace 与业务写入均为 `0`。authority=`zero_provider_transport_reentry_v2_c2 /
 qualityAuthority=none`。这只证明 synthetic 执行与 durability 边界，不证明 Provider health、真实模型语义、产品
-`/api/chat`、P95/SLA 或 `main`；S1 与 L1 已完成，当前转入 P1 设计和后续 G1。
+`/api/chat`、P95/SLA 或 `main`；S1 与 L1 已完成，后续 P1/G1 也已完成，当前进入 G2。
 
 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
 

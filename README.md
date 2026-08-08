@@ -12,9 +12,13 @@
 > [`L1 implementation checkpoint`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md)
 > 与 [`L1 root-env diagnosis`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md)。
 >
-> 当前 P1 zero-provider semantic-gate 设计已冻结，下一原子任务为 G1：固定 `8` 条 zero-call guard、`6` 条 rewrite、`6` 条
-> FinalResponse，并冻结 owner/通信/并发/丢失任务/路由/质量门边界；P1 不读取 credential、不调用 Provider，不形成
-> semantic/product/main authority。详见 [`P1 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)、
+> 当前 P1 G1 zero-provider contract/baseline/scorer 已完成：固定 `8` 条 zero-call guard、`6` 条 rewrite、`6` 条
+> FinalResponse（20 entries / 12 semantic lanes），candidate 只能看到 bounded prompt，expected/baseline/oracle 只在
+> 后置 scorer 使用。manifest/policy/baseline SHA 为 `f117f625...bb1ccb189`、`edaa07d1...37537f3`、
+> `2c539b55...f5f611df`；focused `5/5`、Agent full `1414/1414`，全程 `providerCalls=0 / credentialReads=0`，不启动
+> Docker/API/browser，不形成 semantic/product/main authority。下一原子任务为 G2 one-shot runner/durability。详见
+> [`G1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md)、
+> [`P1 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)、
 > [`P1 计划`](docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md) 与
 > [`P1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md)。
 
@@ -79,8 +83,8 @@ contract、可判别性、admission、调度与 durability 前置验证，T3 con
 实现 re-entry 的配置隔离、dedicated projection、runner、durability 与 L1 production-shaped launcher；唯一 L1 run
 `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 已以 `transport_reentry_v2_l1_controlled_canary_passed` durable seal，
 `3/3` slots、`3` Provider calls、费用 `0.000573 CNY`、validator `ok=true`。该结果仅为 transport diagnostic authority；
-不得重跑/追加探测或据此进入产品/main 语义验收；P1 设计已冻结，下一步是 G1 zero-provider
-manifest/subset baseline/scorer contract。
+不得重跑/追加探测或据此进入产品/main 语义验收；P1 G1 随后已在独立 zero-provider 分支完成，当前下一步为 G2。
+G1 结果见 [`G1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md)。
 
 Phase 6.9.5 和 Phase 6.9.6 均已完成。Phase 6.9.7 Task 0--11 已完成，但 V1--V9 九条 controlled-Live 均以 `quality_gate_failed` 独立封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 完成 `24/24` guard zero-call；首个 pair 两条 lane 各进入一次 durable dispatch，但均没有 Provider response。Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全为 `null`。
 

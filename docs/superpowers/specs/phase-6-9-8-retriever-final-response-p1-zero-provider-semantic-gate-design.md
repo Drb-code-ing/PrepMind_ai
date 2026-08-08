@@ -1,7 +1,7 @@
 # Phase 6.9.8 Retriever / FinalResponse P1 zero-provider semantic-gate 设计
 
 > 日期：2026-08-08
-> 状态：P1 设计已冻结；zero-provider；尚未实现 G1/G2/S2，也没有任何语义或产品 authority
+> 状态：P1 设计已冻结；后续 G1 已在独立 zero-provider 分支完成；G2/S2 尚未完成，也没有任何真实模型或产品 authority
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：已合并并推送的 `main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
@@ -17,6 +17,11 @@ P1 先冻结一个足够小、可复算、可审计的语义门，随后按 `G1 
 reviewed Mock ->（未来、另行授权的）L2 semantic canary` 逐步实现。P1 本身只写设计文档，不读取 `.env`、credential，
 不构造 Provider adapter，不调用 DeepSeek/Qwen，不写正式 marker/journal/artifact、Trace、BackgroundJob、Outbox 或
 业务数据。
+
+> 后续状态（2026-08-08）：G1 已落成独立 manifest、subset deterministic baseline、candidate-only projection 与 strict
+> scorer/gate；其 authority 为 `zero_provider_retriever_final_response_p1_g1_contract_baseline / qualityAuthority=none`。
+> G1 focused `5/5`、Agent full `1414/1414`，未读取 credential、未调用 Provider。当前只允许从最新 `main` 新建 G2
+> one-shot runner/durability 分支；本设计文档的历史冻结输入不被改写。
 
 ## 2. 目标与非目标
 

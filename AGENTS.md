@@ -1,6 +1,25 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前任务：Phase 6.9.8 P1 zero-provider semantic-gate 设计已冻结（2026-08-08）
+## 当前任务：Phase 6.9.8 P1 G1 zero-provider contract/baseline/scorer 已完成（2026-08-08）
+
+G1 当前分支为 `drb/phase-6-9-8-g1-manifest-baseline-scorer`，从 clean `main`/`origin/main` `9a3c32e2` 派生。
+已新增独立 P1 manifest、subset deterministic baseline、candidate-only projection 与 strict scorer/gate；固定
+`8` guards、`6` rewrite、`6` FinalResponse（20 entries / 12 semantic lanes）。manifest/policy/baseline SHA 分别为
+`f117f6257b2d412912d0a50b322c23d74ca194ea37667a614c45549bb1ccb189`、
+`edaa07d1071a93336b40d68948011a21a3e96938ca7d7b862991bb2bc37537f3`、
+`2c539b55be531a91a016655b8318454292b6ac286cd826d9c6e39796b5f611df`。
+
+G1 authority=`zero_provider_retriever_final_response_p1_g1_contract_baseline`、`qualityAuthority=none`；
+`providerCalls=0`、`credentialReads=0`、Qwen/formal evidence/business writes 均为 `0`。focused `5/5`（27 assertions）、
+Agent full `1414/1414`（24108 expect()，175 files）、typecheck/lint/Prettier 通过；未启动 Docker/API/browser，未执行
+真实模型或产品写入。完整记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
+
+下一原子任务是 G2：从最新合并后的 `main` 新建普通 git 分支，落地 one-shot runner、exclusive marker、hash-chain
+journal、hard-link publication、strict validator 与 crash-only recovery。G2 仍 zero-provider；不得从 G1 分支再开分支，
+不得使用 worktree，不得重跑已封存的 L1/T3/R5/Task 9C evidence。
+
+## 历史封存：Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live（2026-08-08）
 
 唯一 run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 已在推送提交
 `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上通过 clean/source parity、fresh `direct_ready` proxy、当次
@@ -17,11 +36,12 @@ Docker/API/browser、Trace、BackgroundJob/Outbox、业务写入或 `main` autho
 此前 root `.env` 的 `unknown_key` 是本次修复前的 configuration-only 历史诊断；selective root profile 与 zero-provider
 实现验收仍保留在 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`
 与 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`，不改写其
-当时的 `providerCalls=0` 事实。P1 设计现已在从最新 `main` 派生的普通分支上冻结；下一原子任务是 G1
-zero-provider manifest/subset baseline/scorer contract。设计、计划和验收见
+当时的 `providerCalls=0` 事实。P1 设计随后在从最新 `main` 派生的普通分支上冻结，G1 已在独立分支完成；当前下一原子
+任务是 G2 one-shot runner/durability。设计、计划和验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
 
 ## 历史 checkpoint：Phase 6.9.8 Transport Re-entry V2 S1 已完成（2026-08-07）
 
