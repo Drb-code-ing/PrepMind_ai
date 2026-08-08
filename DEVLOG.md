@@ -1,5 +1,24 @@
 # PrepMind AI 开发日志
 
+> 2026-08-08 — Phase 6.9.8 P1 G2 zero-provider runner/durability 已完成：
+>
+> G2 从已合并 `main` `a12db738` 新建普通分支 `drb/phase-6-9-8-g2-runner-durability`，未使用 worktree。实现独立
+> `phase-6.9.8-retriever-final-response-p1-g2-v1` source admission、opaque single-use capability、guard-first /
+> pair-serial one-shot runner、exclusive marker、reservation-before-dispatch、fsynced hash-chain journal、strict lane/report
+> validator、hard-link artifact publication 与 crash-only prefix recovery。固定 `8` guard + `6` rewrite + `6` FinalResponse，
+> 最大并发 `1`，candidate invocation cap `12`；semantic mismatch 继续保留分母，contract/permission/safety/budget/
+> transport/schema/usage/stale 首错打开 breaker，后缀不 dispatch、不 retry。
+>
+> focused `5/5`（23 assertions），Agent full `1419/1419`（24157 expect()，176 files），typecheck/lint/Prettier/
+> `git diff --check` 均通过。synthetic CLI run `ca024a15-d202-45ce-8e89-948b8296d6e5` 得到 gate=
+> `g2_runner_durability_ready`、candidateInvocations=`12`、journalRecords=`72`、final=`evidence_published`、validator
+> `ok=true`；report SHA=`041e5c1feffb427985450eedc09c2d7f2d28d2a3f97e984028277b6d42fbd84b`，artifact SHA=
+> `550b9729e15e218bb6619d7594ac25f1981336c8eae5a549bc1117ff456d995d`。全程 `providerCalls=0`、`credentialReads=0`、
+> `formalEvidence=0`，未读根 `.env`、未启动 Docker/API/browser、未写 Trace/BackgroundJob/Outbox/业务数据；authority=
+> `zero_provider_retriever_final_response_p1_g2_runner_durability / qualityAuthority=none`。详细验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。下一步从最新已推送 `main` 新建
+> 分支推进 S2 reviewed Mock/static；完成前不申请 L2 或执行真实 Provider。
+
 > 2026-08-08 — Phase 6.9.8 P1 G1 zero-provider contract/baseline/scorer 已完成：
 >
 > 当前分支 `drb/phase-6-9-8-g1-manifest-baseline-scorer` 从 clean `main`/`origin/main` `9a3c32e2` 派生；新增独立
