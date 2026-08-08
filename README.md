@@ -10,8 +10,11 @@
 > Live 前实现见
 > [`P1 L2 implementation 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md)。
 > 该结果不形成 P1 semantic 或产品/API/browser/Trace/SLA/`main` 产品 authority；唯一名额已消费，禁止重跑、
-> recovery/seal、curl、单 case 或追加 Provider 探测。当前只做证据/文档收口与零 Provider 合并回归，不使用
-> worktree，不清理 Docker 容器/镜像/卷/数据库/Redis/MinIO。
+> recovery/seal、curl、单 case 或追加 Provider 探测。证据与文档已在 `1f3c0d9b` 提交，并以 `--no-ff` 合并到
+> `main` merge `f4fac048`；`main == origin/main` 的零 Provider 二次回归已通过。main parity 记录见
+> [`P1 L2 main parity 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md)。
+> 下一功能任务必须从最新 `main` 新开独立 schema recovery/diagnostic lineage。不使用 worktree，不清理 Docker
+> 容器/镜像/卷/数据库/Redis/MinIO。
 
 > 历史回执（2026-08-08）：Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。run
 > `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上按

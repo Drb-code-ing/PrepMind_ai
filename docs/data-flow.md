@@ -11,7 +11,9 @@
 > `providerCalls=2 / credentialReads=2 / qwenEmbeddingCalls=0 / usage=343/40 / verifiedCostCny=null`；journal `41` 条并以
 > `evidence_published` 收口，validator=`bundle_valid`，无 recovery claim。该流没有进入 `/api/chat`、Docker/API/browser、
 > Trace、BackgroundJob、Outbox 或产品写入，不形成 semantic/product/main authority。完整记录见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。随后文档与 root artifact
+> 已在 `1f3c0d9b` 提交并以 `f4fac048` 合并、推送到 `main`；二次零 Provider parity 见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 
 > 当前 L1 controlled-Live sealed（2026-08-08）：V2 已从 S1 reviewed Mock/static 收口到唯一可受控执行的
 > production-shaped launcher。固定入口顺序为 `exact argv -> source/remote parity -> loopback proxy preflight ->
@@ -62,8 +64,9 @@ strict scorer -> marker/journal/artifact publication`。
 > 均 fail-closed。全程 `providerCalls=0`、`credentialReads=0`、formal marker/journal/artifact/recovery claim=`0`，不读
 > `.env`、不进入 Docker/API/browser、Trace、BackgroundJob、Outbox 或业务数据。S2 focused `4/4`、G1+G2 `10/10`、
 > Agent full `1423/1423`；factory/report/final_11 compatibility SHA 均冻结。验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。完成本分支文档 parity、推送并合并
-> `main` 后再做一次 focused 回归；L2 之前必须重新接受 DeepSeek/Qwen 数据边界并取得新的 exact authorization。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。该段是 S2 历史 checkpoint；文档 parity、
+> 推送、`main` 合并与二次 focused zero-provider 回归已由 `f4fac048` 完成，随后 L2 已在 fresh boundary/exact authorization
+> 下执行并以 `p1_l2_quality_gate_failed` 封存。不得重跑该 run。
 
 > 当前 L2 admission contract（zero-provider）：在 S2/main parity 后，固定
 > `source/remote parity -> approved tag binding -> frozen S2 identity -> DeepSeek/Qwen boundary receipt -> exact
@@ -72,8 +75,9 @@ strict scorer -> marker/journal/artifact publication`。
 > formalEvidence=0`；不创建 approved tag、marker、journal、artifact 或 recovery claim，不读取 `.env`，不执行
 > proxy/network、Provider、Docker/API/browser、Trace、BackgroundJob、Outbox 或产品写入。L2 focused `4/4`，与 G1/G2/S2
 > focused `18/18`。协议 token 不代表用户已接受边界或已授权 Live；验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。该 admission 已完成文档 parity、
-> `main` 合并与合并后二次回归；当前只等待新的 exact authorization（并重新接受当次 DeepSeek/Qwen 数据边界）。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。该 admission 的文档 parity、`main`
+> 合并与合并后二次回归已完成；其后唯一 L2 已在 fresh boundary/exact authorization 下以
+> `ff035203-500f-4744-b33c-3c375ae4c785` 执行并失败封存，当前只能新开独立 recovery lineage。
 
 > C2 历史设计（2026-08-07）：Transport Re-entry V2 C2 已完成 zero-provider runner/durability flow：
 > `exact argv -> source/T2+T3-C parity -> fresh proxy -> data boundary -> authorization -> launcher-location root-env
@@ -124,7 +128,7 @@ hard-link artifact -> strict validator/crash-only recovery`。C2 synthetic path 
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t2-zero-provider-robustness-durability.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md`。
 
-> 当前版本：2026-08-08。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。当前 Phase 6.9.8 P1/G1/G2/S2 已完成 zero-provider contract/baseline/runner/durability/reviewed Mock；S2 仅有 `p1_mock_quality_not_evidence / qualityAuthority=none`，当前先完成分支文档 parity、推送并合并 `main` 后二次回归，再决定是否申请新的 L2 数据边界与 exact authorization。
+> 当前版本：2026-08-09。Phase 7 核心工程化与 Phase 7.8.5 RAG runtime parity 已完成真实 Docker 验收。Router/Verifier、Review/Planner 与 Phase 6.9.6 Knowledge Agents 的生产验收均已完成并恢复默认关闭，失败历史保持不可变。Phase 6.9.7 V1--V9 Live 均以 `quality_gate_failed` 封存且不得重跑。V9 R0--R4 已完成本地合法 option selection、Provider-like/security/stale/write-authority robustness、独立 runner/lineage/durability 与 reviewed Mock/full checkpoint；唯一 R5 run `c530ca02...` 为 `24/24` guard、wire `2/2/0/0`、strict `0/48`，Tutor 在 response 前 `provider_runtime / transport`，Organizer sibling `post_dispatch_abort`，正式 semantic/P95/token/CNY 全 `null`。Artifact 已 seal、validator 通过且无 recovery claim；V9 lineage 的 R6/R7 保持禁止，后续改走独立 Architecture Recovery。Phase 6.9.8 P1/G1/G2/S2/L2 已完成各自 zero-provider contract/runner/reviewed Mock 与唯一 L2 失败封存；S2 仅有 `p1_mock_quality_not_evidence / qualityAuthority=none`，`main` merge `f4fac048`、远程 parity 与二次 zero-provider 回归均已完成，失败不解锁 semantic/product authority。
 >
 > 用户随后决定停止整套 Vn 重试并进入独立 Architecture Recovery。R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。其后 Schema Recovery SR0--SR4 建立 envelope -> `intentIndex` projection -> strict decision -> V6 local authority/merger 与独立 durability；SR4 仍是 Mock-only。唯一 SR5 run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已完整走过 `deepseek_network` 48-lane runner：guards `24/24` zero-call，runtime `48/48/0/0`，wire `48/48/48/48`，strict/schema canonical `48/48`，semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage `20966/789`，费用 `0.067632 CNY`；最终 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate`，journal `628`、validator `ok=true`、recovery claim=0。SR6 又在 `providerCalls=0` 边界完成产品 composition：SHA-bound replay 只从当前 bounded prompt 生成 deterministic Mock，不读取 SR5 Provider response/Trace；Tutor Chat、Organizer single/batch、Trace/Mock 计费、forced failure、owner/locked-name/write isolation、可见浏览器、精确清理与最终源码 default-off Docker 回放均通过。SR7 随后完成 main 合并、远程发布和 default-off Docker/API/可见浏览器/Trace/清理；修复后的精确 step-check 为 `tutor/step_check`、candidate zero-call/0-token/`LIVE_CALLS_DISABLED`，Organizer 保持本地规则且无 Trace。SR5 语义 authority 不变。Phase 6.9.7 已完成；Phase 6.9.8 Task 0--8 随后完成。Task 7 已把 canonical auth、Retriever/query rewrite、Verifier、本地 evidence projector、FinalResponse stream 与 realtime Trace 串联进 `/api/chat`；Task 8 又以固定 48-case reviewed Mock/static 验证 guard/rewrite/FinalResponse `16/16/16`、rewrite nDCG uplift `0.43076385233` 与 FinalResponse grounded/citation/critical notice `1`。Task 8 authority 仅 `zero_provider_retriever_final_response_reviewed_mock_static / qualityAuthority=none`，Provider/credential/Qwen 与正式 evidence=0。Task 9A 又冻结 Qwen 北京区 official price/endpoint/usage、1536 维 strict direct transport 与 `262144 tokens / 0.131072 CNY` cap；全部测试使用 injected fetch，真实 Provider/credential/evidence=0。Task 9B 又完成 16 guard + 64-call runner、双 Provider accounting、source admission、durability/validator/CLI；Reviewed Mock 仍为 `task9b_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/approved tag/正式 evidence=0。唯一 Task 9C run `28b5f92f...` 已以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：第二条 DeepSeek rewrite 在 dispatch 后命中本地 `schema_invalid`，仅执行 `5/64` Provider calls，其余 59 次被 breaker 阻止；journal `134`、validator `ok=true`。一次性名额已消费，Task 10/11、产品/main 继续阻断。
 

@@ -25,11 +25,13 @@ validator                ok=true / bundle_valid
 recovery claim           null
 ```
 
-只读复核命令为 `bun run --cwd packages/agent eval:phase-6-9-8:p1:l2:validate`；禁止再次执行 Live/recovery/seal。
+只读复核命令为 `bun run --cwd packages/agent eval:phase-6-9-8:p1:l2:validate`；该命令已在 `main` merge `f4fac048` 后再次
+通过；禁止再次执行 Live/recovery/seal。
 唯一名额已消费，不得 retry/resume/replay/backfill、curl、单 case 或追加 Provider 探测。该结果不形成 P1 semantic、
 产品 Docker/API/browser、Trace、P95/SLA、业务写入或 `main` 产品 authority，不清理 Docker、数据库、Redis、MinIO。
 
 封存验收：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
+main parity 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 实现验收：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
 
 ## 0G. Phase 6.9.8 P1/G1/G2/S2/L2 admission zero-provider gate（历史 checkpoint）

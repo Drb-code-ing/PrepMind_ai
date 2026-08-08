@@ -4,7 +4,9 @@
 > `ff035203-500f-4744-b33c-3c375ae4c785` 取代为历史前置 checkpoint。该 run 在 approved source/tag `fa502925...` 上
 > 正常 durable seal，但以 `p1_l2_quality_gate_failed / qualityAuthority=none` 结束；不得把本文的“Live 尚未执行”解读为
 > 当前状态。正式终态、journal/report/artifact SHA、validator 和停止门见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`；随后以 `f4fac048`
+> 合并到 `main` 并完成二次 zero-provider parity，详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 
 > 日期：2026-08-09
 > 状态：已完成（zero-provider implementation；controlled-Live 尚未执行）
