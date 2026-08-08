@@ -1,7 +1,7 @@
 # Phase 6.9.8 Retriever / FinalResponse P1 G1 contract、baseline 与 scorer 验收
 
 日期：2026-08-08
-状态：G1 已完成，zero-provider；G2 随后已独立完成，下一步为 S2 reviewed Mock/static
+状态：G1 已完成，zero-provider；G2、S2 与 L2 zero-provider admission contract 随后已独立完成；本文件的“下一步”均为历史 checkpoint
 分支：`drb/phase-6-9-8-g1-manifest-baseline-scorer`
 基线：`main` / `origin/main` `9a3c32e2`（G1 从该 clean source 派生）
 Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
@@ -128,8 +128,9 @@ bun test --max-concurrency=1 tests
 G2 已从最新、已推送并合入的 `main` 新建普通 git 分支 `drb/phase-6-9-8-g2-runner-durability`（未从 G1 分支再开分支、
 未使用 worktree），并完成 one-shot runner、exclusive marker、hash-chain journal、hard-link publication、strict validator
 与 crash-only recovery。G2 focused `5/5`、Agent full `1419/1419`、synthetic provider/credential/formal evidence `0`；
-详细回执见 `phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。当前下一步是从最新 `main` 新建 S2
-reviewed Mock/static 分支；S2 完成后才可申请独立 L2，并且必须重新接受当次 DeepSeek/Qwen 数据边界和 exact authorization。
+详细回执见 `phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。该段“当前下一步是从最新 `main` 新建 S2”
+是 G1 当时的历史 checkpoint；S2 与 L2 admission contract 现已完成。L2 controlled-Live 仍必须重新接受当次
+DeepSeek/Qwen 数据边界和 exact authorization。
 
 ## 7. 可回顾问题
 

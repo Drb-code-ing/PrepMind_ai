@@ -29,7 +29,7 @@ Live 前 implementation 与 root-env 诊断仍分别见
 Root admission 诊断记录：
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
-## Phase 6.9.8 P1/G1/G2/S2 zero-provider semantic-gate（当前）
+## Phase 6.9.8 P1/G1/G2/S2/L2 admission zero-provider gate（当前）
 
 L1 的真实 transport success 已 durable seal，但 `qualityAuthority=none`；当前行为验收已完成 G1 合同、G2
 one-shot runner/durability 和 S2 reviewed Mock/static，仍不把 L1 或 synthetic 结果当作回答质量或产品可用性证据。G2 固定先跑 `8` 条 zero-call
@@ -65,6 +65,13 @@ median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。完成
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`
+
+L2 admission contract 已以独立 zero-provider 方式完成，但它不是语义质量或 Live authority。它严格绑定 future approved
+branch/tag、S2 manifest/policy/baseline/factory identity、DeepSeek/Qwen data-boundary receipt、source-bound exact
+authorization 和预算；输出 `providerDispatchAllowed=false`、`providerCalls=0`、`credentialReads=0`、
+`formalEvidence=0`。协议中的 confirmation 字符串只用于 parser contract，不代表当前用户授权；main 合并后二次回归前后，
+都不得读取 credential 或调用 Provider。验收记录：
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
 
 ## Phase 6.9.8 Transport Re-entry V2 S1 历史边界
 

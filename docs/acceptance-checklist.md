@@ -5,7 +5,7 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0G. Phase 6.9.8 P1/G1/G2/S2 zero-provider semantic-gate（当前）
+## 0G. Phase 6.9.8 P1/G1/G2/S2/L2 admission zero-provider gate（当前）
 
 V2 L1 已以 `transport_reentry_v2_l1_controlled_canary_passed` durable seal，但它只有 transport diagnostic authority，
 不能替代语义质量。当前 checklist 已完成 G1 contract/baseline/scorer、G2 one-shot runner/durability 与 S2 reviewed Mock/static：固定 `8` 条
@@ -20,6 +20,7 @@ strict validator 与 crash-only recovery 均已由源码和测试固定。
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`
 
 P1/G1/G2/S2 不读取 credential、不调用 Provider、不启动 Docker/API/browser、不写 Trace、BackgroundJob、Outbox 或
 业务数据；G2 authority=`zero_provider_retriever_final_response_p1_g2_runner_durability / qualityAuthority=none`，
@@ -43,6 +44,7 @@ git diff --check
 - [x] S2 reviewed Mock/static 实际穿过 Retriever、query-rewrite、synthetic Qwen port、evidence projector、FinalResponse、validator 与 merger（focused `4/4`、G1+G2 `10/10`、Agent full `1423/1423`）
 - [x] S2 factory/report/final_11 compatibility SHA 冻结；cross-owner、unsafe citation/tool success、abort、timeout、schema/transport 与历史 SHA drift fail-closed
 - [x] S2 正式 marker/journal/artifact/recovery claim、approved tag、credential、Provider、Docker/API/browser、Trace、BackgroundJob、Outbox 与业务写入均为 `0`
+- [x] L2 admission strict source/tag/anchor/data-boundary/authorization/budget parser 与 single-use capability（focused `4/4`、Provider/credential/formal evidence `0`）
 
 L1 sealed 与历史 root-env 诊断：
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`、
@@ -52,9 +54,10 @@ P1 设计验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1
 G1 实施验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
 G2 实施验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。
 S2 实施验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
+L2 admission 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
 
-当前下一步是完成本分支文档 parity、推送并合并 `main`，在 `main` 二次回归；之后若申请 L2，必须重新接受当次
-DeepSeek/Qwen 数据边界并给出新的 exact authorization，不执行已封存 evidence 的重跑。
+当前下一步是完成本分支文档 parity、推送并合并 `main`，在 `main` 二次 zero-provider 回归；之后若申请 L2 controlled-Live，
+必须重新接受当次 DeepSeek/Qwen 数据边界并给出新的 exact authorization，不执行已封存 evidence 的重跑。
 
 ## 0F. Phase 6.9.8 Transport Re-entry V2 L1 root-env compatibility recovery（历史 checkpoint）
 

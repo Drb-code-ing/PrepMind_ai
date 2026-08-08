@@ -1,5 +1,16 @@
 # PrepMind AI 智能备考助手
 
+> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成。在从已合并并推送的
+> `main / origin/main = 313d6e48` 派生的普通分支 `drb/phase-6-9-8-l2-admission-contract` 上，新增严格
+> source/remote parity、协议 approved tag、冻结 S2 identity、DeepSeek/Qwen data-boundary receipt、exact
+> lineage/source authorization、bounded budget 与 WeakMap single-use capability。输出固定
+> `mode=zero_provider_admission`、`providerDispatchAllowed=false`、`providerCalls=0 / credentialReads=0 /
+> formalEvidence=0`；协议字符串不是用户授权，当前不创建 tag、不读 `.env`、不执行 proxy/network、Provider、Docker/API/browser
+> 或产品写入。L2 focused `4/4`、G1+G2+S2+L2 focused `18/18`、typecheck/lint 通过。详见
+> [`L2 admission contract 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md)。
+> 当前下一步是文档 parity、合并 `main` 后二次 zero-provider 回归；只有重新接受当次 DeepSeek/Qwen 数据边界并提供新的
+> exact authorization 后，才可执行唯一 L2 controlled-Live。
+
 > 当前任务（2026-08-08）：Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。run
 > `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上按
 > `rewrite -> qwen -> final_response` 完成 `3` 次真实 Provider call，gate=
@@ -198,7 +209,7 @@ evidence 仍为 0；上述为 R4 historical checkpoint。R5 唯一 controlled-Li
 | Phase 6.9.8 V2-C2 | opaque configuration、三槽 runner、exclusive marker、journal/artifact、crash-only durability        | 已完成（zero-provider）             |
 | Phase 6.9.8 V2-S1 | 三个 synthetic first-party adapter、wire/usage/fault matrix、reviewed Mock/static                   | 已完成（Mock-only）                 |
 | Phase 6.9.8 V2-L1 | 唯一三槽 controlled transport canary（新 source/data-boundary/authorization）                       | 已完成（transport diagnostic-only） |
-| Phase 6.9.8 P1    | 语义 gate：G1 contract/baseline、G2 durability、S2 reviewed Mock；8 guard、6 rewrite、6 FinalResponse        | 已完成（S2 Mock-only；待 main 回归） |
+| Phase 6.9.8 P1    | G1/G2、S2 reviewed Mock 与 L2 admission contract；8 guard、6 rewrite、6 FinalResponse                  | 已完成（zero-provider；待 L2 exact auth） |
 | Phase 7           | BackgroundJob、BullMQ Worker、Durable Outbox、Readiness、Admin Console、Operator Audit              | 核心工程化已完成                    |
 | Phase 7.8.5       | RAG runtime parity：Qwen / 1536、显式配置门、queue/hybrid smoke 证据加固                            | 已完成                              |
 | Phase 7.23        | 180 天审计保留、24 小时证据包、fenced ZIP、Admin 下载、Docker 全链路验收                            | 已完成                              |

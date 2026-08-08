@@ -2,8 +2,8 @@
 
 > 设计来源：[P1 zero-provider semantic-gate 设计](../specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)
 > 日期：2026-08-08
-> 当前状态：P1 设计、G1 zero-provider contract/baseline/scorer、G2 one-shot runner/durability 与 S2 reviewed Mock/static 均已完成；
-> 当前只剩本分支文档 parity、main 合并后的二次回归，L2 需另行 fresh authorization
+> 当前状态：P1 设计、G1 zero-provider contract/baseline/scorer、G2 one-shot runner/durability、S2 reviewed Mock/static 与
+> L2 zero-provider admission contract 均已完成；当前只剩本分支文档 parity、main 合并后的二次回归，L2 Live 需另行 fresh authorization
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：`main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
@@ -117,9 +117,10 @@ S2 实际结果：`8/8` guard、`16/16` strict/wire/synthetic usage、semantic `
 factory/report/final_11 compatibility SHA 已冻结；后者只提供 bounded diagnostic，不改写 G1/G2 gate。完整记录见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
 
-## 6. L2：未来独立 semantic canary（不在本计划执行）
+## 6. L2：未来独立 semantic canary（admission contract 已完成，Live 不在本计划执行）
 
-只有在 S2 source 已推送、已合并并完成 `main` 二次回归，且重新接受当次 DeepSeek/Qwen 数据边界后，才可另立 L2 admission：
+zero-provider admission contract 已独立完成，但只有在 S2 source 已推送、已合并并完成 `main` 二次回归，且重新接受当次
+DeepSeek/Qwen 数据边界后，才可另立 L2 controlled-Live admission：
 
 1. 重新接受当次 DeepSeek/Qwen 数据保留边界；
 2. 给出新的、精确到 lineage/source/confirmation 的一次性 authorization；
@@ -128,6 +129,7 @@ factory/report/final_11 compatibility SHA 已冻结；后者只提供 bounded di
 5. L2 不自动接入 `/api/chat`，产品 Docker/API/browser/main 另需独立验收、合并和推送。
 
 普通“继续/好的/所有权限”不替代上述 exact authorization；本阶段不读取用户 credential。
+Admission contract 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
 
 ## 7. 文档、分支与交付协议
 

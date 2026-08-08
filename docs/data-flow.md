@@ -52,6 +52,16 @@ strict scorer -> marker/journal/artifact publication`。
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。完成本分支文档 parity、推送并合并
 > `main` 后再做一次 focused 回归；L2 之前必须重新接受 DeepSeek/Qwen 数据边界并取得新的 exact authorization。
 
+> 当前 L2 admission contract（zero-provider）：在 S2/main parity 后，固定
+> `source/remote parity -> approved tag binding -> frozen S2 identity -> DeepSeek/Qwen boundary receipt -> exact
+> lineage/source authorization -> bounded budget -> single-use admission capability`。admission 输出
+> `mode=zero_provider_admission`、`providerDispatchAllowed=false`，并固定 `providerCalls=0 / credentialReads=0 /
+> formalEvidence=0`；不创建 approved tag、marker、journal、artifact 或 recovery claim，不读取 `.env`，不执行
+> proxy/network、Provider、Docker/API/browser、Trace、BackgroundJob、Outbox 或产品写入。L2 focused `4/4`，与 G1/G2/S2
+> focused `18/18`。协议 token 不代表用户已接受边界或已授权 Live；验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。下一步仅为文档 parity、
+> main 合并后二次回归，随后等待新的 exact authorization。
+
 > C2 历史设计（2026-08-07）：Transport Re-entry V2 C2 已完成 zero-provider runner/durability flow：
 > `exact argv -> source/T2+T3-C parity -> fresh proxy -> data boundary -> authorization -> launcher-location root-env
 parser -> dedicated projection -> opaque configuration -> exclusive marker -> reservation -> three-slot journal ->

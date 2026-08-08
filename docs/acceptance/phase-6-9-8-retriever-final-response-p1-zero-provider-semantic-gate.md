@@ -104,11 +104,13 @@ P95/SLA authority:              null
 本文件形成时的下一步曾是 G1；该步骤现已完成。G2 也已在独立普通分支完成 one-shot runner、exclusive marker、
 hash-chain journal、hard-link publication、strict validator 与 crash-only recovery；G2 focused `5/5`、Agent full
 `1419/1419`，synthetic CLI `candidateInvocations=12`、`journalRecords=72`、validator `ok=true`，且 Provider/credential/
-formal evidence 为 `0`。实现、推送、合并 `main` 与合并后复验完成后，当前下一步是从最新 `main` 新建 S2 分支。G1 的实现与结果见
+formal evidence 为 `0`。该段“下一步是从最新 `main` 新建 S2 分支”是本文件形成时的历史 checkpoint；S2 与其后的
+zero-provider L2 admission contract 已完成。G1 的实现与结果见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
 
-只有 S2 reviewed Mock/static 通过后，才可讨论独立 L2 admission。L2 必须重新接受当次 DeepSeek/Qwen 数据边界并提供
-精确 authorization；一次 reservation 后无论成功失败都不得 retry/resume/replay/backfill、curl、单 case 或追加探测。
+S2 reviewed Mock/static 与 zero-provider L2 admission contract 已通过，但 L2 controlled-Live 仍必须重新接受当次
+DeepSeek/Qwen 数据边界并提供精确 authorization；一次 reservation 后无论成功失败都不得 retry/resume/replay/backfill、
+curl、单 case 或追加探测。
 
 完整设计与实施顺序见：
 

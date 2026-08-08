@@ -1,7 +1,8 @@
 # Phase 6.9.8 Retriever / FinalResponse P1 zero-provider semantic-gate 设计
 
 > 日期：2026-08-08
-> 状态：P1 设计已冻结；G1、G2 与 S2 reviewed Mock/static 已在独立 zero-provider 分支完成；S2 仍没有真实模型或产品 authority
+> 状态：P1 设计已冻结；G1、G2、S2 reviewed Mock/static 与 L2 zero-provider admission contract 已在独立分支完成；
+> L2 contract 仍没有真实模型或产品 authority
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：已合并并推送的 `main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
@@ -192,7 +193,7 @@ gate= p1_mock_quality_not_evidence
 qualityAuthority= none
 ```
 
-只有未来独立 L2 在 fresh source、fresh data-boundary、exact authorization、verified usage 和完整 semantic gate 全部
+只有未来独立 L2 controlled-Live 在 fresh source、fresh data-boundary、exact authorization、verified usage 和完整 semantic gate 全部
 满足时，才可形成新的 `p1_semantic_gate` authority；它仍不自动解锁产品或 `main`。
 
 ## 7. 并发、丢失任务与失败收口
@@ -232,6 +233,7 @@ P1 不接 `/api/chat`、`/knowledge/search` 的真实 transport、Docker、浏�
 | G1         | zero-provider manifest、subset baseline、strict scorer/gate、anti-oracle tests        |                `0/0` | G2                                  |
 | G2         | one-shot runner、source admission、synthetic durability、validator、crash-only prefix |                `0/0` | S2                                  |
 | S2         | reviewed Mock/static，真实穿过 node/adapter/projector/merger（Mock-only）              |                `0/0` | L2 admission decision               |
+| L2 admission | strict source/tag/boundary/authorization/budget contract，single-use capability（zero-provider） | `0/0` | L2 controlled-Live（另行授权） |
 | L2（未来） | 独立小样本 controlled-Live                                                            | `<=12`（待重新冻结） | 仅 P1 semantic authority 或失败封存 |
 
 任一阶段 gate、分母、权限、budget、wire、journal 或 validator 失败，立即停止并记录 bounded diagnostic。L2 一旦

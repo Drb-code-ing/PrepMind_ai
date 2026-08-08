@@ -1,6 +1,23 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前任务：Phase 6.9.8 P1 S2 reviewed Mock/static 已完成（2026-08-08）
+## 当前任务：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成（2026-08-08）
+
+在已合并并推送的 `main / origin/main = 313d6e48` 上新建普通分支
+`drb/phase-6-9-8-l2-admission-contract`，新增独立 L2 admission contract 与 WeakMap single-use capability；
+它严格绑定 source/remote parity、协议 approved tag、冻结 S2 identity、DeepSeek/Qwen data-boundary receipt、exact
+lineage/source authorization 与 bounded budget。contract 输出 `mode=zero_provider_admission`、
+`providerDispatchAllowed=false`、`providerCalls=0`、`credentialReads=0`、`formalEvidence=0`，不读 `.env`、不执行
+proxy/network、Provider、Docker/API/browser、Trace、BackgroundJob、Outbox 或业务写入。
+
+L2 contract focused `4/4`（19 assertions），与 G1/G2/S2 合并 focused `18/18`（142 assertions），typecheck/lint 通过。
+协议中的 data-boundary/authorization 字符串不表示用户已接受或已授权；当前 approved tag 尚未创建，未产生任何正式
+L2 evidence。完整记录见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
+
+下一步是完成本分支文档 parity、推送并合并 `main` 后二次 zero-provider 回归；只有随后重新接受当次 DeepSeek/Qwen
+数据边界并给出新的 exact authorization，才可执行唯一 L2 controlled-Live。不得重跑已封存 evidence，不使用 worktree，
+Docker 容器、镜像和卷保持原状。
+
+## 历史完成：Phase 6.9.8 P1 S2 reviewed Mock/static（2026-08-08）
 
 S2 在从已推送 `main / origin/main = 0c2faf1d` 派生的普通分支
 `drb/phase-6-9-8-p1-s2-reviewed-mock` 上完成。它把 G2 runner 接到实际 Retriever original/query-rewrite、synthetic
