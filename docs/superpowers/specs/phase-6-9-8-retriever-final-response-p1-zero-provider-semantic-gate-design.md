@@ -1,7 +1,7 @@
 # Phase 6.9.8 Retriever / FinalResponse P1 zero-provider semantic-gate 设计
 
 > 日期：2026-08-08
-> 状态：P1 设计已冻结；G1 与 G2 已在独立 zero-provider 分支完成；S2 尚未完成，也没有任何真实模型或产品 authority
+> 状态：P1 设计已冻结；G1、G2 与 S2 reviewed Mock/static 已在独立 zero-provider 分支完成；S2 仍没有真实模型或产品 authority
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：已合并并推送的 `main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
@@ -23,8 +23,11 @@ reviewed Mock ->（未来、另行授权的）L2 semantic canary` 逐步实现�
 > `drb/phase-6-9-8-g2-runner-durability` 上落成 one-shot runner、source admission、exclusive marker、hash-chain
 > journal、hard-link publication、strict validator 与 crash-only recovery。G2 authority 为
 > `zero_provider_retriever_final_response_p1_g2_runner_durability / qualityAuthority=none`，focused `5/5`、Agent full
-> `1419/1419`、provider/credential/formal evidence `0`。当前只允许从最新已推送 `main` 新建 S2 reviewed Mock/static
-> 分支；本设计文档的历史冻结输入不被改写。
+> `1419/1419`、provider/credential/formal evidence `0`。随后 S2 在独立普通分支完成，固定 `8/8` guard、`16/16`
+> strict/wire/synthetic usage、semantic `1/1/1`、candidate invocation `12`、synthetic Qwen port calls `17`，gate=
+> `p1_mock_quality_not_evidence / qualityAuthority=none`；S2 focused `4/4`、G1+G2 `10/10`、Agent full `1423/1423`。
+> 详见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。本设计文档的历史冻结输入
+> 不被改写，当前只允许在 main 二次回归后重新接受数据边界并另立 L2 authorization。
 
 ## 2. 目标与非目标
 
@@ -228,7 +231,7 @@ P1 不接 `/api/chat`、`/knowledge/search` 的真实 transport、Docker、浏�
 | P1         | 本设计、固定 manifest/policy/thresholds/reader questions                              |                `0/0` | G1                                  |
 | G1         | zero-provider manifest、subset baseline、strict scorer/gate、anti-oracle tests        |                `0/0` | G2                                  |
 | G2         | one-shot runner、source admission、synthetic durability、validator、crash-only prefix |                `0/0` | S2                                  |
-| S2         | reviewed Mock/static，真实穿过 node/adapter/projector/merger                          |                `0/0` | L2 admission decision               |
+| S2         | reviewed Mock/static，真实穿过 node/adapter/projector/merger（Mock-only）              |                `0/0` | L2 admission decision               |
 | L2（未来） | 独立小样本 controlled-Live                                                            | `<=12`（待重新冻结） | 仅 P1 semantic authority 或失败封存 |
 
 任一阶段 gate、分母、权限、budget、wire、journal 或 validator 失败，立即停止并记录 bounded diagnostic。L2 一旦

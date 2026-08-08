@@ -2,7 +2,8 @@
 
 > 设计来源：[P1 zero-provider semantic-gate 设计](../specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)
 > 日期：2026-08-08
-> 当前状态：P1 设计、G1 zero-provider contract/baseline/scorer 与 G2 one-shot runner/durability 已完成；下一步为 S2 reviewed Mock/static
+> 当前状态：P1 设计、G1 zero-provider contract/baseline/scorer、G2 one-shot runner/durability 与 S2 reviewed Mock/static 均已完成；
+> 当前只剩本分支文档 parity、main 合并后的二次回归，L2 需另行 fresh authorization
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：`main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
@@ -10,7 +11,8 @@
 > 状态更新（2026-08-08）：本计划的 P1 设计步骤保持为历史冻结记录；G1 已合并到 `main` `a12db738`，G2 在独立
 > 分支 `drb/phase-6-9-8-g2-runner-durability` 完成并通过 focused `5/5`、Agent full `1419/1419`，authority=
 > `zero_provider_retriever_final_response_p1_g2_runner_durability / qualityAuthority=none`。G2 结果见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`；下一步必须从最新 `main` 新建 S2 分支。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。随后 S2 在独立普通分支完成，验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
 
 ## 1. 执行原则
 
@@ -99,7 +101,7 @@ lineage 双向拒绝全部通过；focused `5/5`、Agent full `1419/1419`、type
 synthetic CLI 形成 `12` candidate invocations、`72` journal records、`evidence_published` 与 validator `ok=true`，
 而 `providerCalls=0 / credentialReads=0 / formalEvidence=0`。完整回执见独立 G2 acceptance 文档。
 
-## 5. S2：reviewed Mock/static（下一步，独立提交）
+## 5. S2：reviewed Mock/static（已完成，zero-provider）
 
 - 使用 reviewed responder，只读取实际 bounded prompt；不得读取 expected/oracle 或逐字复用 L1/SR5 response；
 - 真实穿过 Retriever original/candidate、rewrite candidate、Qwen synthetic port、evidence projector、FinalResponse、
@@ -108,9 +110,16 @@ synthetic CLI 形成 `12` candidate invocations、`72` journal records、`eviden
 - gate 固定 `p1_mock_quality_not_evidence / qualityAuthority=none`，formal marker/journal/artifact/recovery claim=0；
 - S2 只决定是否具备申请 L2 的工程准入，不是 L2 授权，不启动 Docker/API/browser。
 
+S2 实际结果：`8/8` guard、`16/16` strict/wire/synthetic usage、semantic `1/1/1`，candidate invocation `12`，最大并发
+`1`，synthetic Qwen port calls `17`；`providerCalls=0`、`credentialReads=0`、approved tag/formal evidence/业务写入=`0`。
+`usageAuthority=synthetic_estimate` 不代表 Provider 计量或账单；`verifiedProviderUsageSamples=0`、
+`verifiedProviderCostCny=null`。focused `4/4`、G1+G2 `10/10`、Agent full `1423/1423`、typecheck/lint 通过。
+factory/report/final_11 compatibility SHA 已冻结；后者只提供 bounded diagnostic，不改写 G1/G2 gate。完整记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
+
 ## 6. L2：未来独立 semantic canary（不在本计划执行）
 
-只有在 S2 source 已推送且 branch/HEAD/upstream/origin parity 后，才可另立 L2 admission：
+只有在 S2 source 已推送、已合并并完成 `main` 二次回归，且重新接受当次 DeepSeek/Qwen 数据边界后，才可另立 L2 admission：
 
 1. 重新接受当次 DeepSeek/Qwen 数据保留边界；
 2. 给出新的、精确到 lineage/source/confirmation 的一次性 authorization；
