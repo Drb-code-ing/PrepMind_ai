@@ -1,6 +1,15 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成并已合并推送；当前
+> 当前原子任务（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live run
+> `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag `fa502925...` 上 durable seal，但 gate 为
+> `p1_l2_quality_gate_failed / qualityAuthority=none`。8/8 guards zero-call；第二条真实 DeepSeek rewrite 以 bounded
+> `schema` failure 打开 breaker，实际 Provider calls=`2/12`、Qwen calls=`0`、usage=`343/40`、aggregate cost=`null`，
+> 后续 10 条 lane 未启动。Journal `41`、validator=`bundle_valid`、recovery claim=`null`。该结果不形成 P1 semantic、
+> 产品 Docker/API/browser、Trace、SLA 或 `main` 产品 authority，且不得重跑/追加探测。当前只允许证据/文档收口与
+> zero-provider 合并回归；下一功能任务为独立 schema recovery/diagnostic lineage。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
+
+> 历史 checkpoint（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成并已合并推送；当时
 > `main == origin/main`（具体 HEAD 以 `git rev-parse main origin/main` 为准），合并后 zero-provider 回归已通过（Agent `1427/1427`，
 > 24263 assertions，178 files；typecheck/lint/diff check 通过）。
 > Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。
@@ -111,7 +120,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                             |
 | Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                     |
 | Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成      |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 G1/G2/S2/L2 admission 完成（zero-provider）；待 exact Live auth |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | P1 L2 唯一 Live 已 schema 失败封存；semantic/product gate 继续阻断       |
 | Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                          |
 | Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成              |
 | Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                             |

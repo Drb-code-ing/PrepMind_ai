@@ -1,5 +1,29 @@
 # PrepMind AI 开发日志
 
+> 2026-08-09 — Phase 6.9.8 P1 L2 唯一 controlled-Live 已质量门失败并 durable seal：
+>
+> 唯一 run `ff035203-500f-4744-b33c-3c375ae4c785` 在 branch
+> `drb/phase-6-9-8-p1-l2-controlled-live`、approved source/tag `fa50292509d7c3e2e4ad017e7e730fd434a29cde`
+> 上执行。8/8 guards 全部通过且 zero-call；`rewrite_01` strict 成功，`rewrite_03` 在第二次 DeepSeek 调用后以 bounded
+> `schema` failure 打开 breaker，后续 10 条 lane 均 `not_started_quality_breaker`。最终
+> `p1_l2_quality_gate_failed / qualityAuthority=none / semanticGate=none`。
+>
+> Provider/credential/Qwen calls=`2/2/0`，candidate invocations=`2/12`，usage=`343/40`，aggregate verified cost=`null`。
+> `rewrite_01` 的独立 verified cost 为 `0.00069 CNY`，但 `rewrite_03` 没有可接受 cost，因此不能把成功前缀当成整轮费用。
+> Journal `41` 条，以 `evidence_published` 收口；validator=`ok=true / bundle_valid`，recovery claim=`null`，report/root
+> artifact SHA=`84eddcf6...d7f9 / 9b79c490...f58b`。
+>
+> 首次 CLI 入口曾因 clean porcelain 空字符串误判而在 source gate 返回 `source_admission_invalid`；该入口发生在
+> credential/marker/Provider 前，不是 Live attempt。`146d2107` 修复并加入回归后，canonical tag 绑定 `fa502925`，唯一
+> run 才进入 Provider。封存后 Agent full `1437/1437`（24317 assertions，180 files）、typecheck、lint 与
+> `git diff --check` 通过；P1 L2 focused 仍为 `14/14`（47 assertions）。
+>
+> 完整验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。唯一名额已消费；禁止
+> retry/resume/replay/backfill、recovery/seal、curl、单 case或追加 Provider 探测。该失败不形成 P1 semantic、产品
+> Docker/API/browser、Trace、SLA、业务写入或 `main` 产品 authority。当前只完成证据/文档提交、合并与 `main`
+> zero-provider 二次回归；下一功能任务必须是从最新 `main` 新建的独立 schema recovery/diagnostic lineage。
+
 > 2026-08-08 — Phase 6.9.8 P1 L2 zero-provider admission contract 已完成：
 >
 > 在从已合并并推送的 `main / origin/main = 313d6e48` 派生的普通分支

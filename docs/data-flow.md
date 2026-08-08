@@ -1,5 +1,18 @@
 # PrepMind AI 数据流
 
+> 当前 P1 L2 controlled-Live sealed flow（2026-08-09）：唯一 run 的入口围栏为
+> `exact argv -> source/remote parity -> approved tag -> frozen manifest/policy/baseline/S2 identity ->
+> DeepSeek/Qwen data-boundary receipt -> exact lineage/source authorization -> bounded budget -> selective root .env
+> projection -> credential capability -> exclusive marker/reservation -> 8 guards -> 6 DeepSeek rewrite -> 6 DeepSeek
+> FinalResponse -> strict scorer -> fsynced journal -> hard-link artifact -> validator`。
+> Qwen embedding policy calls 固定为 `0`；最大并发 `1`、candidate cap `12`、input/output cap `37600/8800`、成本 cap `0.176 CNY`。
+> 唯一 run `ff035203-500f-4744-b33c-3c375ae4c785` 通过 8 guards 后执行两条 DeepSeek rewrite：`rewrite_01`
+> strict 成功，`rewrite_03` 以 bounded `schema` failure 打开 breaker，剩余 10 条 lane 不 dispatch。终态
+> `providerCalls=2 / credentialReads=2 / qwenEmbeddingCalls=0 / usage=343/40 / verifiedCostCny=null`；journal `41` 条并以
+> `evidence_published` 收口，validator=`bundle_valid`，无 recovery claim。该流没有进入 `/api/chat`、Docker/API/browser、
+> Trace、BackgroundJob、Outbox 或产品写入，不形成 semantic/product/main authority。完整记录见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
+
 > 当前 L1 controlled-Live sealed（2026-08-08）：V2 已从 S1 reviewed Mock/static 收口到唯一可受控执行的
 > production-shaped launcher。固定入口顺序为 `exact argv -> source/remote parity -> loopback proxy preflight ->
 DeepSeek/Qwen data boundary -> exact authorization -> root .env bounded projection -> capability shape check ->

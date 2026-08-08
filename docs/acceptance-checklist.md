@@ -5,7 +5,34 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0G. Phase 6.9.8 P1/G1/G2/S2/L2 admission zero-provider gate（当前）
+## 0H. Phase 6.9.8 P1 L2 controlled-Live 失败封存（当前，2026-08-09）
+
+唯一 run `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag `fa502925...` 上正常 durable seal。固定分母
+仍为 `8 guards + 6 DeepSeek rewrite + 6 DeepSeek FinalResponse`，Qwen embedding policy calls=`0`，最大并发 `1`、
+candidate cap=`12`。实际为 8/8 guards zero-call，`rewrite_01` strict 成功，`rewrite_03` 以 bounded `schema` failure
+打开 breaker，剩余 10 条 lane 均 `not_started_quality_breaker`。
+
+固定验收结果：
+
+```text
+gate / qualityAuthority   p1_l2_quality_gate_failed / none
+Provider / credential    2 / 2
+Qwen calls               0
+usage                    343 / 40
+aggregate cost           null
+journal / final event    41 / evidence_published
+validator                ok=true / bundle_valid
+recovery claim           null
+```
+
+只读复核命令为 `bun run --cwd packages/agent eval:phase-6-9-8:p1:l2:validate`；禁止再次执行 Live/recovery/seal。
+唯一名额已消费，不得 retry/resume/replay/backfill、curl、单 case 或追加 Provider 探测。该结果不形成 P1 semantic、
+产品 Docker/API/browser、Trace、P95/SLA、业务写入或 `main` 产品 authority，不清理 Docker、数据库、Redis、MinIO。
+
+封存验收：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
+实现验收：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
+
+## 0G. Phase 6.9.8 P1/G1/G2/S2/L2 admission zero-provider gate（历史 checkpoint）
 
 V2 L1 已以 `transport_reentry_v2_l1_controlled_canary_passed` durable seal，但它只有 transport diagnostic authority，
 不能替代语义质量。当前 checklist 已完成 G1 contract/baseline/scorer、G2 one-shot runner/durability 与 S2 reviewed Mock/static：固定 `8` 条
@@ -56,10 +83,8 @@ G2 实施验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1
 S2 实施验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
 L2 admission 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
 
-当前 L2 admission contract 已完成文档 parity、推送、`main` 合并与合并后二次 zero-provider 回归；`main == origin/main`（具体
-HEAD 以 `git rev-parse main origin/main` 为准），Agent full `1427/1427`、typecheck/lint/`git diff --check` 通过。之后若申请
-L2 controlled-Live，必须重新接受当次 DeepSeek/Qwen 数据边界并给出精确绑定当前 source/lineage 的 exact authorization，
-不执行已封存 evidence 的重跑。
+该 admission checkpoint 的文档 parity、推送、`main` 合并与合并后二次 zero-provider 回归已经完成；当前 controlled-Live
+状态以 0H 和新的 P1 L2 implementation/controlled-Live 验收记录为准，不执行已封存 evidence 的重跑。
 
 ## 0F. Phase 6.9.8 Transport Re-entry V2 L1 root-env compatibility recovery（历史 checkpoint）
 

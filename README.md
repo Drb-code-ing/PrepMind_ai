@@ -1,20 +1,19 @@
 # PrepMind AI 智能备考助手
 
-> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成并已合并推送到 `main`。
-> 普通分支 `drb/phase-6-9-8-l2-admission-contract` 已收口，当前
-> `main == origin/main`（具体 HEAD 以 `git rev-parse main origin/main` 为准），
-> 新增严格
-> source/remote parity、协议 approved tag、冻结 S2 identity、DeepSeek/Qwen data-boundary receipt、exact
-> lineage/source authorization、bounded budget 与 WeakMap single-use capability。输出固定
-> `mode=zero_provider_admission`、`providerDispatchAllowed=false`、`providerCalls=0 / credentialReads=0 /
-> formalEvidence=0`；协议字符串不是用户授权，当前不创建 tag、不读 `.env`、不执行 proxy/network、Provider、Docker/API/browser
-> 或产品写入。L2 focused `4/4`、G1+G2+S2+L2 focused `18/18`、typecheck/lint 通过。详见
-> [`L2 admission contract 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md)。
-> 合并后的 `@repo/agent` 全量回归 `1427/1427`（24263 assertions，178 files），typecheck/lint/`git diff --check` 通过。
-> 下一步只有重新接受当次 DeepSeek/Qwen 数据边界并提供精确绑定当前 source/lineage 的 exact authorization 后，才可执行唯一
-> L2 controlled-Live。
+> 当前原子任务（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live 已正常 durable seal，但质量门失败。
+> run `ff035203-500f-4744-b33c-3c375ae4c785` 在 approved source/tag `fa502925...` 上完成 8/8 zero-call guards；
+> `rewrite_01` strict 成功，`rewrite_03` 在第二次真实 DeepSeek 调用后以 bounded `schema` failure 打开 breaker，剩余
+> 10 条 lane 未启动。最终 `p1_l2_quality_gate_failed / qualityAuthority=none / semanticGate=none`，Provider/credential/
+> Qwen calls=`2/2/0`，usage=`343/40`，aggregate verified cost=`null`；journal `41`、最终事件
+> `evidence_published`、validator=`ok=true / bundle_valid`、recovery claim=`null`。完整记录见
+> [`P1 L2 controlled-Live 失败封存验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md)，
+> Live 前实现见
+> [`P1 L2 implementation 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md)。
+> 该结果不形成 P1 semantic 或产品/API/browser/Trace/SLA/`main` 产品 authority；唯一名额已消费，禁止重跑、
+> recovery/seal、curl、单 case 或追加 Provider 探测。当前只做证据/文档收口与零 Provider 合并回归，不使用
+> worktree，不清理 Docker 容器/镜像/卷/数据库/Redis/MinIO。
 
-> 当前任务（2026-08-08）：Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。run
+> 历史回执（2026-08-08）：Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。run
 > `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上按
 > `rewrite -> qwen -> final_response` 完成 `3` 次真实 Provider call，gate=
 > `transport_reentry_v2_l1_controlled_canary_passed`、authority=`controlled_live_transport_reentry_v2`、
@@ -26,7 +25,7 @@
 > [`L1 implementation checkpoint`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md)
 > 与 [`L1 root-env diagnosis`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md)。
 >
-> 当前 P1 S2 reviewed Mock/static 已完成：在从已推送 `main / origin/main = 0c2faf1d` 派生的普通分支
+> 历史回执（2026-08-08）：P1 S2 reviewed Mock/static 已完成：在从已推送 `main / origin/main = 0c2faf1d` 派生的普通分支
 > `drb/phase-6-9-8-p1-s2-reviewed-mock` 上，实际穿过 Retriever original/query-rewrite、synthetic Qwen port、
 > verified-evidence projector、FinalResponse stream、strict validator 与 local merger。固定 `8` 条 zero-call guard、
 > `6` 条 rewrite、`6` 条 FinalResponse，最大并发 `1`、candidate invocations `12`；节点计数为 Retriever original `18`、
@@ -42,9 +41,8 @@
 > [`G1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md)、
 > [`P1 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)、
 > [`P1 计划`](docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md) 与
-> [`P1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md)。上述 S2 段落是合并前的历史
-> checkpoint；L2 admission 已在 `main` 完成二次 zero-provider 回归。L2 semantic canary 仍需重新接受当次 DeepSeek/Qwen
-> 数据边界并给出新的 exact authorization。
+> [`P1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md)。上述 S2 与 L2 admission
+> 段落是已完成的历史 checkpoint；当前 controlled-Live 状态以本文档顶部和 P1 L2 implementation/controlled-Live 验收记录为准。
 
 > 历史回执（2026-08-07）：Transport Re-entry V2 S1 reviewed Mock/static 已完成。C2 zero-provider runner/durability
 > 已先完成；新的
