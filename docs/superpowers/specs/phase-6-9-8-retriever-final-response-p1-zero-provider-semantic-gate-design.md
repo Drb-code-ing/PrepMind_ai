@@ -8,6 +8,13 @@
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
 > Authority：`zero_provider_retriever_final_response_p1_semantic_gate_design / qualityAuthority=none`
 
+> 当前执行状态（2026-08-09）：P1 L2 implementation 已在普通分支
+> `drb/phase-6-9-8-p1-l2-controlled-live` 完成历史 `.tmp` evidence namespace fence 修复（commit `e5f6c229`），P1 L2
+> focused `13/13`、Agent full `1436/1436`、typecheck/lint/changed-file Prettier/diff check 通过。用户已重新接受
+> DeepSeek/Qwen data boundary 并给出唯一 controlled-Live exact authorization；完成文档 parity、approved tag 创建并推送后才消费，
+> 不改变本文冻结 contract，也不允许重跑任何历史 evidence。实现验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
+
 ## 1. 决策摘要
 
 Transport Re-entry V2 L1 的三槽真实调用已经全部返回并 durable seal，但它只证明

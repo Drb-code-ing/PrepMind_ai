@@ -1,5 +1,23 @@
 # PrepMind AI 开发日志
 
+> 2026-08-09 — Phase 6.9.8 P1 L2 implementation 修复已完成，controlled-Live 尚未消费：
+>
+> 当前普通分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，修复提交 `e5f6c229` 已推送且工作树 clean。修复把 source
+> admission/publication validator 的 formal evidence 围栏收口到当前 P1 L2 命名空间；历史 `.tmp` sealed evidence 和普通
+> 仓库文件保持只读，不再误阻断新 L2，当前 marker/journal/report/recovery/artifact 冲突、symlink 和非 `ENOENT` 读取错误仍
+> fail-closed。
+>
+> P1 L2 focused `13/13`（44 assertions），Agent full `1436/1436`（24314 assertions，180 files），typecheck、lint、
+> 变更源码 Prettier 与 `git diff --check` 通过。此次 zero-provider 回归未读取 `.env`/credential，Provider calls、credential
+> reads、formal marker/journal/report/artifact/recovery claim 与产品写入均为 `0`。实现验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
+>
+> 用户已接受本次 DeepSeek/Qwen data boundary 并授权唯一 P1 L2 controlled-Live；授权在文档 parity、approved tag 创建前尚未
+> 消费。下一步为单独提交/推送文档、创建并推送
+> `phase-6.9.8-retriever-final-response-p1-l2-approved`，执行唯一
+> `bun run --cwd packages/agent eval:phase-6-9-8:p1:l2:live`，记录完整证据后再合并 `main`、推送远程并做不调用 Provider 的
+> 二次回归。禁止 retry/resume/replay/backfill/curl/单 case/追加 Provider 探测，不清理 Docker/数据库/Redis/MinIO。
+
 > 2026-08-08 — Phase 6.9.8 P1 L2 zero-provider admission contract 已完成：
 >
 > 在从已合并并推送的 `main / origin/main = 313d6e48` 派生的普通分支

@@ -2,6 +2,21 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
+## Phase 6.9.8 P1 L2 controlled-Live preparation（当前，2026-08-09）
+
+P1 L2 的实现修复已完成：source admission/publication validator 只围栏当前 L2 evidence namespace，历史 `.tmp` sealed evidence
+与普通仓库文件不再误阻断新 run，当前 marker/journal/report/recovery/artifact 冲突、symlink 和非 `ENOENT` 读取错误仍
+fail-closed。当前分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，implementation commit=`e5f6c229`；P1 L2 focused
+`13/13`（44 assertions）、Agent full `1436/1436`（24314 assertions，180 files）、typecheck/lint/变更源码 Prettier/
+`git diff --check` 均通过。
+
+真实行为门固定为 `8 guards -> 6 DeepSeek rewrite -> 6 DeepSeek FinalResponse`，最大并发 `1`、candidate cap `12`、Qwen
+embedding policy calls=`0`、input/output cap=`37600/8800`、cost cap=`0.176 CNY`。当前 zero-provider 状态仍为 credential/Provider/
+formal evidence=`0`；用户已接受当次 DeepSeek/Qwen data boundary 并授权唯一 Live，但在文档 parity、approved tag 创建前尚未消费。
+Live 通过后只产生 P1 semantic authority，不能直接宣称 `/api/chat`、Docker/API/browser、Trace、P95/SLA 或 `main` 可用；必须另写
+controlled-Live 证据并完成 `main` 二次 zero-provider 回归。实现记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
+
 ## Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live sealed（2026-08-08）
 
 L1 implementation 与唯一 controlled-Live 均已完成并封存。它把 root launcher、source/proxy/data-boundary/
@@ -29,7 +44,7 @@ Live 前 implementation 与 root-env 诊断仍分别见
 Root admission 诊断记录：
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
-## Phase 6.9.8 P1/G1/G2/S2/L2 admission zero-provider gate（当前）
+## Phase 6.9.8 P1/G1/G2/S2/L2 admission zero-provider gate（历史 checkpoint）
 
 L1 的真实 transport success 已 durable seal，但 `qualityAuthority=none`；当前行为验收已完成 G1 合同、G2
 one-shot runner/durability 和 S2 reviewed Mock/static，仍不把 L1 或 synthetic 结果当作回答质量或产品可用性证据。G2 固定先跑 `8` 条 zero-call
@@ -56,9 +71,8 @@ citation-recall diagnostic，不改变 G1/G2 或 S2 gate。
 质量门仍固定为：Recall@5 `>=0.90`、nDCG@5 `>=0.85`、eligible subset uplift `>=0.08`、critical recall `=1`、intent
 preservation `>=0.95`、grounded rubric `>=0.90`、citation precision `=1`、required citation recall `>=0.90`、critical
 notice recall `=1`，unsafe rewrite/false tool success/false citation/safety failure 全为 `0`。六条语义 lane 只记录
- median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。分支文档 parity、推送、`main` 合并与合并后二次回归均已
-完成；当前 `main == origin/main`（具体 HEAD 以 `git rev-parse main origin/main` 为准），全量 Agent 回归 `1427/1427`。未来 L2
-controlled-Live 仍必须重新接受当次 DeepSeek/Qwen 数据边界并给出精确绑定当前 source/lineage 的 exact authorization。
+ median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。该段的分支文档 parity、推送、`main` 合并与合并后二次
+回归是已完成的历史动作；当前 Agent full 为 `1436/1436`，controlled-Live 状态以本文顶部和新的验收记录为准。
 完整设计、计划与验收见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`
@@ -71,8 +85,8 @@ controlled-Live 仍必须重新接受当次 DeepSeek/Qwen 数据边界并给出�
 L2 admission contract 已以独立 zero-provider 方式完成，但它不是语义质量或 Live authority。它严格绑定 future approved
 branch/tag、S2 manifest/policy/baseline/factory identity、DeepSeek/Qwen data-boundary receipt、source-bound exact
 authorization 和预算；输出 `providerDispatchAllowed=false`、`providerCalls=0`、`credentialReads=0`、
-`formalEvidence=0`。协议中的 confirmation 字符串只用于 parser contract，不代表当前用户授权；main 合并后二次回归前后，
-都不得读取 credential 或调用 Provider。验收记录：
+`formalEvidence=0`。该段只描述历史 parser contract；本次用户已在新 source 上重新接受边界并授权唯一 Live，实际消费仍受
+approved tag/source gate 控制。验收记录：
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
 
 ## Phase 6.9.8 Transport Re-entry V2 S1 历史边界

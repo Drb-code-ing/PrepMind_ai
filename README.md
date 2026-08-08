@@ -1,18 +1,15 @@
 # PrepMind AI 智能备考助手
 
-> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成并已合并推送到 `main`。
-> 普通分支 `drb/phase-6-9-8-l2-admission-contract` 已收口，当前
-> `main == origin/main`（具体 HEAD 以 `git rev-parse main origin/main` 为准），
-> 新增严格
-> source/remote parity、协议 approved tag、冻结 S2 identity、DeepSeek/Qwen data-boundary receipt、exact
-> lineage/source authorization、bounded budget 与 WeakMap single-use capability。输出固定
-> `mode=zero_provider_admission`、`providerDispatchAllowed=false`、`providerCalls=0 / credentialReads=0 /
-> formalEvidence=0`；协议字符串不是用户授权，当前不创建 tag、不读 `.env`、不执行 proxy/network、Provider、Docker/API/browser
-> 或产品写入。L2 focused `4/4`、G1+G2+S2+L2 focused `18/18`、typecheck/lint 通过。详见
-> [`L2 admission contract 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md)。
-> 合并后的 `@repo/agent` 全量回归 `1427/1427`（24263 assertions，178 files），typecheck/lint/`git diff --check` 通过。
-> 下一步只有重新接受当次 DeepSeek/Qwen 数据边界并提供精确绑定当前 source/lineage 的 exact authorization 后，才可执行唯一
-> L2 controlled-Live。
+> 当前原子任务（2026-08-09）：Phase 6.9.8 P1 L2 controlled-Live 准备已完成实现修复，当前分支为
+> `drb/phase-6-9-8-p1-l2-controlled-live`，修复提交 `e5f6c229` 已推送且工作树 clean。修复后的 source admission 只围栏
+> 当前 P1 L2 marker/journal/report/recovery/artifact 路径；历史 `.tmp` sealed evidence 与普通仓库文件保持只读，不再误阻断
+> 新 run，当前命名空间冲突仍 fail-closed。P1 L2 focused `13/13`（44 assertions），Agent full `1436/1436`（24314
+> assertions，180 files），typecheck/lint/变更源码 Prettier/`git diff --check` 通过。
+> [`P1 L2 implementation 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md)
+> 记录了实现边界；本次用户已接受 DeepSeek/Qwen data boundary 并授权唯一 controlled-Live，但授权在 approved tag 创建前尚未消费。
+> 完成文档 parity 并推送后，将创建并推送 `phase-6.9.8-retriever-final-response-p1-l2-approved`，再执行唯一 Live；成功也只形成
+> P1 semantic authority，不自动解锁产品/API/browser、Trace、SLA 或 `main`。不得重跑历史 evidence、不使用 worktree、不清理
+> Docker 容器/镜像/卷/数据库/Redis/MinIO。
 
 > 当前任务（2026-08-08）：Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。run
 > `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上按
@@ -42,9 +39,8 @@
 > [`G1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md)、
 > [`P1 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)、
 > [`P1 计划`](docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md) 与
-> [`P1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md)。上述 S2 段落是合并前的历史
-> checkpoint；L2 admission 已在 `main` 完成二次 zero-provider 回归。L2 semantic canary 仍需重新接受当次 DeepSeek/Qwen
-> 数据边界并给出新的 exact authorization。
+> [`P1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md)。上述 S2 与 L2 admission
+> 段落是已完成的历史 checkpoint；当前 controlled-Live 状态以本文档顶部和 P1 L2 implementation/controlled-Live 验收记录为准。
 
 > 历史回执（2026-08-07）：Transport Re-entry V2 S1 reviewed Mock/static 已完成。C2 zero-provider runner/durability
 > 已先完成；新的

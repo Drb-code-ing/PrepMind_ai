@@ -1,20 +1,29 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前状态：Phase 6.9.8 P1 L2 admission contract 已合并收口（2026-08-08）
+## 当前任务：Phase 6.9.8 P1 L2 controlled-Live preparation（2026-08-09）
 
-`drb/phase-6-9-8-l2-admission-contract` 已完成独立 L2 zero-provider admission contract，随后 fast-forward 合并并推送
-`main`。当前 `main == origin/main` 且工作树 clean；合并后的
-`@repo/agent` 全量回归为 `1427/1427`（24263 assertions，178 files），typecheck、lint、`git diff --check` 均通过。
+当前普通分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，implementation 修复提交为 `e5f6c229`；分支已推送、工作树
+clean，且本次修复后的 Agent full 回归为 `1436/1436`（24314 assertions，180 files）。P1 L2 focused 为 `13/13`
+（44 assertions），typecheck、lint、变更源码 Prettier 与 `git diff --check` 均通过。
 
-contract 严格绑定 source/remote parity、协议 approved tag、冻结 S2 identity、DeepSeek/Qwen data-boundary receipt、exact
-lineage/source authorization 与 bounded budget。输出 `mode=zero_provider_admission`、`providerDispatchAllowed=false`、
-`providerCalls=0`、`credentialReads=0`、`formalEvidence=0`；不读 `.env`、不执行 proxy/network、Provider、Docker/API/browser、
-Trace、BackgroundJob、Outbox 或业务写入。协议中的 data-boundary/authorization 字符串不表示用户已接受或已授权，
-approved tag 尚未创建，未产生正式 L2 evidence。完整记录见
+本次修复只收紧当前 L2 evidence namespace：历史 `.tmp` sealed evidence 和普通仓库文件保持只读，不再误阻断新的 L2；当前
+marker/journal/report/recovery/artifact 路径冲突、symlink、读取错误和 publication drift 仍 fail-closed。实现验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
+
+用户已重新接受本次 DeepSeek/Qwen data boundary，并给出绑定当前 branch/lineage 的 exact authorization；授权在 approved tag
+创建前尚未消费。下一原子任务是完成本文档 parity 并单独提交/推送，随后在同一 clean source 创建并推送
+`phase-6.9.8-retriever-final-response-p1-l2-approved`，再执行唯一 P1 L2 controlled-Live。Live 仍禁止 retry/resume/replay/
+backfill/curl/单 case/追加 Provider 探测；Docker 容器、镜像、卷、数据库、Redis、MinIO 保持原状，不使用 worktree。
+
+Live 成功也只形成 P1 semantic authority，不等同于产品 Docker/API/browser、Trace、SLA 或 `main` authority；终态需另写证据文档，
+之后才合并 `main`、推送 `origin/main` 并做一次不调用 Provider 的二次回归。
+
+## 历史 checkpoint：Phase 6.9.8 P1 L2 admission contract（2026-08-08）
+
+此前 `drb/phase-6-9-8-l2-admission-contract` 已完成独立 L2 zero-provider admission contract，并合并到 `main`。该历史
+checkpoint 的 `mode=zero_provider_admission`、`providerDispatchAllowed=false`、`providerCalls=0`、`credentialReads=0`、
+`formalEvidence=0` 事实保持不变；它不代表本次 controlled-Live 已执行。完整记录见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
-
-下一步只有在用户重新接受当次 DeepSeek/Qwen 数据边界并给出精确绑定当前 source/lineage 的 exact authorization 后，
-才可执行唯一 L2 controlled-Live；不得重跑已封存 evidence，不使用 worktree，Docker 容器、镜像和卷保持原状。
 
 ## 历史完成：Phase 6.9.8 P1 S2 reviewed Mock/static（2026-08-08）
 

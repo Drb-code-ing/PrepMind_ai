@@ -1,5 +1,17 @@
 # PrepMind AI 数据流
 
+> 当前 P1 L2 controlled-Live preparation（2026-08-09）：实现修复后的入口围栏为
+> `exact argv -> source/remote parity -> approved tag -> frozen manifest/policy/baseline/S2 identity ->
+> DeepSeek/Qwen data-boundary receipt -> exact lineage/source authorization -> bounded budget -> selective root .env
+> projection -> credential capability -> exclusive marker/reservation -> 8 guards -> 6 DeepSeek rewrite -> 6 DeepSeek
+> FinalResponse -> strict scorer -> fsynced journal -> hard-link artifact -> validator`。
+> Qwen embedding policy calls 固定为 `0`；最大并发 `1`、candidate cap `12`、input/output cap `37600/8800`、成本 cap `0.176 CNY`。
+> 历史 `.tmp` sealed evidence 和普通仓库文件不进入当前 formal namespace；当前 marker/journal/report/recovery/artifact
+> 冲突、symlink 与非 `ENOENT` 读取错误仍在 source/publication gate fail-closed。当前还没有读取 credential、调用 Provider 或创建
+> 正式 L2 evidence。用户已接受当次 DeepSeek/Qwen data boundary 并授权唯一 Live；完成文档 parity、创建并推送 approved tag 后才消费。
+> Live 终态只形成 P1 semantic authority，随后仍需单独的证据文档、`main` 合并/远程推送与不调用 Provider 的二次回归。
+> 实现验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
+
 > 当前 L1 controlled-Live sealed（2026-08-08）：V2 已从 S1 reviewed Mock/static 收口到唯一可受控执行的
 > production-shaped launcher。固定入口顺序为 `exact argv -> source/remote parity -> loopback proxy preflight ->
 DeepSeek/Qwen data boundary -> exact authorization -> root .env bounded projection -> capability shape check ->
