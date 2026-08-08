@@ -2,10 +2,14 @@
 
 > 设计来源：
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
-> 当前状态：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1/T2/T3-A 已完成，T3-B
+> 当前状态（历史计划）：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1/T2/T3-A 已完成，T3-B
 > controlled canary 已按一次性授权执行并以配置失败 durable seal，T3-C configuration guard 与 Transport Re-entry V2
-> D0/C1/C2/S1 zero-provider contract/reviewed Mock 已完成；L1、R6/R7、产品/main 与后续阶段仍阻断
-> 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
+> D0/C1/C2/S1 zero-provider contract/reviewed Mock 已完成；唯一 V2 L1 已随后 durable seal。当前语义路线转入独立
+> P1 zero-provider semantic-gate，G1 尚未开始；产品/main 与后续阶段仍受语义门约束。
+> 历史实现分支：`drb/phase-6-9-8-retriever-final-response-contract`
+
+> 当前入口：`docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、
+> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与对应 acceptance。
 
 ## 执行原则
 
@@ -30,9 +34,9 @@ Provider/credential/formal evidence=`0/0/0`。focused（S1+C2）`22/22`（136 as
 
 主代理完成 contract/security/operations 静态复核；三路只读子代理尝试均被服务端 `429 Too Many Requests` 拒绝，未
 形成独立复审证据。后续 source-admission 修复只统计当前 V2 正式路径占用，忽略历史 `.tmp` 文件并对其他读取错误
-fail-closed；clean source CLI 已确认 branch/HEAD/upstream/origin parity、`git_verified` 与 formal artifact `0`。随后仅等待
-V2 L1 的全新 DeepSeek/Qwen 数据边界接受与两条 exact authorization。S1 不解锁产品 Docker/API/browser、`main`、Task
-10/11 或任何 Provider 追加探测。完整验收见
+fail-closed；clean source CLI 已确认 branch/HEAD/upstream/origin parity、`git_verified` 与 formal artifact `0`。随后唯一
+V2 L1 已在新 source 上完成并封存。S1 不解锁产品 Docker/API/browser、`main`、Task 10/11 或任何 Provider 追加探测；
+当前语义入口为独立 P1/G1。完整验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
 
 ## Task 0：设计、边界与数值门冻结

@@ -29,7 +29,28 @@ Live 前 implementation 与 root-env 诊断仍分别见
 Root admission 诊断记录：
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
-## Phase 6.9.8 Transport Re-entry V2 S1 当前边界
+## Phase 6.9.8 P1 zero-provider semantic-gate（当前）
+
+L1 的真实 transport success 已 durable seal，但 `qualityAuthority=none`；因此当前行为验收只冻结下一条语义门，
+不把 L1 当作回答质量或产品可用性证据。P1 固定 `8` 条 zero-call guard、`6` 条 query-rewrite、`6` 条
+FinalResponse，最大并发为 `1`，candidate invocation 上限为 `12`。实际路径必须穿过 Retriever、rewrite candidate、
+evidence projector、FinalResponse 和本地 ledger/scorer；responder 只读取实际 bounded prompt，expected/oracle 只能由
+后置 scorer 读取。
+
+质量门冻结为：Recall@5 `>=0.90`、nDCG@5 `>=0.85`、eligible subset uplift `>=0.08`、critical recall `=1`、
+intent preservation `>=0.95`、grounded rubric `>=0.90`、citation precision `=1`、required citation recall `>=0.90`、
+critical notice recall `=1`，unsafe rewrite/false tool success/false citation/safety failure 全为 `0`。六条语义 lane
+只记录 median/max，P95/SLA 固定为 `null`。
+
+G1/G2/S2 全程 `providerCalls=0 / credentialReads=0 / formalEvidence=0`，不启动 Docker/API/browser，不写 Trace、
+BackgroundJob、Outbox 或业务数据；S2 gate 固定 `p1_mock_quality_not_evidence / qualityAuthority=none`。未来 L2
+必须重新接受当次 DeepSeek/Qwen 数据边界并给出 exact authorization；P1 设计本身不创建 Live 门。完整设计、计划与验收见：
+
+- `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`
+- `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
+
+## Phase 6.9.8 Transport Re-entry V2 S1 历史边界
 
 S1 是 C2 之后的 zero-provider reviewed Mock/static checkpoint。三个 bounded synthetic first-party adapter 通过同一
 `rewrite -> qwen -> final_response` runner seam；success wire 为 runner `3/3/3/3` 与 adapter/provider
@@ -48,7 +69,7 @@ source 回放为 `git_verified / formalArtifactCount=0`；该回放仍是 zero-p
 
 这只能证明 synthetic contract、wire/usage accounting、durability 和 no-raw 边界，不证明 DeepSeek/Qwen health、真实
 模型语义、Retriever/FinalResponse P95/SLA、`/api/chat`、Docker/API/browser、Trace、BackgroundJob/Outbox、
-业务数据或 `main`。S1 后停止在 V2 L1；L1 仍需新的数据边界接受与两条 exact authorization。
+业务数据或 `main`。S1 已由唯一 L1 sealed run 收口；当前转入上方 P1 zero-provider semantic-gate。
 
 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
 
@@ -63,7 +84,7 @@ usage 的首错会打开 breaker，publication interruption 只恢复同一 term
 C2 focused `15/15`、Agent full `1387/1387`、typecheck/lint/Prettier 通过；真实 credential、Provider、正式 evidence、
 Docker/API/browser、Trace 与业务写入均为 `0`。authority=`zero_provider_transport_reentry_v2_c2 /
 qualityAuthority=none`。这只证明 synthetic 执行与 durability 边界，不证明 Provider health、真实模型语义、产品
-`/api/chat`、P95/SLA 或 `main`；S1 已完成；V2 L1 仍需新的数据边界接受与 exact authorization。
+`/api/chat`、P95/SLA 或 `main`；S1 与 L1 已完成，当前转入 P1 设计和后续 G1。
 
 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2-zero-provider-runner-durability.md`。
 

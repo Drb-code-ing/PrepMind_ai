@@ -1,6 +1,7 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前原子任务（2026-08-08）：Phase 6.9.8 Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。
+> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 zero-provider semantic-gate 设计已冻结，下一步为 G1 contract/baseline。
+> Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。
 > run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上以
 > `transport_reentry_v2_l1_controlled_canary_passed` 收口，`3` slots、Provider calls `3`、usage `145/28/173`、费用
 > `0.000573 CNY`、journal `16`、validator `ok=true`；authority 仅为 transport diagnostic、`qualityAuthority=none`。
@@ -14,8 +15,8 @@
 > first-party adapter、wire/usage/fault matrix 与 reviewed Mock/static；S1 authority 为
 > `zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。S1 source admission 已修复历史 `.tmp` 误计并在
 > clean branch/HEAD/upstream/origin 上完成 `git_verified / formalArtifactCount=0` 回放；focused（S1+C2）`22/22`、
-> Agent full `1394/1394`。V2 L1 已随后完成并封存，下一任务仅为 P1 zero-provider semantic-gate；设计、计划、L1 sealed
-> 与 C1/C2 验收见
+> Agent full `1394/1394`。V2 L1 已随后完成并封存；P1 设计现已冻结，下一任务为 G1 zero-provider
+> manifest/subset baseline/scorer。设计、计划、L1 sealed 与 C1/C2 验收见
 > `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md` 与
@@ -90,23 +91,23 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 
 ## 总体路线
 
-| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                                 |
-| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                               |
-| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                               |
-| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                               |
-| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                               |
-| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                               |
-| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                               |
-| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                               |
-| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                       |
-| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成        |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 V2 S1 Mock/static 完成；停止在 L1 授权门 |
-| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                            |
-| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成                |
-| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                               |
-| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                               |
-| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                               |
+| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                             |
+| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                           |
+| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                           |
+| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                           |
+| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                           |
+| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                           |
+| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                           |
+| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                           |
+| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                   |
+| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成    |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | Phase 6.9.8 P1 设计完成；下一步 G1 zero-provider |
+| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                        |
+| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成            |
+| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                           |
+| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                           |
+| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                           |
 
 ## 已完成阶段
 
@@ -689,10 +690,13 @@ qualityAuthority=none`；该 checkpoint 当时只解锁 R4，后续 R4 已完成
   existing-artifact recovery 与 recovery-claim integrity check；随后唯一 run
   `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 `ee3dbf91...` 上以
   `transport_reentry_v2_l1_controlled_canary_passed` durable seal，Provider calls=`3`、费用=`0.000573 CNY`、
-  validator=`ok=true`、authority 仅为 transport diagnostic。成功不进入产品/Docker/API/browser/`main` 语义验收；下一步
-  是 P1 zero-provider semantic-gate。implementation 历史 checkpoint 与 sealed 证据分别见
+  validator=`ok=true`、authority 仅为 transport diagnostic。成功不进入产品/Docker/API/browser/`main` 语义验收；P1
+  zero-provider semantic-gate 设计已冻结，下一步是 G1 manifest/subset baseline/scorer。implementation 历史 checkpoint 与 sealed 证据分别见
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md` 与
-  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。（已完成）
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`；P1 设计、计划与验收见
+  `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、
+  `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`。（已完成）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
 - Phase 6.10：全部 Agent 完成后再实施结构化长期记忆注入与 Episodic Memory。（规划中）
