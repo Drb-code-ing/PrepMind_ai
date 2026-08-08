@@ -3,15 +3,15 @@
 ## 1. 结论
 
 P1 L2 controlled-Live 的失败证据、根 artifact 与相关源码已经从受控分支提交并合并到 `main`；随后 parity 文档又以
-独立提交合并，最终 `main` 已推送到远程并完成一次只读、零 Provider 回归。该验收确认的是源码、文档和封存证据的分支一致性与工程回归，
+独立提交合并，`main` 已推送到远程并完成一次只读、零 Provider 回归。该验收确认的是源码、文档和封存证据的分支一致性与工程回归，
 不是把失败的 Live 提升为语义或产品通过。
 
 固定结论：
 
 - production/evidence merge commit：`f4fac048919461c26957c1aed11488fda7e5dbee`；
 - parity documentation commit：`6c5831518673ff2bbc95ae1141d6ad9525edc2b4`；
-- final documentation merge commit：`613cc7721f02b577e35b595a2b2d47a2d0d91cfd`；
-- `HEAD == main == origin/main`：`613cc7721f02b577e35b595a2b2d47a2d0d91cfd`；
+- final documentation merge commit recorded at the first parity replay：`613cc7721f02b577e35b595a2b2d47a2d0d91cfd`；
+- `HEAD == main == origin/main`：以第 3.3 节命令在当前工作树实时核对，不在文档中硬编码可继续变化的 HEAD 哈希；
 - 来源提交：`1f3c0d9b`（`docs(phase-6.9.8): seal P1 L2 controlled-live failure`）；
 - 来源分支：`drb/phase-6-9-8-p1-l2-controlled-live`，已推送到 `origin`；
 - 封存 run：`ff035203-500f-4744-b33c-3c375ae4c785`；
@@ -30,8 +30,8 @@ retry，也不允许重跑、recovery、seal、curl、单 case 或追加 Provide
    `1f3c0d9b`；
 2. 将该分支推送到 `origin/drb/phase-6-9-8-p1-l2-controlled-live`；
 3. 从干净的 `main` 使用 `--no-ff` 合并生产/证据分支，生成 `f4fac048` 并推送 `origin/main`；
-4. 从该最新 `main` 新开文档 parity 分支，提交 `6c583151` 并再次 `--no-ff` 合并，生成最终文档 merge `613cc772`；
-5. 推送 `origin/main`，随后在最终 `main` 执行本文件第 3 节的零 Provider 验收。
+4. 从该最新 `main` 新开文档 parity 分支，提交 `6c583151` 并再次 `--no-ff` 合并，生成文档 merge `613cc772`；
+5. 后续仅有文档哈希精度收口，不改变源码或 sealed evidence；每次推送 `origin/main` 后均按第 3 节命令复核 parity。
 
 合并没有移动、删除或改写受控 Live 的 approved tag、marker、journal、report 或 root artifact。Docker 容器、镜像、
 卷、PostgreSQL、Redis、MinIO、BackgroundJob、Outbox 与浏览器业务数据均未被清空或改写。
@@ -64,7 +64,7 @@ git diff --check                    pass
 
 ```text
 git status --porcelain        ## 空
-git rev-parse HEAD main origin/main  ## 三者均为 613cc772...
+git rev-parse HEAD main origin/main  ## 三者应输出同一个当前 HEAD
 git rev-list --left-right --count main...origin/main  ## 0 0
 ```
 
