@@ -13,7 +13,7 @@ durable seal。8/8 guard 继续 zero-call；真实行为只执行 `rewrite_01` �
 `0.00069 CNY` 写成整轮费用。Journal `41` 条并以 `evidence_published` 收口，strict validator=`bundle_valid`，无
 recovery claim。`schema` 只代表未满足本地 strict contract，不能推断具体 Provider JSON 字段、网络、账号、余额或模型权限
 根因。该失败不证明 P1 semantic、`/api/chat`、Docker/API/browser、Trace、P95/SLA 或 `main` 产品可用；唯一名额已
-消费，禁止重跑和追加探测。源码/文档已合并到 `main` merge `f4fac048` 并完成 `main == origin/main` 的零 Provider
+消费，禁止重跑和追加探测。源码已在 `f4fac048` 合并，文档 parity 再以 `613cc772` 合并，并完成最终 `main == origin/main` 的零 Provider
 回归；完整记录见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
 main parity 记录见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。

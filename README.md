@@ -11,7 +11,7 @@
 > [`P1 L2 implementation 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md)。
 > 该结果不形成 P1 semantic 或产品/API/browser/Trace/SLA/`main` 产品 authority；唯一名额已消费，禁止重跑、
 > recovery/seal、curl、单 case 或追加 Provider 探测。证据与文档已在 `1f3c0d9b` 提交，并以 `--no-ff` 合并到
-> `main` merge `f4fac048`；`main == origin/main` 的零 Provider 二次回归已通过。main parity 记录见
+> 生产/证据 merge `f4fac048` 后，文档 parity 以 `613cc772` 合并；最终 `main == origin/main` 的零 Provider 二次回归已通过。main parity 记录见
 > [`P1 L2 main parity 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md)。
 > 下一功能任务必须从最新 `main` 新开独立 schema recovery/diagnostic lineage。不使用 worktree，不清理 Docker
 > 容器/镜像/卷/数据库/Redis/MinIO。

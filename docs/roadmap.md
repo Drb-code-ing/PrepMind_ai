@@ -6,7 +6,8 @@
 > `schema` failure 打开 breaker，实际 Provider calls=`2/12`、Qwen calls=`0`、usage=`343/40`、aggregate cost=`null`，
 > 后续 10 条 lane 未启动。Journal `41`、validator=`bundle_valid`、recovery claim=`null`。该结果不形成 P1 semantic、
 > 产品 Docker/API/browser、Trace、SLA 或 `main` 产品 authority，且不得重跑/追加探测。证据/文档已在 `1f3c0d9b` 提交，
-> 以 `--no-ff` 合并到 `main` merge `f4fac048` 并完成 `main == origin/main` 的 zero-provider 回归。下一功能任务为独立
+> 以 `--no-ff` 生成生产/证据 merge `f4fac048`，文档 parity 再以 `613cc772` 合并，最终完成 `main == origin/main` 的
+> zero-provider 回归。下一功能任务为独立
 > schema recovery/diagnostic lineage。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。

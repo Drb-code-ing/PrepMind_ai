@@ -17,7 +17,8 @@ recovery/seal、curl、单 case或追加 Provider 探测；不得删除、格式
 完整证据见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`；Live 前实现与 source-gate
 修复历史见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。证据/文档已在
-`1f3c0d9b` 提交、通过 `--no-ff` 合并到 `main`，并在 `f4fac048` 的 `main == origin/main` 上完成二次零 Provider 验收；
+`1f3c0d9b` 提交、通过 `--no-ff` 生成生产/证据 merge `f4fac048`，文档 parity 再以 `613cc772` 合并；最终
+`main == origin/main` 上完成二次零 Provider 验收；
 main parity 记录见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。下一功能任务必须
 从最新 `main` 新开独立 schema recovery/diagnostic lineage。Docker 容器、镜像、卷、数据库、Redis、MinIO 保持原状，
 不使用 worktree。
