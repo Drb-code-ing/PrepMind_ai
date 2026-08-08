@@ -1,5 +1,20 @@
 # PrepMind AI 开发日志
 
+> 2026-08-08 — Phase 6.9.8 P1 G1 zero-provider contract/baseline/scorer 已完成：
+>
+> 当前分支 `drb/phase-6-9-8-g1-manifest-baseline-scorer` 从 clean `main`/`origin/main` `9a3c32e2` 派生；新增独立
+> `phase-6.9.8-retriever-final-response-p1-v1` manifest、subset deterministic baseline、candidate-only projection 与
+> strict scorer/gate。固定 `8` guards、`6` rewrite、`6` FinalResponse（20 entries / 12 semantic lanes），manifest/policy/
+> baseline SHA 分别为 `f117f625...bb1ccb189`、`edaa07d1...37537f3`、`2c539b55...f5f611df`。scorer 重算 aggregate，
+> 拒绝 self-reported metrics、重复/缺失/乱序 case、旧 lineage、unsafe breaker 与超过 `12` 次 candidate invocation；
+> semantic mismatch 不打开 breaker，P95 固定 `null / insufficient_sample_size_6`。
+>
+> G1 authority=`zero_provider_retriever_final_response_p1_g1_contract_baseline`、`qualityAuthority=none`；
+> `providerCalls=0`、`credentialReads=0`、Qwen/formal evidence/业务写入均为 `0`。focused `5/5`（27 assertions）、
+> Agent full `1414/1414`（24108 expect()，175 files）、typecheck/lint/Prettier 通过；未启动 Docker/API/browser，未读取
+> `.env` 或执行真实模型。下一原子任务为 G2 one-shot runner/durability；完整验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
+
 > 2026-08-08 — Phase 6.9.8 P1 zero-provider semantic-gate 设计已冻结：
 >
 > L1 的唯一三槽 transport canary 已以 `transport_reentry_v2_l1_controlled_canary_passed` 封存，但

@@ -1,10 +1,16 @@
 # Phase 6.9.8 Retriever / FinalResponse P1 zero-provider semantic-gate 验收
 
 日期：2026-08-08
-状态：P1 设计完成，zero-provider；G1/G2/S2 尚未开始
+状态（本文件原始设计验收）：P1 设计完成，zero-provider；G1 后续已独立完成，G2/S2 尚未开始
 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 基线：`main` merge `3fdb9908`
 Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
+
+> 后续状态（2026-08-08，非本次设计证据改写）：G1 已在
+> `drb/phase-6-9-8-g1-manifest-baseline-scorer` 完成 manifest、subset baseline、candidate projection 与 strict
+> scorer/gate；authority=`zero_provider_retriever_final_response_p1_g1_contract_baseline`、`qualityAuthority=none`，
+> focused `5/5`、Agent full `1414/1414`，Provider/credential/formal evidence 均为 `0`。当前下一步为 G2 one-shot
+> runner/durability，详见 `phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
 
 ## 1. 本次验收结论
 
@@ -75,8 +81,8 @@ false tool/citation/safety:     0
 P95/SLA authority:              null
 ```
 
-这些是待 G1 scorer 执行的门，不是本次设计提前声称的实测分数；baseline 的实际 subset 数值必须由源码重算并记录，
-不能手填。
+这些是 G1 scorer 已冻结并执行的门；G1 只完成了本地 baseline/contract 重算，不产生真实 candidate 语义分数或
+`qualityAuthority`。实际 SHA、命令和零 Provider 结果见独立 G1 验收文档，不能手填或从 L1 transport evidence 推导。
 
 ## 5. 明确未做
 
@@ -92,9 +98,11 @@ P95/SLA authority:              null
 
 ## 6. 下一步与停止门
 
-下一步是 G1：从最新 `main` 新建普通分支，实现 P1 manifest、subset deterministic baseline、strict scorer/gate 与
-anti-oracle 测试。G1 仍 zero-provider，完成后单独提交、推送并同步文档；随后合并 `main`、推送 `origin/main`，在
-`main` 上做不访问 Provider 的回归验收。
+本文件形成时的下一步曾是 G1；该步骤现已完成。当前下一步是 G2：从最新 `main` 新建普通分支，实现 one-shot runner、
+exclusive marker、hash-chain journal、hard-link publication、strict validator 与 crash-only recovery。G2 仍
+zero-provider，完成后单独提交、推送并同步文档；随后合并 `main`、推送 `origin/main`，在 `main` 上做不访问 Provider
+的回归验收。G1 的实现与结果见
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
 
 只有 S2 reviewed Mock/static 通过后，才可讨论独立 L2 admission。L2 必须重新接受当次 DeepSeek/Qwen 数据边界并提供
 精确 authorization；一次 reservation 后无论成功失败都不得 retry/resume/replay/backfill、curl、单 case 或追加探测。

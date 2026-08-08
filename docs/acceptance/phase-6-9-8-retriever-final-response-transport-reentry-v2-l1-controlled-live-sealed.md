@@ -74,9 +74,10 @@ L1 marker 已 durable，唯一名额已消费。无论结果成功或失败，�
 单 case/Provider 探测、recovery 或再次 seal。旧 T3/R5/Task 9C 的 marker、journal、artifact、SHA 与 authority 继续
 保持不可变。
 
-P1 zero-provider semantic-gate 设计已在从最新 `main` 派生的普通分支上冻结；下一原子任务是 G1 manifest/subset
-baseline/scorer contract。P1 设计、计划与验收见
+P1 zero-provider semantic-gate 设计随后在从最新 `main` 派生的普通分支上冻结，G1 已在独立 zero-provider 分支完成
+manifest/subset baseline/scorer contract；当前下一原子任务是 G2 one-shot runner/durability。P1 设计、计划与验收见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`；本次 L1 成功不直接进入产品或
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`；本次 L1 成功不直接进入产品或
 Phase 6.10。

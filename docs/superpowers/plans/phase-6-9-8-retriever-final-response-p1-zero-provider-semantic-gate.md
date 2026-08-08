@@ -2,10 +2,14 @@
 
 > 设计来源：[P1 zero-provider semantic-gate 设计](../specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)
 > 日期：2026-08-08
-> 当前状态：P1 设计已完成；下一步为 G1 zero-provider contract/baseline
+> 当前状态：P1 设计与后续 G1 zero-provider contract/baseline/scorer 已完成；下一步为 G2 one-shot runner/durability
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：`main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
+
+> 状态更新（2026-08-08）：本计划的 P1 设计步骤保持为历史冻结记录；G1 已在独立分支
+> `drb/phase-6-9-8-g1-manifest-baseline-scorer` 完成并推送，下一步为从最新 `main` 新建 G2 one-shot runner/durability
+> 分支。G1 结果与 SHA 见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
 
 ## 1. 执行原则
 
@@ -29,7 +33,7 @@
 
 P1 交付只包含 Markdown；正式 marker/journal/artifact/recovery claim 必须为 `0`。
 
-## 3. G1：manifest、subset baseline 与 strict scorer（下一阶段）
+## 3. G1：manifest、subset baseline 与 strict scorer（已完成，zero-provider）
 
 ### 3.1 实现责任
 
@@ -54,7 +58,10 @@ P1 交付只包含 Markdown；正式 marker/journal/artifact/recovery claim 必�
 - focused、Agent full、typecheck、lint、Prettier、`git diff --check` 通过；
 - G1 acceptance 文档记录实际 SHA、命令、未做事项和下一停止门。
 
-G1 完成后才能进入 G2；不允许在 G1 分支执行任何 Live 或产品 API 探测。
+G1 已完成并通过 focused `5/5`、Agent full `1414/1414`、typecheck、lint、Prettier；不允许在该分支执行任何 Live 或
+产品 API 探测。G1 authority 固定为 `zero_provider_retriever_final_response_p1_g1_contract_baseline /
+qualityAuthority=none`，正式 evidence 与业务写入均为 `0`。独立验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
 
 ## 4. G2：one-shot runner 与 durability（G1 后独立提交）
 
