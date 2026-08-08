@@ -4,7 +4,8 @@
 > 当前状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static、L1 implementation 与唯一 L1
 > controlled-Live 均已完成；run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 已以
 > `transport_reentry_v2_l1_controlled_canary_passed / qualityAuthority=none` durable seal。P1 zero-provider
-> semantic-gate 设计已另立普通分支冻结，当前下一步为 G1。
+> semantic-gate 设计已另立普通分支冻结；“下一步为 G1”是本计划当时的历史 checkpoint，当前 P1/G1/G2/S2 已完成，
+> 状态以入口文档为准。
 > 历史实现分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > 当前 authority：L1 `controlled_live_transport_reentry_v2 / qualityAuthority=none`；implementation/root-env diagnosis 与
 > S1 的 zero-provider authority 均保留为历史 checkpoint

@@ -1,7 +1,7 @@
 # Phase 6.9.8 Retriever / FinalResponse P1 zero-provider semantic-gate 验收
 
 日期：2026-08-08
-状态（本文件原始设计验收）：P1 设计完成，zero-provider；G1/G2 后续已独立完成，S2 尚未开始
+状态（本文件原始设计验收）：P1 设计完成，zero-provider；G1/G2/S2 后续均已独立完成。本文件保留设计时点证据
 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 基线：`main` merge `3fdb9908`
 Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
@@ -12,7 +12,8 @@ Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
 > focused `5/5`、Agent full `1414/1414`，Provider/credential/formal evidence 均为 `0`。随后 G2 在独立分支
 > `drb/phase-6-9-8-g2-runner-durability` 完成 one-shot runner/durability，focused `5/5`、Agent full `1419/1419`，
 > authority=`zero_provider_retriever_final_response_p1_g2_runner_durability / qualityAuthority=none`，详见
-> `phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。当前下一步为 S2 reviewed Mock/static。
+> `phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。以上“下一步为 S2”是本设计验收当时的历史 checkpoint；
+> S2 当前已完成，现行状态与停止门以 S2 验收和入口文档为准。
 
 ## 1. 本次验收结论
 

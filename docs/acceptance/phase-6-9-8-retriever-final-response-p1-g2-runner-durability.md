@@ -151,13 +151,13 @@ CodeGraph update-check/ensure 已完成，新增源码索引同步；本阶段�
 package public exports 只增加 G2 contract/runner/durability/CLI-core subpath；CLI script 不接收 credential、provider 或输出路径
 注入。G2 runner 仍是评测 lineage，不改变 `/api/chat`、Retriever/FinalResponse 生产 composition，也不创建异步任务。
 
-## 6. 停止门与下一步
+## 6. 停止门与下一步（G2 完成时的历史记录）
 
-G2 完成后，下一原子任务是从最新、已推送的 `main` 新建普通 git 分支，执行 S2 reviewed Mock/static。S2 需要继续保持
+G2 完成时，下一原子任务是从最新、已推送的 `main` 新建普通 git 分支，执行 S2 reviewed Mock/static。S2 需要继续保持
 zero-provider，验证真实 production candidate chain、Qwen synthetic port、evidence projector、FinalResponse、strict
 validator 与本地 merger 的 fault matrix；S2 gate 仍为 `p1_mock_quality_not_evidence / qualityAuthority=none`。
 
-只有 S2 完成并完成 source/remote parity 后，才可以另立 L2 semantic canary admission。L2 必须重新接受当次
+该历史 checkpoint 后，S2 已完成并完成 source/remote parity，且已在 `main` 二次回归；当前若另立 L2 semantic canary admission，仍必须重新接受当次
 DeepSeek/Qwen 数据边界并给出精确到 source/lineage 的一次性授权；任何“继续/好的”都不替代 exact authorization。L2
 成功也不自动解锁 Docker/API/browser、产品 `/api/chat` 或 `main`，这些必须另行验收、合并和推送。
 

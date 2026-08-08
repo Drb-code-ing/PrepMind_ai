@@ -23,7 +23,7 @@ exclusive marker/reservation -> adapter construction -> rewrite -> qwen -> final
 > `git_verified / formalArtifactCount=0` 回放；该历史流已由上方唯一 L1 sealed run 收口。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
 
-> 当前 G2（2026-08-08）：L1 transport success 仍不进入产品语义流；P1 G2 已把 G1 的静态合同推进为可审计
+> G2 历史 checkpoint（2026-08-08）：L1 transport success 仍不进入产品语义流；P1 G2 已把 G1 的静态合同推进为可审计
 > one-shot runner/durability。固定流为
 > `source admission -> 8 guards -> 6 rewrite baseline/candidate pairs -> 6 FinalResponse projector/candidate lanes ->
 strict scorer -> marker/journal/artifact publication`。
