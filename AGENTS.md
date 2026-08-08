@@ -3,7 +3,7 @@
 ## 当前状态：Phase 6.9.8 P1 L2 admission contract 已合并收口（2026-08-08）
 
 `drb/phase-6-9-8-l2-admission-contract` 已完成独立 L2 zero-provider admission contract，随后 fast-forward 合并并推送
-`main`。当前 `main == origin/main == 1a97ba038c9e9c97a5fdddc849bfb9251c8b5cc8`，工作树 clean；合并后的
+`main`。当前 `main == origin/main` 且工作树 clean；合并后的
 `@repo/agent` 全量回归为 `1427/1427`（24263 assertions，178 files），typecheck、lint、`git diff --check` 均通过。
 
 contract 严格绑定 source/remote parity、协议 approved tag、冻结 S2 identity、DeepSeek/Qwen data-boundary receipt、exact

@@ -10,7 +10,8 @@
 > `.env`、未执行 proxy/network、Provider、Docker/API/browser、Trace、BackgroundJob、Outbox 或业务写入。
 >
 > focused `4/4`（19 assertions），G1+G2+S2+L2 focused `18/18`（142 assertions），typecheck/lint/`git diff --check`
-> 通过。随后已完成文档同步、fast-forward 合并并推送 `main`，当前 `main == origin/main == 1a97ba038c9e9c97a5fdddc849bfb9251c8b5cc8`；
+> 通过。随后已完成文档同步、fast-forward 合并并推送 `main`，当前 `main == origin/main`（具体 HEAD 以
+> `git rev-parse main origin/main` 为准）；
 > 合并后 `@repo/agent` 全量回归 `1427/1427`（24263 assertions，178 files），typecheck/lint/diff check 再次通过。
 > 完整验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
 > 下一步只有重新接受当次 DeepSeek/Qwen 数据边界并给出精确绑定当前 source/lineage 的 exact authorization，才可执行唯一

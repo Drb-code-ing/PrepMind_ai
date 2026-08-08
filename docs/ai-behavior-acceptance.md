@@ -57,7 +57,7 @@ citation-recall diagnostic，不改变 G1/G2 或 S2 gate。
 preservation `>=0.95`、grounded rubric `>=0.90`、citation precision `=1`、required citation recall `>=0.90`、critical
 notice recall `=1`，unsafe rewrite/false tool success/false citation/safety failure 全为 `0`。六条语义 lane 只记录
  median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。分支文档 parity、推送、`main` 合并与合并后二次回归均已
-完成；当前 `main == origin/main == 1a97ba038c9e9c97a5fdddc849bfb9251c8b5cc8`，全量 Agent 回归 `1427/1427`。未来 L2
+完成；当前 `main == origin/main`（具体 HEAD 以 `git rev-parse main origin/main` 为准），全量 Agent 回归 `1427/1427`。未来 L2
 controlled-Live 仍必须重新接受当次 DeepSeek/Qwen 数据边界并给出精确绑定当前 source/lineage 的 exact authorization。
 完整设计、计划与验收见：
 

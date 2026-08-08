@@ -2,7 +2,7 @@
 
 > 当前原子任务（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成并已合并推送到 `main`。
 > 普通分支 `drb/phase-6-9-8-l2-admission-contract` 已收口，当前
-> `main / origin/main = 1a97ba038c9e9c97a5fdddc849bfb9251c8b5cc8`，
+> `main == origin/main`（具体 HEAD 以 `git rev-parse main origin/main` 为准），
 > 新增严格
 > source/remote parity、协议 approved tag、冻结 S2 identity、DeepSeek/Qwen data-boundary receipt、exact
 > lineage/source authorization、bounded budget 与 WeakMap single-use capability。输出固定
