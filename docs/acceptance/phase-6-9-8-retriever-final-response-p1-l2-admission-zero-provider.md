@@ -3,8 +3,8 @@
 > 日期：2026-08-08  
 > 状态：已完成（zero-provider contract；未执行 Live）  
 > 分支：`drb/phase-6-9-8-l2-admission-contract`  
-> 基线：从 `main / origin/main = 313d6e48` 派生；最终合并：`main / origin/main = c00e6b05`
-> 代码提交：`67199acf`；文档/合并收口：`c00e6b05`
+> 基线：从 `main / origin/main = 313d6e48` 派生；contract 合并：`main / origin/main = c00e6b05`；最终文档收口：`1a97ba03`
+> 代码提交：`67199acf`；文档/合并收口提交：`1a97ba03`
 
 ## 1. 结论
 

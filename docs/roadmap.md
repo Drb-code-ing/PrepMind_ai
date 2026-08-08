@@ -1,7 +1,7 @@
 # PrepMind AI 学习与开发路线图
 
 > 当前原子任务（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成并已合并推送；当前
-> `main == origin/main == c00e6b057f0c379133192d660d931ba08d6fabd7`，合并后 zero-provider 回归已通过（Agent `1427/1427`，
+> `main == origin/main == 1a97ba038c9e9c97a5fdddc849bfb9251c8b5cc8`，合并后 zero-provider 回归已通过（Agent `1427/1427`，
 > 24263 assertions，178 files；typecheck/lint/diff check 通过）。
 > Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。
 > run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上以

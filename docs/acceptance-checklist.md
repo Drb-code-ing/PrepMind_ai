@@ -57,7 +57,7 @@ S2 实施验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1
 L2 admission 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
 
 当前 L2 admission contract 已完成文档 parity、推送、`main` 合并与合并后二次 zero-provider 回归；`main == origin/main ==
-c00e6b057f0c379133192d660d931ba08d6fabd7`，Agent full `1427/1427`、typecheck/lint/`git diff --check` 通过。之后若申请
+1a97ba038c9e9c97a5fdddc849bfb9251c8b5cc8`，Agent full `1427/1427`、typecheck/lint/`git diff --check` 通过。之后若申请
 L2 controlled-Live，必须重新接受当次 DeepSeek/Qwen 数据边界并给出精确绑定当前 source/lineage 的 exact authorization，
 不执行已封存 evidence 的重跑。
 
