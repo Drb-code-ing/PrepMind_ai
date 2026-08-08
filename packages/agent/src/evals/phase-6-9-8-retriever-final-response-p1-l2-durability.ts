@@ -24,6 +24,7 @@ import {
   PHASE_6_9_8_P1_L2_DURABILITY_VERSION,
   PHASE_6_9_8_P1_L2_JOURNAL_SCHEMA,
   PHASE_6_9_8_P1_L2_JOURNAL_VERSION,
+  PHASE_6_9_8_P1_L2_LANE_TERMINAL_SCHEMA,
   PHASE_6_9_8_P1_L2_LANE_ORDER,
   PHASE_6_9_8_P1_L2_MARKER_RELATIVE_PATH,
   PHASE_6_9_8_P1_L2_MARKER_SCHEMA,
@@ -222,6 +223,8 @@ export async function validatePhase698P1L2Bundle(input: {
     )
       throw new Error(ERROR_CODE);
     const claimRecord = records.find((entry) => entry.event === 'recovery_claimed');
+    if ((report.formalEvidence.recoveryClaimCount === 1) !== Boolean(claimRecord))
+      throw new Error(ERROR_CODE);
     if (claimRecord) {
       const claimBytes = await readRegular(
         contained(root, fill(PHASE_6_9_8_P1_L2_RECOVERY_RELATIVE_PATH, marker.runId)),
@@ -289,11 +292,14 @@ export async function recoverPhase698P1L2InterruptedAttempt(input: {
     if (records.some((entry) => entry.event === 'evidence_published'))
       return { ok: false, code: 'already_published' };
     const state = replayState(root, marker, markerBytes, records);
+    const hadTerminal = records.some((entry) => entry.event === 'run_terminal');
+    if (hadTerminal) await hydrateTerminalReport(state);
     if (!state.report) {
-      const report = buildRecoveryReport(state);
+      const report = await buildRecoveryReport(state);
       await appendRunTerminal(state, report);
     }
     if (!state.report) return { ok: false, code: 'journal_invalid' };
+    if (state.report.formalEvidence.recoveryClaimCount === 1) await appendRecoveryClaim(state);
     const published = await publishStateArtifact(state, state.report, { mode: 'recovery' });
     const validation = await validatePhase698P1L2Bundle({ root });
     if (!validation.ok) return { ok: false, code: 'publication_invalid' };
@@ -403,6 +409,8 @@ async function appendRecord(state: State, record: Phase698P1L2JournalRecord): Pr
   state.records.push(record);
 }
 async function appendRunTerminal(state: State, report: Phase698P1L2Report): Promise<void> {
+  if (state.report || state.records.some((entry) => entry.event === 'run_terminal'))
+    throw new Error(ERROR_CODE);
   state.report = report;
   const reportPath = contained(
     state.root,
@@ -418,16 +426,92 @@ async function appendRunTerminal(state: State, report: Phase698P1L2Report): Prom
     }),
   );
 }
+
+async function appendRecoveryClaim(state: State): Promise<void> {
+  if (state.records.some((entry) => entry.event === 'recovery_claimed')) return;
+  const tail = state.records.at(-1);
+  if (!tail) throw new Error(ERROR_CODE);
+  const claimPath = contained(
+    state.root,
+    fill(PHASE_6_9_8_P1_L2_RECOVERY_RELATIVE_PATH, state.runId),
+  );
+  const claim = CLAIM_SCHEMA.parse({
+    version: PHASE_6_9_8_P1_L2_RECOVERY_CLAIM_VERSION,
+    lineage: PHASE_6_9_8_P1_L2_LINEAGE,
+    runId: state.runId,
+    markerSha256: state.markerSha256,
+    journalTailRecordHash: tail.recordHash,
+    state: 'crash_only_recovery_claimed',
+  });
+  const claimBytes = `${canonicalPhase698P1L2Json(claim)}\n`;
+  try {
+    const existing = await readRegular(claimPath);
+    if (existing !== claimBytes) throw new Error(ERROR_CODE);
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+    await writeExclusive(claimPath, claimBytes);
+    await syncPath(claimPath);
+  }
+  await appendRecord(
+    state,
+    nextRecord(state, {
+      event: 'recovery_claimed',
+      claimSha256: sha256Phase698P1L2(claimBytes),
+    }),
+  );
+}
+
+async function hydrateTerminalReport(state: State): Promise<void> {
+  const terminal = state.records.find((entry) => entry.event === 'run_terminal');
+  if (!terminal) return;
+  const reportPath = contained(
+    state.root,
+    fill(PHASE_6_9_8_P1_L2_REPORT_RELATIVE_PATH, state.runId),
+  );
+  const reportBytes = await readRegular(reportPath);
+  const report = PHASE_6_9_8_P1_L2_REPORT_SCHEMA.parse(JSON.parse(reportBytes));
+  if (
+    reportBytes !== `${canonicalPhase698P1L2Json(report)}\n` ||
+    terminal.reportSha256 !== sha256Phase698P1L2(canonicalPhase698P1L2Json(report)) ||
+    canonicalPhase698P1L2Json(report.source) !== canonicalPhase698P1L2Json(state.marker.source)
+  )
+    throw new Error(ERROR_CODE);
+  state.report = report;
+}
 async function publishStateArtifact(
   state: State,
   report: Phase698P1L2Report,
   options?: Readonly<{ mode?: 'runtime' | 'recovery' }>,
 ): Promise<{ evidenceSha256: string; relativePath: string }> {
-  const reportHash = sha256Phase698P1L2(canonicalPhase698P1L2Json(report));
+  const parsedReport = PHASE_6_9_8_P1_L2_REPORT_SCHEMA.parse(report);
+  if (
+    !state.report ||
+    canonicalPhase698P1L2Json(state.report) !== canonicalPhase698P1L2Json(parsedReport) ||
+    canonicalPhase698P1L2Json(parsedReport.source) !==
+      canonicalPhase698P1L2Json(state.marker.source)
+  )
+    throw new Error(ERROR_CODE);
+  if (state.records.some((entry) => entry.event === 'evidence_published'))
+    throw new Error(ERROR_CODE);
+  const reportHash = sha256Phase698P1L2(canonicalPhase698P1L2Json(parsedReport));
   const terminal = state.records.find((entry) => entry.event === 'run_terminal');
   if (!terminal) throw new Error(ERROR_CODE);
-  const publication = nextRecord(state, { event: 'publication_started', reportSha256: reportHash });
-  await appendRecord(state, publication);
+  let publication = state.records.find(
+    (entry): entry is Extract<Phase698P1L2JournalRecord, { event: 'publication_started' }> =>
+      entry.event === 'publication_started',
+  );
+  if (!publication) {
+    if (options?.mode === 'recovery' && parsedReport.formalEvidence.recoveryClaimCount === 1)
+      await appendRecoveryClaim(state);
+    const createdPublication = nextRecord(state, {
+      event: 'publication_started',
+      reportSha256: reportHash,
+    }) as Extract<Phase698P1L2JournalRecord, { event: 'publication_started' }>;
+    await appendRecord(state, createdPublication);
+    publication = createdPublication;
+  }
+  if (!publication) throw new Error(ERROR_CODE);
+  if (publication.reportSha256 !== reportHash) throw new Error(ERROR_CODE);
   const claimRecord = state.records.find((entry) => entry.event === 'recovery_claimed');
   const artifact: Phase698P1L2Artifact = PHASE_6_9_8_P1_L2_ARTIFACT_SCHEMA.parse({
     artifactVersion: PHASE_6_9_8_P1_L2_ARTIFACT_VERSION,
@@ -436,7 +520,7 @@ async function publishStateArtifact(
     runId: state.runId,
     markerSha256: state.markerSha256,
     reportLogicalSha256: reportHash,
-    report,
+    report: parsedReport,
     durability: {
       publicationMode: options?.mode ?? 'runtime',
       terminalSequence: terminal.sequence,
@@ -447,26 +531,44 @@ async function publishStateArtifact(
       recoveryClaimSha256: claimRecord ? recoveryClaimHash(state.records) : null,
     },
   });
-  const temp = contained(
-    state.root,
-    `.tmp/${PHASE_6_9_8_P1_L2_ARTIFACT_PREFIX}${state.runId}.artifact.tmp`,
-  );
   const artifactBytes = `${canonicalPhase698P1L2Json(artifact)}\n`;
-  await writeExclusive(temp, artifactBytes);
-  await syncPath(temp);
   const finalPath = contained(state.root, artifactPathFor(state.runId));
-  await link(temp, finalPath);
-  await unlink(temp);
-  await syncPath(finalPath);
+  try {
+    const existing = await readRegular(finalPath);
+    if (existing !== artifactBytes) throw new Error(ERROR_CODE);
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+    const temp = contained(
+      state.root,
+      `.tmp/${PHASE_6_9_8_P1_L2_ARTIFACT_PREFIX}${state.runId}.artifact.tmp`,
+    );
+    try {
+      await writeExclusive(temp, artifactBytes);
+      await syncPath(temp);
+      await link(temp, finalPath);
+      await syncDirectory(dirname(finalPath));
+      const [tempInfo, artifactInfo] = await Promise.all([lstat(temp), lstat(finalPath)]);
+      if (
+        !tempInfo.isFile() ||
+        !artifactInfo.isFile() ||
+        tempInfo.dev !== artifactInfo.dev ||
+        tempInfo.ino !== artifactInfo.ino
+      )
+        throw new Error(ERROR_CODE);
+    } finally {
+      await unlink(temp).catch(() => undefined);
+    }
+    await syncPath(finalPath);
+  }
   const evidenceSha256 = sha256Phase698P1L2(artifactBytes);
   await appendRecord(state, nextRecord(state, { event: 'evidence_published', evidenceSha256 }));
   return { evidenceSha256, relativePath: artifactPathFor(state.runId) };
 }
 
-function buildRecoveryReport(state: State): Phase698P1L2Report {
+async function buildRecoveryReport(state: State): Promise<Phase698P1L2Report> {
   const guards = [...state.guardEntries];
-  while (guards.length < 8)
-    guards.push({
+  while (guards.length < 8) {
+    const entry = {
       caseId: PHASE_6_9_8_P1_MANIFEST.guardCases[guards.length].caseId,
       observedReasonCode: 'recovery_not_started',
       strict: false,
@@ -476,23 +578,50 @@ function buildRecoveryReport(state: State): Phase698P1L2Report {
       credentialReads: 0,
       failureCategory: 'stale',
       breakerOpened: true,
-    });
-  const laneTerminals = PHASE_6_9_8_P1_L2_LANE_ORDER.map(
-    (laneId, index) =>
-      state.laneTerminals.get(laneId) ?? {
+    } as const;
+    await appendRecord(state, nextRecord(state, { event: 'guard_terminal', entry }));
+    state.guardEntries.push(entry);
+    guards.push(entry);
+  }
+  const laneTerminals: Phase698P1L2LaneTerminal[] = [];
+  for (let index = 0; index < PHASE_6_9_8_P1_L2_LANE_ORDER.length; index += 1) {
+    const laneId = PHASE_6_9_8_P1_L2_LANE_ORDER[index];
+    if (!state.laneEvents.has(laneId)) {
+      await appendRecord(
+        state,
+        nextRecord(state, { event: 'lane_reserved', laneId, sequenceInRun: index + 1 }),
+      );
+      state.laneEvents.set(laneId, new Set());
+    }
+    let terminal = state.laneTerminals.get(laneId);
+    if (!terminal) {
+      const events = state.laneEvents.get(laneId) ?? new Set<string>();
+      const dispatched = events.has('dispatch_started');
+      const responded = events.has('response_observed');
+      terminal = PHASE_6_9_8_P1_L2_LANE_TERMINAL_SCHEMA.parse({
         laneId,
         kind: laneId.startsWith('rewrite_') ? 'rewrite' : 'final_response',
         caseId: laneId,
         sequence: index + 1,
         state: 'terminal',
-        disposition: 'not_started_quality_breaker',
-        failureCategory: 'stale',
-        candidateInvocations: 0,
-        wire: { reservation: 1, dispatch: 0, response: 0, strictValidated: 0, verifiedUsage: 0 },
+        disposition: dispatched ? 'attempted_failed' : 'not_started_quality_breaker',
+        failureCategory: dispatched ? 'transport' : 'stale',
+        candidateInvocations: dispatched ? 1 : 0,
+        wire: {
+          reservation: 1,
+          dispatch: dispatched ? 1 : 0,
+          response: responded ? 1 : 0,
+          strictValidated: 0,
+          verifiedUsage: 0,
+        },
         breakerOpened: true,
-        terminalReason: 'crash_recovery',
-      },
-  );
+        terminalReason: dispatched ? 'recovery_dispatch_prefix' : 'crash_recovery',
+      });
+      await appendRecord(state, nextRecord(state, { event: 'lane_terminal', entry: terminal }));
+      state.laneTerminals.set(laneId, terminal);
+    }
+    laneTerminals.push(terminal);
+  }
   const baseline = state.report;
   const rewrites =
     baseline?.rewriteEntries ??
@@ -628,6 +757,14 @@ async function readJournal(
   const lines = text.split('\n').slice(0, -1);
   const records: Phase698P1L2JournalRecord[] = [];
   let previous: string | null = null;
+  let guardCount = 0;
+  let laneCount = 0;
+  let terminalSeen = false;
+  let publicationStarted = false;
+  let publicationSeen = false;
+  const reserved = new Set<Phase698P1L2LaneId>();
+  const laneEvents = new Map<Phase698P1L2LaneId, Set<string>>();
+  const terminalIds = new Set<Phase698P1L2LaneId>();
   for (let i = 0; i < lines.length; i += 1) {
     if (!lines[i]) throw new Error(ERROR_CODE);
     const parsed = PHASE_6_9_8_P1_L2_JOURNAL_SCHEMA.parse(JSON.parse(lines[i]));
@@ -639,12 +776,76 @@ async function readJournal(
         sha256Phase698P1L2(canonicalPhase698P1L2Json({ ...parsed, recordHash: undefined }))
     )
       throw new Error(ERROR_CODE);
+    if (publicationSeen) throw new Error(ERROR_CODE);
+    if (i === 0 && parsed.event !== 'attempt_reserved') throw new Error(ERROR_CODE);
+    if (parsed.event === 'attempt_reserved' && i !== 0) throw new Error(ERROR_CODE);
+    if (parsed.event === 'guard_terminal') {
+      if (terminalSeen || guardCount >= 8) throw new Error(ERROR_CODE);
+      const expected = PHASE_6_9_8_P1_MANIFEST.guardCases[guardCount]?.caseId;
+      if (parsed.entry.caseId !== expected) throw new Error(ERROR_CODE);
+      guardCount += 1;
+    }
+    if (parsed.event === 'lane_reserved') {
+      if (
+        guardCount !== 8 ||
+        terminalSeen ||
+        reserved.has(parsed.laneId) ||
+        parsed.sequenceInRun !== laneCount + 1 ||
+        parsed.laneId !== PHASE_6_9_8_P1_L2_LANE_ORDER[laneCount]
+      )
+        throw new Error(ERROR_CODE);
+      reserved.add(parsed.laneId);
+      laneEvents.set(parsed.laneId, new Set());
+      laneCount += 1;
+    }
+    if (parsed.event === 'lane_stage') {
+      const events = laneEvents.get(parsed.laneId);
+      if (!events || events.has(parsed.stage) || terminalIds.has(parsed.laneId))
+        throw new Error(ERROR_CODE);
+      if (parsed.stage === 'response_observed' && !events.has('dispatch_started'))
+        throw new Error(ERROR_CODE);
+      if (parsed.stage === 'strict_validated' && !events.has('response_observed'))
+        throw new Error(ERROR_CODE);
+      events.add(parsed.stage);
+    }
+    if (parsed.event === 'lane_terminal') {
+      if (!reserved.has(parsed.entry.laneId) || terminalIds.has(parsed.entry.laneId))
+        throw new Error(ERROR_CODE);
+      if (parsed.entry.sequence !== terminalIds.size + 1) throw new Error(ERROR_CODE);
+      const events = laneEvents.get(parsed.entry.laneId);
+      if (!events) throw new Error(ERROR_CODE);
+      if (parsed.entry.wire.dispatch === 1 && !events.has('dispatch_started'))
+        throw new Error(ERROR_CODE);
+      if (parsed.entry.wire.response === 1 && !events.has('response_observed'))
+        throw new Error(ERROR_CODE);
+      if (parsed.entry.wire.strictValidated === 1 && !events.has('strict_validated'))
+        throw new Error(ERROR_CODE);
+      terminalIds.add(parsed.entry.laneId);
+    }
+    if (parsed.event === 'run_terminal') {
+      if (terminalSeen || guardCount !== 8 || laneCount !== 12 || terminalIds.size !== 12)
+        throw new Error(ERROR_CODE);
+      terminalSeen = true;
+    }
+    if (parsed.event === 'recovery_claimed') {
+      if (publicationStarted || records.some((entry) => entry.event === 'recovery_claimed'))
+        throw new Error(ERROR_CODE);
+    }
+    if (parsed.event === 'publication_started') {
+      if (!terminalSeen || publicationStarted) throw new Error(ERROR_CODE);
+      publicationStarted = true;
+    }
+    if (parsed.event === 'evidence_published') {
+      if (!terminalSeen || !publicationStarted || publicationSeen) throw new Error(ERROR_CODE);
+      publicationSeen = true;
+    }
     previous = parsed.recordHash;
     records.push(parsed);
   }
   if (
     records[0]?.event !== 'attempt_reserved' ||
-    (requireTerminal && records.at(-1)?.event !== 'evidence_published')
+    (requireTerminal &&
+      (!terminalSeen || !publicationSeen || records.at(-1)?.event !== 'evidence_published'))
   )
     throw new Error(ERROR_CODE);
   return records;
@@ -702,6 +903,14 @@ async function syncDirectory(path: string) {
   } catch {
     /* Windows directory fsync is unsupported; file fsync remains mandatory. */
   }
+}
+function isNotFound(error: unknown): boolean {
+  return Boolean(
+    error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    (error as { code?: string }).code === 'ENOENT',
+  );
 }
 async function enqueue(state: State, operation: () => Promise<void>) {
   const next = state.queue.then(operation, operation);

@@ -261,7 +261,7 @@ export async function runPhase698P1L2(input: RunPhase698P1L2Input): Promise<Phas
     finalResponseEntries: finalEntries,
     laneTerminals: terminals,
     providerCalls,
-    credentialReads: input.credentialReads ?? 0,
+    credentialReads: input.harness.mode === 'controlled_live' ? 2 : (input.credentialReads ?? 0),
     inputTokens,
     outputTokens,
     verifiedCostCny: costKnown ? Number(verifiedCostCny.toFixed(8)) : null,
@@ -609,7 +609,10 @@ function finalObservation(
     verifiedUsage: value.verifiedUsage,
     terminal: true,
     groundedScore: value.groundedScore,
-    requiredCitationCount: baseline?.requiredCitationCount ?? 0,
+    requiredCitationCount: effectiveRequiredCitationCount(
+      laneId,
+      baseline?.requiredCitationCount ?? 0,
+    ),
     requiredNotice: baseline?.requiredNotice ?? 'none',
     observedCitationCount: value.observedCitationCount,
     citationTruePositiveCount: value.citationTruePositiveCount,
@@ -705,7 +708,10 @@ function incompleteFinal(
     verifiedUsage: false,
     terminal: true,
     groundedScore: null,
-    requiredCitationCount: baseline?.requiredCitationCount ?? 0,
+    requiredCitationCount: effectiveRequiredCitationCount(
+      laneId,
+      baseline?.requiredCitationCount ?? 0,
+    ),
     requiredNotice: baseline?.requiredNotice ?? 'none',
     observedCitationCount: 0,
     citationTruePositiveCount: 0,
@@ -721,6 +727,12 @@ function incompleteFinal(
     failureCategory: category,
     breakerOpened: HARD_FAILURES.has(category),
   };
+}
+
+function effectiveRequiredCitationCount(laneId: string, count: number): number {
+  // final_11 is the frozen insufficient-evidence compatibility case: the
+  // projector deliberately removes its citation allowlist.
+  return laneId === 'final_11' ? 0 : count;
 }
 function attemptedTerminal(
   laneId: Phase698P1L2LaneId,
@@ -785,4 +797,13 @@ function assertInput(input: RunPhase698P1L2Input) {
     typeof input.harness.runFinalResponse !== 'function'
   )
     throw new Error('PHASE_6_9_8_P1_L2_RUNNER_INPUT_INVALID');
+  if (input.harness.mode === 'controlled_live' && input.credentialReads !== 2)
+    throw new Error('PHASE_6_9_8_P1_L2_CREDENTIAL_PROJECTION_INVALID');
+  if (
+    input.credentialReads !== undefined &&
+    (!Number.isSafeInteger(input.credentialReads) ||
+      input.credentialReads < 0 ||
+      input.credentialReads > 2)
+  )
+    throw new Error('PHASE_6_9_8_P1_L2_CREDENTIAL_READ_COUNT_INVALID');
 }

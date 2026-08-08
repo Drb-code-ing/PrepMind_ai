@@ -19,6 +19,7 @@ import {
   createPhase698P1L2SyntheticRootForTest,
   removePhase698P1L2SyntheticRootForTest,
   reservePhase698P1L2Attempt,
+  recoverPhase698P1L2InterruptedAttempt,
   validatePhase698P1L2Bundle,
 } from '../src/evals/phase-6-9-8-retriever-final-response-p1-l2-durability.ts';
 import { buildPhase698P1DeterministicSubsetBaseline } from '../src/evals/phase-6-9-8-retriever-final-response-p1-baseline.ts';
@@ -102,6 +103,62 @@ describe('Phase 6.9.8 P1 L2 independent runner/durability', () => {
       const bytes = await readFile(journalPath, 'utf8');
       await Bun.write(journalPath, bytes.replace('attempt_reserved', 'attempt_reserved_tampered'));
       expect((await validatePhase698P1L2Bundle({ root })).ok).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('reserved-only crash recovery publishes a bound claim without provider calls', async () => {
+    const admissionInput = createPhase698P1L2SyntheticAdmissionInput('e'.repeat(40));
+    const admission = admitPhase698P1L2ZeroProvider(admissionInput);
+    if (!admission.ok) throw new Error('fixture admission failed');
+    const root = await createPhase698P1L2SyntheticRootForTest();
+    try {
+      const reservation = await reservePhase698P1L2Attempt({
+        root,
+        runId: randomUUID(),
+        source: sourceFromPhase698P1L2Admission(admission.admission),
+      });
+      const active = await recoverPhase698P1L2InterruptedAttempt({
+        root,
+        isProcessAlive: () => true,
+      });
+      expect(active).toMatchObject({ ok: false, code: 'process_active' });
+      const recovered = await recoverPhase698P1L2InterruptedAttempt({
+        root,
+        isProcessAlive: () => false,
+      });
+      expect(recovered.ok).toBe(true);
+      const validation = await validatePhase698P1L2Bundle({ root });
+      expect(validation).toMatchObject({
+        ok: true,
+        providerCalls: 0,
+        credentialReads: 0,
+        formalEvidence: 1,
+        finalJournalEvent: 'evidence_published',
+      });
+      const reportPath = join(
+        root,
+        '.tmp',
+        `phase-6-9-8-retriever-final-response-p1-l2-${reservation.runId}.report.json`,
+      );
+      const report = JSON.parse(await readFile(reportPath, 'utf8')) as {
+        formalEvidence: { recoveryClaimCount: number };
+      };
+      expect(report.formalEvidence.recoveryClaimCount).toBe(1);
+      const claimPath = join(
+        root,
+        '.tmp',
+        `phase-6-9-8-retriever-final-response-p1-l2-${reservation.runId}.recovery.claim`,
+      );
+      expect(JSON.parse(await readFile(claimPath, 'utf8')).state).toBe(
+        'crash_only_recovery_claimed',
+      );
+      const second = await recoverPhase698P1L2InterruptedAttempt({
+        root,
+        isProcessAlive: () => false,
+      });
+      expect(second).toMatchObject({ ok: false, code: 'already_published' });
     } finally {
       await rm(root, { recursive: true, force: true });
     }
