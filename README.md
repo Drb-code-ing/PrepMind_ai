@@ -1,17 +1,19 @@
 # PrepMind AI 智能备考助手
 
-> 当前原子任务（2026-08-09）：Phase 6.9.8 P1 L2 controlled-Live 准备已完成实现修复，当前分支为
-> `drb/phase-6-9-8-p1-l2-controlled-live`，修复提交 `146d2107` 已推送且工作树 clean。修复后的 source admission 只围栏
-> 当前 P1 L2 marker/journal/report/recovery/artifact 路径；历史 `.tmp` sealed evidence 与普通仓库文件保持只读，不再误阻断
-> 新 run，当前命名空间冲突仍 fail-closed。P1 L2 focused `14/14`（47 assertions），Agent full `1436/1436`（24314
-> assertions，180 files），typecheck/lint/变更源码 Prettier/`git diff --check` 通过。
-> [`P1 L2 implementation 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md)
-> 记录了实现边界；本次用户已接受 DeepSeek/Qwen data boundary 并授权唯一 controlled-Live，但授权在 approved tag 创建前尚未消费。
-> 完成文档 parity 并推送后，将创建并推送 `phase-6.9.8-retriever-final-response-p1-l2-approved`，再执行唯一 Live；成功也只形成
-> P1 semantic authority，不自动解锁产品/API/browser、Trace、SLA 或 `main`。不得重跑历史 evidence、不使用 worktree、不清理
-> Docker 容器/镜像/卷/数据库/Redis/MinIO。
+> 当前原子任务（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live 已正常 durable seal，但质量门失败。
+> run `ff035203-500f-4744-b33c-3c375ae4c785` 在 approved source/tag `fa502925...` 上完成 8/8 zero-call guards；
+> `rewrite_01` strict 成功，`rewrite_03` 在第二次真实 DeepSeek 调用后以 bounded `schema` failure 打开 breaker，剩余
+> 10 条 lane 未启动。最终 `p1_l2_quality_gate_failed / qualityAuthority=none / semanticGate=none`，Provider/credential/
+> Qwen calls=`2/2/0`，usage=`343/40`，aggregate verified cost=`null`；journal `41`、最终事件
+> `evidence_published`、validator=`ok=true / bundle_valid`、recovery claim=`null`。完整记录见
+> [`P1 L2 controlled-Live 失败封存验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md)，
+> Live 前实现见
+> [`P1 L2 implementation 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md)。
+> 该结果不形成 P1 semantic 或产品/API/browser/Trace/SLA/`main` 产品 authority；唯一名额已消费，禁止重跑、
+> recovery/seal、curl、单 case 或追加 Provider 探测。当前只做证据/文档收口与零 Provider 合并回归，不使用
+> worktree，不清理 Docker 容器/镜像/卷/数据库/Redis/MinIO。
 
-> 当前任务（2026-08-08）：Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。run
+> 历史回执（2026-08-08）：Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。run
 > `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上按
 > `rewrite -> qwen -> final_response` 完成 `3` 次真实 Provider call，gate=
 > `transport_reentry_v2_l1_controlled_canary_passed`、authority=`controlled_live_transport_reentry_v2`、
@@ -23,7 +25,7 @@
 > [`L1 implementation checkpoint`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md)
 > 与 [`L1 root-env diagnosis`](docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md)。
 >
-> 当前 P1 S2 reviewed Mock/static 已完成：在从已推送 `main / origin/main = 0c2faf1d` 派生的普通分支
+> 历史回执（2026-08-08）：P1 S2 reviewed Mock/static 已完成：在从已推送 `main / origin/main = 0c2faf1d` 派生的普通分支
 > `drb/phase-6-9-8-p1-s2-reviewed-mock` 上，实际穿过 Retriever original/query-rewrite、synthetic Qwen port、
 > verified-evidence projector、FinalResponse stream、strict validator 与 local merger。固定 `8` 条 zero-call guard、
 > `6` 条 rewrite、`6` 条 FinalResponse，最大并发 `1`、candidate invocations `12`；节点计数为 Retriever original `18`、

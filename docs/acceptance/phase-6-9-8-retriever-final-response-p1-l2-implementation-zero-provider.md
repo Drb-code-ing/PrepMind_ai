@@ -1,5 +1,11 @@
 # Phase 6.9.8 Retriever / FinalResponse P1 L2 implementation 验收
 
+> 后续状态（2026-08-09）：本文记录的 zero-provider implementation 已被唯一 P1 L2 controlled-Live run
+> `ff035203-500f-4744-b33c-3c375ae4c785` 取代为历史前置 checkpoint。该 run 在 approved source/tag `fa502925...` 上
+> 正常 durable seal，但以 `p1_l2_quality_gate_failed / qualityAuthority=none` 结束；不得把本文的“Live 尚未执行”解读为
+> 当前状态。正式终态、journal/report/artifact SHA、validator 和停止门见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
+
 > 日期：2026-08-09
 > 状态：已完成（zero-provider implementation；controlled-Live 尚未执行）
 > 分支：`drb/phase-6-9-8-p1-l2-controlled-live`
@@ -64,13 +70,16 @@ formal evidence          0
 - `packages/agent/tests/phase-6-9-8-retriever-final-response-p1-l2.test.ts`
 - 本验收文档与同步后的协作/路线/数据流/行为/清单文档
 
-## 6. 下一步与停止门
+## 6. 历史 Live 前停止门（已由后续 sealed run 收口）
 
-本次用户授权已收到但在本记录生成时尚未消费。完成文档 parity 并推送后，先在同一 clean source 创建并推送 approved tag
-`phase-6.9.8-retriever-final-response-p1-l2-approved`，再执行唯一命令：
+以下命令和“授权未消费”只描述本 zero-provider 记录生成时的时点，不是当前指令。随后文档 parity、approved tag
+绑定与唯一 controlled-Live 已完成，正式终态见独立失败验收文档：
+
+`phase-6.9.8-retriever-final-response-p1-l2-approved`，唯一命令为：
 
 ```text
 bun run --cwd packages/agent eval:phase-6-9-8:p1:l2:live
 ```
 
-进程若中断，只能在进程退出后执行一次 crash-only recovery；不得重跑、补跑、curl、单 case 或追加 Provider 探测。Live 终态必须记录 run ID、gate、Provider/credential 计数、verified usage/cost、journal/report/artifact SHA、validator 与 recovery claim，并另写 controlled-Live 验收文档。随后才允许合并 `main`、推送 `origin/main`，并在 `main` 做一次不调用 Provider 的二次回归。
+进程若中断，只能在进程退出后执行一次 crash-only recovery；不得重跑、补跑、curl、单 case 或追加 Provider 探测。该
+停止门已由 run `ff035203-500f-4744-b33c-3c375ae4c785` 的 `evidence_published`、strict validator 和失败验收文档收口。

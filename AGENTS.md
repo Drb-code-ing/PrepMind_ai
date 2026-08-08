@@ -1,25 +1,24 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前任务：Phase 6.9.8 P1 L2 controlled-Live preparation（2026-08-09）
+## 当前任务：Phase 6.9.8 P1 L2 controlled-Live 失败封存与文档收口（2026-08-09）
 
-当前普通分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，implementation 修复提交为 `146d2107`；分支已推送、工作树
-clean，且本次修复后的 Agent full 回归为 `1436/1436`（24314 assertions，180 files）。P1 L2 focused 为 `14/14`
-（47 assertions），typecheck、lint、变更源码 Prettier 与 `git diff --check` 均通过。
+唯一 P1 L2 controlled-Live run `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag
+`fa50292509d7c3e2e4ad017e7e730fd434a29cde` 上由正常 runtime 路径 durable seal。8/8 guards 保持 zero-call；
+`rewrite_01` strict 成功，`rewrite_03` 在真实 DeepSeek 调用后以 bounded `schema` failure 打开 breaker，后续 10 条 lane
+均为 `not_started_quality_breaker`。终态为 `p1_l2_quality_gate_failed / qualityAuthority=none / semanticGate=none`；
+Provider/credential/Qwen calls=`2/2/0`，usage=`343/40`，aggregate verified cost=`null`。
 
-本次修复只收紧当前 L2 evidence namespace：历史 `.tmp` sealed evidence 和普通仓库文件保持只读，不再误阻断新的 L2；当前
-marker/journal/report/recovery/artifact 路径冲突、symlink、读取错误和 publication drift 仍 fail-closed。实现验收见
-`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
+Journal 共 `41` 条并以 `evidence_published` 收口；validator=`ok=true / bundle_valid`，recovery claim=`null`，report/root
+artifact SHA 分别为 `84eddcf6...d7f9 / 9b79c490...f58b`。唯一名额已消费，禁止 retry/resume/replay/backfill、
+recovery/seal、curl、单 case或追加 Provider 探测；不得删除、格式化或改写 marker/journal/report/root artifact。该结果
+不能归因具体 Provider/网络根因，也不形成 P1 semantic、产品 Docker/API/browser、Trace、SLA、业务写入或 `main`
+产品 authority。
 
-首次入口曾在 clean porcelain 空字符串处错误停止为 `source_admission_invalid`，但未读取 credential/创建 marker/调用 Provider；
-`146d2107` 已修复并加入回归。canonical approved tag 需绑定该修复后的 source，授权仍未消费。
-
-用户已重新接受本次 DeepSeek/Qwen data boundary，并给出绑定当前 branch/lineage 的 exact authorization；授权在 approved tag
-创建前尚未消费。下一原子任务是完成本文档 parity 并单独提交/推送，随后在同一 clean source 创建并推送
-`phase-6.9.8-retriever-final-response-p1-l2-approved`，再执行唯一 P1 L2 controlled-Live。Live 仍禁止 retry/resume/replay/
-backfill/curl/单 case/追加 Provider 探测；Docker 容器、镜像、卷、数据库、Redis、MinIO 保持原状，不使用 worktree。
-
-Live 成功也只形成 P1 semantic authority，不等同于产品 Docker/API/browser、Trace、SLA 或 `main` authority；终态需另写证据文档，
-之后才合并 `main`、推送 `origin/main` 并做一次不调用 Provider 的二次回归。
+完整证据见
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`；Live 前实现与 source-gate
+修复历史见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。当前只允许
+zero-provider 回归、证据/文档提交、合并与 `main` 二次零 Provider 验收；下一功能任务必须从最新 `main` 新开独立
+schema recovery/diagnostic lineage。Docker 容器、镜像、卷、数据库、Redis、MinIO 保持原状，不使用 worktree。
 
 ## 历史 checkpoint：Phase 6.9.8 P1 L2 admission contract（2026-08-08）
 
@@ -522,6 +521,9 @@ Phase 6.9.9/6.9.10/6.10/8/9 与博客收尾继续阻断。详见
 | Phase 6.9.8 Transport Evidence T3-A          | 已完成     | zero-provider source admission、T2 gate binding、branch/source parity、clean tree/formal artifact fence、双 opaque single-consume capability、fresh proxy nonce、三槽位 runner（`rewrite -> qwen -> final_response`）、`0.024096 CNY` budget、首错 breaker 与 CLI gate 已完成；focused `12/12`、Agent `1360/1360`，authority 为 `zero_provider_transport_evidence_t3_admission / qualityAuthority=none` |
 | Phase 6.9.8 Transport Evidence T3 controlled | 失败封存   | 唯一 run `075e2d5f...` 在 late-bound credential gate 以 `configuration_invalid` 停止；planned/started/completed=`3/0/0`、Provider/credential=`0/0`、breaker reason=`configuration`、journal `7`、validator `ok=true`，authority=`controlled_live_transport_evidence_t3 / qualityAuthority=none`；一次性名额已消费，不得重跑或追加探测，不解锁产品/main                                                  |
 | Phase 6.9.8 Transport Evidence T3-C          | 已完成     | zero-provider configuration composition guard：静态验证 package cwd -> 根 `.env` 路径与 crash-only seal CLI 无 credential/Provider port；focused `2/2`、10 assertions、typecheck/lint 通过，authority=`zero_provider_transport_evidence_t3_configuration_guard / qualityAuthority=none`                                                                                                                 |
+| Phase 6.9.8 Transport Re-entry V2 L1         | 已完成     | 唯一 run `ce0c3257...` 三槽真实 transport canary durable seal；Provider `3`、usage `145/28/173`、费用 `0.000573 CNY`、validator `ok=true`，仅 transport diagnostic authority，不能解锁语义或产品                                                                 |
+| Phase 6.9.8 P1 G1/G2/S2                       | 已完成     | 独立 zero-provider manifest/scorer、one-shot durability 与 reviewed Mock 已完成；S2 `8/8` guard、`16/16` strict/wire/synthetic usage、semantic `1/1/1`，gate=`p1_mock_quality_not_evidence`，qualityAuthority=`none`                                                                                 |
+| Phase 6.9.8 P1 L2 controlled-Live            | 失败封存   | 唯一 run `ff035203...`：8/8 guards zero-call，Provider/credential/Qwen `2/2/0`，`rewrite_03/schema` 后 10 条未启动，usage `343/40`、aggregate cost `null`、journal `41`、validator `ok=true`；不得重跑，semantic/product/main 继续阻断 |
 | Phase 7.0                                    | 已完成     | `BackgroundJob` 控制面、账号级后台任务读 API、脱敏任务元数据                                                                                                                                                                                                                                                                                                                                            |
 | Phase 7.1                                    | 已完成     | BullMQ 知识库处理队列、inline / queue 双模式、worker role、`/knowledge` 后台处理状态                                                                                                                                                                                                                                                                                                                    |
 | Phase 7.2                                    | 已完成     | RAG SafetyGuard、chunk 级 prompt injection 风险 metadata、Chat prompt 前过滤、Verifier / UI 安全提示                                                                                                                                                                                                                                                                                                    |

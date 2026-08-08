@@ -3,7 +3,9 @@
 > 设计来源：[P1 zero-provider semantic-gate 设计](../specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)
 > 日期：2026-08-08
 > 当前状态：P1 设计、G1 zero-provider contract/baseline/scorer、G2 one-shot runner/durability、S2 reviewed Mock/static 与
-> L2 zero-provider admission contract 均已完成；文档 parity、推送、`main` 合并与合并后二次回归均已完成，L2 Live 需另行 fresh authorization
+> L2 zero-provider admission contract 均已完成；唯一 L2 controlled-Live 已在 fresh authorization 后执行并以
+> `p1_l2_quality_gate_failed / qualityAuthority=none` durable seal。当前只允许证据/文档收口与 zero-provider main 回归，
+> 不得重跑本 run。
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：`main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
@@ -14,11 +16,10 @@
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。随后 S2 在独立普通分支完成，验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
 
-> 当前执行状态（2026-08-09）：L2 implementation 修复已在普通分支
-> `drb/phase-6-9-8-p1-l2-controlled-live` 的 `146d2107` 完成并推送，修复后 P1 L2 focused `14/14`、Agent full
-> `1436/1436`、typecheck/lint/changed-file Prettier/diff check 通过。历史 `.tmp` evidence 只读并不阻断当前 namespace，
-> 当前 namespace 冲突仍 fail-closed。用户已接受当次 DeepSeek/Qwen data boundary 并给出唯一 exact authorization；完成文档 parity、
-> 创建并推送 approved tag 后执行一次 L2 Live，终态另行记录，随后合并 main 并做 zero-provider 二次回归。
+> 当前执行状态（2026-08-09）：L2 implementation 修复提交 `146d2107` 与 canonical tag source `fa502925...` 已被唯一
+> controlled-Live 使用。run `ff035203-500f-4744-b33c-3c375ae4c785` 在 `rewrite_03/schema` 后封存；8/8 guards、
+> Provider/credential/Qwen calls=`2/2/0`、usage=`343/40`、aggregate cost=`null`、journal=`41`、validator=`ok=true`。
+> 终态验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
 
 ## 1. 执行原则
 
@@ -123,19 +124,22 @@ S2 实际结果：`8/8` guard、`16/16` strict/wire/synthetic usage、semantic `
 factory/report/final_11 compatibility SHA 已冻结；后者只提供 bounded diagnostic，不改写 G1/G2 gate。完整记录见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
 
-## 6. L2：未来独立 semantic canary（admission contract 已完成，Live 不在本计划执行）
+## 6. L2：独立 semantic canary（已执行一次并失败封存）
 
-zero-provider admission contract 已独立完成，但只有在 S2 source 已推送、已合并并完成 `main` 二次回归，且重新接受当次
-DeepSeek/Qwen 数据边界后，才可另立 L2 controlled-Live admission：
+zero-provider admission contract 已独立完成；随后在 S2 source 已推送、已合并并完成 `main` 二次回归、重新接受当次
+DeepSeek/Qwen 数据边界并给出 exact authorization 后，唯一 L2 controlled-Live 已执行并失败封存：
 
 1. 重新接受当次 DeepSeek/Qwen 数据保留边界；
 2. 给出新的、精确到 lineage/source/confirmation 的一次性 authorization；
 3. 重新冻结 provider price profile、总预算、marker/journal/artifact 路径和 data-boundary reader；
-4. 仅执行一次 bounded run；成功也只形成 `p1_semantic_gate`，失败则 durable seal，禁止 retry/resume/replay/backfill；
-5. L2 不自动接入 `/api/chat`，产品 Docker/API/browser/main 另需独立验收、合并和推送。
+4. 仅执行一次 bounded run；本次在 `rewrite_03/schema` 打开 breaker 并 durable seal，禁止 retry/resume/replay/backfill；
+5. L2 不自动接入 `/api/chat`；本次 quality gate failure 使产品 Docker/API/browser/main semantic authority 继续阻断。
 
-普通“继续/好的/所有权限”不替代上述 exact authorization；本阶段不读取用户 credential。
+普通“继续/好的/所有权限”不替代上述 exact authorization；本次 authorization 已消费，后续必须建立全新
+zero-provider recovery/diagnostic lineage，不能重复本 run。
 Admission contract 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
+Controlled-Live 失败封存见
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
 
 ## 7. 文档、分支与交付协议
 

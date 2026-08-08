@@ -8,8 +8,13 @@
 
 > 说明：本文记录的是 2026-08-08 已完成的 admission-only 历史 checkpoint，不是本次 controlled-Live 证据。之后在
 > `drb/phase-6-9-8-p1-l2-controlled-live` 的 `146d2107` 修复了历史 `.tmp` evidence 误阻断当前 namespace 的问题；当前
-> implementation 回归与下一次 Live 停止门见
+> implementation 回归与当时的 Live 前停止门见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
+
+> 后续封存（2026-08-09）：在重新接受当次 DeepSeek/Qwen data boundary 并完成 exact authorization 后，唯一 L2 run
+> `ff035203-500f-4744-b33c-3c375ae4c785` 已执行并以 `p1_l2_quality_gate_failed` durable seal。本文中的“approved branch/tag
+> 当前未创建”“未来另立 controlled-Live”等内容均是 admission 时点事实，不是当前入口；请以
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md` 为当前终态。
 
 ## 1. 结论
 
@@ -80,12 +85,13 @@ root/nested hostile Proxy、capability single-use、输入不可变和 raw confi
 - `packages/agent/tests/phase-6-9-8-retriever-final-response-p1-l2-admission.test.ts`
 - `packages/agent/package.json`：新增 `./phase-6-9-8-p1-l2-admission` public subpath
 
-## 6. 停止门与下一步
+## 6. Admission 时点停止门（历史；已由后续 sealed run 收口）
 
-当前仍未创建 approved tag，也未读取 credential、执行 proxy/network preflight、调用 Provider、启动 Docker/API/browser
-或接入 `/api/chat`。本 contract 不是 L2 semantic authority，也不是 Live authorization。
+Admission 生成时仍未创建 approved tag，也未读取 credential、执行 proxy/network preflight、调用 Provider、启动
+Docker/API/browser 或接入 `/api/chat`。本 contract 本身不是 L2 semantic authority，也不是 Live authorization；随后唯一
+controlled-Live 已执行并失败封存。
 
 相关文档 parity、推送、`main` 合并与合并后二次 zero-provider 回归已完成：`@repo/agent` 全量
 `1427/1427`（24263 assertions，178 files），typecheck/lint/`git diff --check` 均通过。只有之后用户重新接受当次
-DeepSeek/Qwen 数据边界并提供新的、精确绑定当前 source/lineage/confirmation 的 authorization，才可另立唯一 L2 controlled-Live。
-已封存 L1/T3/R5/Task 9C/SR5 evidence 不得重跑或改写，Docker 容器、镜像和卷保持原状。
+DeepSeek/Qwen 数据边界并提供新的、精确绑定当前 source/lineage/confirmation 的 authorization，才可另立一次新的 lineage；
+本次 L2 authorization 已消费，不得重跑本 run。已封存 L1/T3/R5/Task 9C/SR5 evidence 不得重跑或改写，Docker 容器、镜像和卷保持原状。

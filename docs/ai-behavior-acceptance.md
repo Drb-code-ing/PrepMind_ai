@@ -2,20 +2,19 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 P1 L2 controlled-Live preparation（当前，2026-08-09）
+## Phase 6.9.8 P1 L2 controlled-Live 失败封存（当前，2026-08-09）
 
-P1 L2 的实现修复已完成：source admission/publication validator 只围栏当前 L2 evidence namespace，历史 `.tmp` sealed evidence
-与普通仓库文件不再误阻断新 run，当前 marker/journal/report/recovery/artifact 冲突、symlink 和非 `ENOENT` 读取错误仍
-fail-closed。当前分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，implementation commit=`146d2107`；P1 L2 focused
-`14/14`（47 assertions）、Agent full `1436/1436`（24314 assertions，180 files）、typecheck/lint/变更源码 Prettier/
-`git diff --check` 均通过。
+唯一 run `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag `fa502925...` 上由正常 runtime 路径
+durable seal。8/8 guard 继续 zero-call；真实行为只执行 `rewrite_01` 与 `rewrite_03` 两条 DeepSeek lane，前者 strict
+成功，后者以 bounded `schema` failure 打开 breaker，其余 10 条 lane 不启动。最终 gate=
+`p1_l2_quality_gate_failed`、`qualityAuthority=none`、`semanticGate=none`。
 
-真实行为门固定为 `8 guards -> 6 DeepSeek rewrite -> 6 DeepSeek FinalResponse`，最大并发 `1`、candidate cap `12`、Qwen
-embedding policy calls=`0`、input/output cap=`37600/8800`、cost cap=`0.176 CNY`。当前 zero-provider 状态仍为 credential/Provider/
-formal evidence=`0`；用户已接受当次 DeepSeek/Qwen data boundary 并授权唯一 Live，但在文档 parity、approved tag 创建前尚未消费。
-Live 通过后只产生 P1 semantic authority，不能直接宣称 `/api/chat`、Docker/API/browser、Trace、P95/SLA 或 `main` 可用；必须另写
-controlled-Live 证据并完成 `main` 二次 zero-provider 回归。实现记录见
-`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
+实际 Provider/credential/Qwen calls=`2/2/0`，usage=`343/40`，aggregate verified cost=`null`；不能把成功 lane 的
+`0.00069 CNY` 写成整轮费用。Journal `41` 条并以 `evidence_published` 收口，strict validator=`bundle_valid`，无
+recovery claim。`schema` 只代表未满足本地 strict contract，不能推断具体 Provider JSON 字段、网络、账号、余额或模型权限
+根因。该失败不证明 P1 semantic、`/api/chat`、Docker/API/browser、Trace、P95/SLA 或 `main` 产品可用；唯一名额已
+消费，禁止重跑和追加探测。完整记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
 
 ## Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live sealed（2026-08-08）
 

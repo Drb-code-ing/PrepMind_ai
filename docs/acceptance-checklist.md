@@ -5,26 +5,31 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0H. Phase 6.9.8 P1 L2 controlled-Live preparation（当前，2026-08-09）
+## 0H. Phase 6.9.8 P1 L2 controlled-Live 失败封存（当前，2026-08-09）
 
-当前分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，implementation 修复提交 `146d2107` 已推送且工作树 clean。source
-admission/publication validator 只统计当前 L2 marker/journal/report/recovery/artifact namespace；历史 `.tmp` sealed evidence
-保持只读，当前命名空间冲突、symlink、非 `ENOENT` 读取错误和 hash/publication drift 仍 fail-closed。P1 L2 focused `14/14`
-（47 assertions）、Agent full `1436/1436`（24314 assertions，180 files）、typecheck/lint/变更源码 Prettier/`git diff --check`
-通过。
+唯一 run `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag `fa502925...` 上正常 durable seal。固定分母
+仍为 `8 guards + 6 DeepSeek rewrite + 6 DeepSeek FinalResponse`，Qwen embedding policy calls=`0`，最大并发 `1`、
+candidate cap=`12`。实际为 8/8 guards zero-call，`rewrite_01` strict 成功，`rewrite_03` 以 bounded `schema` failure
+打开 breaker，剩余 10 条 lane 均 `not_started_quality_breaker`。
 
-用户已接受本次 DeepSeek/Qwen data boundary 并授权唯一 Live，但授权尚未消费。文档 parity 提交并推送后，必须在同一 clean
-source 创建并推送 `phase-6.9.8-retriever-final-response-p1-l2-approved`，然后只执行一次：
+固定验收结果：
 
 ```text
-bun run --cwd packages/agent eval:phase-6-9-8:p1:l2:live
+gate / qualityAuthority   p1_l2_quality_gate_failed / none
+Provider / credential    2 / 2
+Qwen calls               0
+usage                    343 / 40
+aggregate cost           null
+journal / final event    41 / evidence_published
+validator                ok=true / bundle_valid
+recovery claim           null
 ```
 
-固定顺序是 `8 guards -> 6 DeepSeek rewrite -> 6 DeepSeek FinalResponse`，Qwen embedding policy calls=`0`，最大并发 `1`、
-candidate cap `12`、input/output cap `37600/8800`、cost cap `0.176 CNY`。Live 成功也只形成 P1 semantic authority；终态必须另
-写 controlled-Live evidence，随后合并 `main`、推送远程并做一次不调用 Provider 的二次回归。不得 retry/resume/replay/backfill/
-curl/单 case/追加 Provider 探测，不清理 Docker、数据库、Redis、MinIO。
+只读复核命令为 `bun run --cwd packages/agent eval:phase-6-9-8:p1:l2:validate`；禁止再次执行 Live/recovery/seal。
+唯一名额已消费，不得 retry/resume/replay/backfill、curl、单 case 或追加 Provider 探测。该结果不形成 P1 semantic、
+产品 Docker/API/browser、Trace、P95/SLA、业务写入或 `main` 产品 authority，不清理 Docker、数据库、Redis、MinIO。
 
+封存验收：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
 实现验收：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
 
 ## 0G. Phase 6.9.8 P1/G1/G2/S2/L2 admission zero-provider gate（历史 checkpoint）

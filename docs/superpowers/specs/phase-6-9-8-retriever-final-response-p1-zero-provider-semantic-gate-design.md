@@ -8,12 +8,12 @@
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
 > Authority：`zero_provider_retriever_final_response_p1_semantic_gate_design / qualityAuthority=none`
 
-> 当前执行状态（2026-08-09）：P1 L2 implementation 已在普通分支
-> `drb/phase-6-9-8-p1-l2-controlled-live` 完成历史 `.tmp` evidence namespace fence 修复（commit `146d2107`），P1 L2
-> focused `14/14`、Agent full `1436/1436`、typecheck/lint/changed-file Prettier/diff check 通过。用户已重新接受
-> DeepSeek/Qwen data boundary 并给出唯一 controlled-Live exact authorization；完成文档 parity、approved tag 创建并推送后才消费，
-> 不改变本文冻结 contract，也不允许重跑任何历史 evidence。实现验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
+> 当前执行状态（2026-08-09）：P1 L2 implementation 修复（`146d2107`）后的唯一 controlled-Live 已在 approved
+> source/tag `fa502925...` 上完成并 durable seal。run `ff035203-500f-4744-b33c-3c375ae4c785` 在 `rewrite_03` 的
+> bounded `schema` contract failure 后以 `p1_l2_quality_gate_failed / qualityAuthority=none` 收口；8/8 guards zero-call、
+> Provider/credential/Qwen calls=`2/2/0`、usage=`343/40`、aggregate cost=`null`，validator=`ok=true`。本文的 P1 contract
+> 与 zero-provider 设计不被改写；当前终态与禁止重跑门见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
 
 ## 1. 决策摘要
 

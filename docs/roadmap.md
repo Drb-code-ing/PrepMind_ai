@@ -1,15 +1,15 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前原子任务（2026-08-09）：Phase 6.9.8 P1 L2 controlled-Live preparation 已完成实现修复，当前分支为
-> `drb/phase-6-9-8-p1-l2-controlled-live`，修复提交 `146d2107` 已推送且工作树 clean。历史 `.tmp` evidence 不再被误计为
-> 当前 L2 formal evidence；当前命名空间冲突仍 fail-closed。P1 L2 focused `14/14`（47 assertions）、Agent full `1436/1436`
->（24314 assertions，180 files）、typecheck/lint/变更源码 Prettier/`git diff --check` 通过。实现验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
-> 用户已接受 DeepSeek/Qwen data boundary 并授权唯一 controlled-Live，但在文档 parity 和 approved tag 创建前尚未消费；下一步
-> 是提交/推送文档、创建并推送 `phase-6.9.8-retriever-final-response-p1-l2-approved`，执行一次 L2 Live。Live 成功也只形成 P1
-> semantic authority，不解锁产品 Docker/API/browser、Trace、SLA 或 `main`；不得重跑历史 evidence、不得清理 Docker/数据服务。
+> 当前原子任务（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live run
+> `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag `fa502925...` 上 durable seal，但 gate 为
+> `p1_l2_quality_gate_failed / qualityAuthority=none`。8/8 guards zero-call；第二条真实 DeepSeek rewrite 以 bounded
+> `schema` failure 打开 breaker，实际 Provider calls=`2/12`、Qwen calls=`0`、usage=`343/40`、aggregate cost=`null`，
+> 后续 10 条 lane 未启动。Journal `41`、validator=`bundle_valid`、recovery claim=`null`。该结果不形成 P1 semantic、
+> 产品 Docker/API/browser、Trace、SLA 或 `main` 产品 authority，且不得重跑/追加探测。当前只允许证据/文档收口与
+> zero-provider 合并回归；下一功能任务为独立 schema recovery/diagnostic lineage。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
 
-> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成并已合并推送；当前
+> 历史 checkpoint（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成并已合并推送；当时
 > `main == origin/main`（具体 HEAD 以 `git rev-parse main origin/main` 为准），合并后 zero-provider 回归已通过（Agent `1427/1427`，
 > 24263 assertions，178 files；typecheck/lint/diff check 通过）。
 > Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。
@@ -120,7 +120,7 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 | Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                             |
 | Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                     |
 | Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成      |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | P1 L2 implementation 修复完成；唯一 controlled-Live 待 tag/source gate |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | P1 L2 唯一 Live 已 schema 失败封存；semantic/product gate 继续阻断       |
 | Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                          |
 | Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成              |
 | Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                             |
