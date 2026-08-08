@@ -1,9 +1,9 @@
 # PrepMind AI 智能备考助手
 
 > 当前原子任务（2026-08-09）：Phase 6.9.8 P1 L2 controlled-Live 准备已完成实现修复，当前分支为
-> `drb/phase-6-9-8-p1-l2-controlled-live`，修复提交 `e5f6c229` 已推送且工作树 clean。修复后的 source admission 只围栏
+> `drb/phase-6-9-8-p1-l2-controlled-live`，修复提交 `146d2107` 已推送且工作树 clean。修复后的 source admission 只围栏
 > 当前 P1 L2 marker/journal/report/recovery/artifact 路径；历史 `.tmp` sealed evidence 与普通仓库文件保持只读，不再误阻断
-> 新 run，当前命名空间冲突仍 fail-closed。P1 L2 focused `13/13`（44 assertions），Agent full `1436/1436`（24314
+> 新 run，当前命名空间冲突仍 fail-closed。P1 L2 focused `14/14`（47 assertions），Agent full `1436/1436`（24314
 > assertions，180 files），typecheck/lint/变更源码 Prettier/`git diff --check` 通过。
 > [`P1 L2 implementation 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md)
 > 记录了实现边界；本次用户已接受 DeepSeek/Qwen data boundary 并授权唯一 controlled-Live，但授权在 approved tag 创建前尚未消费。

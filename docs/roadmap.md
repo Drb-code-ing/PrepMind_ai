@@ -1,8 +1,8 @@
 # PrepMind AI 学习与开发路线图
 
 > 当前原子任务（2026-08-09）：Phase 6.9.8 P1 L2 controlled-Live preparation 已完成实现修复，当前分支为
-> `drb/phase-6-9-8-p1-l2-controlled-live`，修复提交 `e5f6c229` 已推送且工作树 clean。历史 `.tmp` evidence 不再被误计为
-> 当前 L2 formal evidence；当前命名空间冲突仍 fail-closed。P1 L2 focused `13/13`（44 assertions）、Agent full `1436/1436`
+> `drb/phase-6-9-8-p1-l2-controlled-live`，修复提交 `146d2107` 已推送且工作树 clean。历史 `.tmp` evidence 不再被误计为
+> 当前 L2 formal evidence；当前命名空间冲突仍 fail-closed。P1 L2 focused `14/14`（47 assertions）、Agent full `1436/1436`
 >（24314 assertions，180 files）、typecheck/lint/变更源码 Prettier/`git diff --check` 通过。实现验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
 > 用户已接受 DeepSeek/Qwen data boundary 并授权唯一 controlled-Live，但在文档 parity 和 approved tag 创建前尚未消费；下一步

@@ -6,8 +6,8 @@
 
 P1 L2 的实现修复已完成：source admission/publication validator 只围栏当前 L2 evidence namespace，历史 `.tmp` sealed evidence
 与普通仓库文件不再误阻断新 run，当前 marker/journal/report/recovery/artifact 冲突、symlink 和非 `ENOENT` 读取错误仍
-fail-closed。当前分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，implementation commit=`e5f6c229`；P1 L2 focused
-`13/13`（44 assertions）、Agent full `1436/1436`（24314 assertions，180 files）、typecheck/lint/变更源码 Prettier/
+fail-closed。当前分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，implementation commit=`146d2107`；P1 L2 focused
+`14/14`（47 assertions）、Agent full `1436/1436`（24314 assertions，180 files）、typecheck/lint/变更源码 Prettier/
 `git diff --check` 均通过。
 
 真实行为门固定为 `8 guards -> 6 DeepSeek rewrite -> 6 DeepSeek FinalResponse`，最大并发 `1`、candidate cap `12`、Qwen

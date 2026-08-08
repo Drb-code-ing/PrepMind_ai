@@ -15,7 +15,7 @@
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
 
 > 当前执行状态（2026-08-09）：L2 implementation 修复已在普通分支
-> `drb/phase-6-9-8-p1-l2-controlled-live` 的 `e5f6c229` 完成并推送，修复后 P1 L2 focused `13/13`、Agent full
+> `drb/phase-6-9-8-p1-l2-controlled-live` 的 `146d2107` 完成并推送，修复后 P1 L2 focused `14/14`、Agent full
 > `1436/1436`、typecheck/lint/changed-file Prettier/diff check 通过。历史 `.tmp` evidence 只读并不阻断当前 namespace，
 > 当前 namespace 冲突仍 fail-closed。用户已接受当次 DeepSeek/Qwen data boundary 并给出唯一 exact authorization；完成文档 parity、
 > 创建并推送 approved tag 后执行一次 L2 Live，终态另行记录，随后合并 main 并做 zero-provider 二次回归。

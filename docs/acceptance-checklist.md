@@ -7,10 +7,10 @@
 
 ## 0H. Phase 6.9.8 P1 L2 controlled-Live preparation（当前，2026-08-09）
 
-当前分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，implementation 修复提交 `e5f6c229` 已推送且工作树 clean。source
+当前分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，implementation 修复提交 `146d2107` 已推送且工作树 clean。source
 admission/publication validator 只统计当前 L2 marker/journal/report/recovery/artifact namespace；历史 `.tmp` sealed evidence
-保持只读，当前命名空间冲突、symlink、非 `ENOENT` 读取错误和 hash/publication drift 仍 fail-closed。P1 L2 focused `13/13`
-（44 assertions）、Agent full `1436/1436`（24314 assertions，180 files）、typecheck/lint/变更源码 Prettier/`git diff --check`
+保持只读，当前命名空间冲突、symlink、非 `ENOENT` 读取错误和 hash/publication drift 仍 fail-closed。P1 L2 focused `14/14`
+（47 assertions）、Agent full `1436/1436`（24314 assertions，180 files）、typecheck/lint/变更源码 Prettier/`git diff --check`
 通过。
 
 用户已接受本次 DeepSeek/Qwen data boundary 并授权唯一 Live，但授权尚未消费。文档 parity 提交并推送后，必须在同一 clean

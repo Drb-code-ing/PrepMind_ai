@@ -7,7 +7,7 @@
 > 代码提交：`67199acf`；文档/合并收口提交：`1a97ba03`
 
 > 说明：本文记录的是 2026-08-08 已完成的 admission-only 历史 checkpoint，不是本次 controlled-Live 证据。之后在
-> `drb/phase-6-9-8-p1-l2-controlled-live` 的 `e5f6c229` 修复了历史 `.tmp` evidence 误阻断当前 namespace 的问题；当前
+> `drb/phase-6-9-8-p1-l2-controlled-live` 的 `146d2107` 修复了历史 `.tmp` evidence 误阻断当前 namespace 的问题；当前
 > implementation 回归与下一次 Live 停止门见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
 

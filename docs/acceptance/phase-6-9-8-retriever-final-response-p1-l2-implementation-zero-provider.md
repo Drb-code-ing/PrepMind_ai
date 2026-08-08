@@ -3,7 +3,7 @@
 > 日期：2026-08-09
 > 状态：已完成（zero-provider implementation；controlled-Live 尚未执行）
 > 分支：`drb/phase-6-9-8-p1-l2-controlled-live`
-> implementation commit：`e5f6c229`
+> implementation commit：`146d2107`
 > 远程状态：当前分支 HEAD 与其 upstream/origin 分支一致；工作树 clean
 
 ## 1. 结论
@@ -19,6 +19,11 @@ P1 L2 的 production-shaped runner、受控 CLI、source admission 与 crash-onl
 - 当前 L2 命名空间出现文件、目录、symlink、读取错误或 publication 冲突时仍 fail-closed；
 - 缺失 `.tmp` 目录按空目录处理，非 `ENOENT` 读取错误仍阻断；
 - runner、journal、artifact、validator、recovery claim 继续绑定同一 L2 lineage，禁止 retry/resume/replay/backfill 或第二个 winner。
+
+首次受控入口在 source gate 以 `source_admission_invalid` 停止。只读诊断确认原因是 Windows/Bun 下 clean
+`git status --porcelain` 返回合法空字符串，而实现把空字符串当作失败；它发生在 credential、marker 和 Provider 之前，因此本次
+授权未消费。修复提交 `146d2107` 用显式 `null`/empty distinction 收口并加入回归测试；修复后 tag 必须重新绑定到该 source，才允许再次进入
+唯一 Live 入口。
 
 ## 3. 固定运行边界
 
@@ -38,7 +43,7 @@ P1 L2 的 production-shaped runner、受控 CLI、source admission 与 crash-onl
 ## 4. 回归证据
 
 ```text
-P1 L2 focused             13 pass / 0 fail / 44 expect() calls
+P1 L2 focused             14 pass / 0 fail / 47 expect() calls
 Agent full                1436 pass / 0 fail / 24314 expect() calls / 180 files
 @repo/agent typecheck     passed
 @repo/agent lint          passed

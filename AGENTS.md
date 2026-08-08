@@ -2,13 +2,16 @@
 
 ## 当前任务：Phase 6.9.8 P1 L2 controlled-Live preparation（2026-08-09）
 
-当前普通分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，implementation 修复提交为 `e5f6c229`；分支已推送、工作树
-clean，且本次修复后的 Agent full 回归为 `1436/1436`（24314 assertions，180 files）。P1 L2 focused 为 `13/13`
-（44 assertions），typecheck、lint、变更源码 Prettier 与 `git diff --check` 均通过。
+当前普通分支为 `drb/phase-6-9-8-p1-l2-controlled-live`，implementation 修复提交为 `146d2107`；分支已推送、工作树
+clean，且本次修复后的 Agent full 回归为 `1436/1436`（24314 assertions，180 files）。P1 L2 focused 为 `14/14`
+（47 assertions），typecheck、lint、变更源码 Prettier 与 `git diff --check` 均通过。
 
 本次修复只收紧当前 L2 evidence namespace：历史 `.tmp` sealed evidence 和普通仓库文件保持只读，不再误阻断新的 L2；当前
 marker/journal/report/recovery/artifact 路径冲突、symlink、读取错误和 publication drift 仍 fail-closed。实现验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
+
+首次入口曾在 clean porcelain 空字符串处错误停止为 `source_admission_invalid`，但未读取 credential/创建 marker/调用 Provider；
+`146d2107` 已修复并加入回归。canonical approved tag 需绑定该修复后的 source，授权仍未消费。
 
 用户已重新接受本次 DeepSeek/Qwen data boundary，并给出绑定当前 branch/lineage 的 exact authorization；授权在 approved tag
 创建前尚未消费。下一原子任务是完成本文档 parity 并单独提交/推送，随后在同一 clean source 创建并推送
