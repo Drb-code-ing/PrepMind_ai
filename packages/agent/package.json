@@ -29,6 +29,7 @@
     "./retriever-query-rewrite": "./src/model-candidates/retriever-query-rewrite-model-candidate.ts",
     "./phase-6-9-8-p1-g2": "./src/evals/phase-6-9-8-retriever-final-response-p1-g2-runner.ts",
     "./phase-6-9-8-p1-g2-durability": "./src/evals/phase-6-9-8-retriever-final-response-p1-g2-durability.ts",
+    "./phase-6-9-8-p1-l2-admission": "./src/evals/phase-6-9-8-retriever-final-response-p1-l2-admission.ts",
     "./transport-reentry-v2-c1": "./src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1.ts",
     "./transport-reentry-v2-c2": "./src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2.ts",
     "./transport-reentry-v2-s1": "./src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock.ts",
