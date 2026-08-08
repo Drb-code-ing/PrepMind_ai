@@ -1,11 +1,15 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
-> 状态：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1/T2 已完成，T3
-> transport canary 未授权；R6/R7、产品/main 与后续阶段阻断
+> 状态：本文是 Task 0--8 的历史设计基线；Task 9C/R5 已失败封存，V2 L1 已以 transport diagnostic authority
+> durable seal。当前 P1 zero-provider semantic-gate 设计已另立独立 lineage 冻结，G1 尚未开始；产品/main 与后续
+> 阶段仍受各自 semantic/product gate 约束。
 > 日期：2026-08-05
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
-> Current Checkpoint Authority：`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`
+> Current Checkpoint Authority（本文历史上下文）：`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`
+
+> 当前入口：`docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、
+> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与对应 acceptance。
 
 ## 1. 决策与目标
 

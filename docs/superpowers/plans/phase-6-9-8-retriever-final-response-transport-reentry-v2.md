@@ -3,9 +3,9 @@
 > 设计来源：[Transport Re-entry V2 设计](../specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md)
 > 当前状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static、L1 implementation 与唯一 L1
 > controlled-Live 均已完成；run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 已以
-> `transport_reentry_v2_l1_controlled_canary_passed / qualityAuthority=none` durable seal，当前进入 P1
-> zero-provider semantic-gate 设计
-> 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
+> `transport_reentry_v2_l1_controlled_canary_passed / qualityAuthority=none` durable seal。P1 zero-provider
+> semantic-gate 设计已另立普通分支冻结，当前下一步为 G1。
+> 历史实现分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > 当前 authority：L1 `controlled_live_transport_reentry_v2 / qualityAuthority=none`；implementation/root-env diagnosis 与
 > S1 的 zero-provider authority 均保留为历史 checkpoint
 
@@ -140,4 +140,8 @@ L1 最多三次 Provider call，失败即 durable seal；不得 retry/resume/rep
 
 T3 controlled canary 已失败封存，T3-C guard、V2 D0/C1/C2/S1 与唯一 L1 controlled-Live 已完成。当前允许读取旧
 validator、运行 zero-provider 回归和同步文档；禁止旧 T3/L1 重跑、产品 Docker/API/browser 语义验收、Task 10/11 或
-任何追加 Provider 调用。下一任务必须从已合并的 `main` 新建普通分支，先完成 P1 zero-provider semantic-gate 设计。
+任何追加 Provider 调用。P1 设计已完成；下一任务必须从最新 `main` 新建普通分支，完成 G1 zero-provider
+manifest/subset baseline/scorer。P1 文档见
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`。

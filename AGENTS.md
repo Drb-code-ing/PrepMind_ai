@@ -1,6 +1,6 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前任务：Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live 已封存（2026-08-08）
+## 当前任务：Phase 6.9.8 P1 zero-provider semantic-gate 设计已冻结（2026-08-08）
 
 唯一 run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 已在推送提交
 `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上通过 clean/source parity、fresh `direct_ready` proxy、当次
@@ -17,7 +17,11 @@ Docker/API/browser、Trace、BackgroundJob/Outbox、业务写入或 `main` autho
 此前 root `.env` 的 `unknown_key` 是本次修复前的 configuration-only 历史诊断；selective root profile 与 zero-provider
 实现验收仍保留在 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`
 与 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`，不改写其
-当时的 `providerCalls=0` 事实。下一原子任务是从已合并的 `main` 新建分支，冻结 P1 zero-provider semantic-gate。
+当时的 `providerCalls=0` 事实。P1 设计现已在从最新 `main` 派生的普通分支上冻结；下一原子任务是 G1
+zero-provider manifest/subset baseline/scorer contract。设计、计划和验收见
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`。
 
 ## 历史 checkpoint：Phase 6.9.8 Transport Re-entry V2 S1 已完成（2026-08-07）
 

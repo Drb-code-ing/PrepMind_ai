@@ -5,16 +5,23 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0F. Phase 6.9.8 Transport Re-entry V2 L1 root-env compatibility recovery（当前）
+## 0G. Phase 6.9.8 P1 zero-provider semantic-gate 设计（当前）
 
-首次受控入口在共享根 `.env` composition 以 `credential_configuration_invalid / unknown_key` 停止：共享文件含正常
-项目设置，Qwen 使用宿主兼容 `Qwen_API_KEY`。该尝试 `providerCalls=0`、`credentialReads=0`，未创建 marker/journal/
-report/artifact/recovery claim，也未写入产品数据。当前 production selector 只提取
-`DEEPSEEK_API_KEY`、`QWEN_API_KEY`、`Qwen_API_KEY`、`DASHSCOPE_API_KEY`，并把 Qwen alias 归一化为 canonical
-`QWEN_API_KEY`；多个 alias 同时存在时必须 `alias_conflict` fail-closed。C1 strict synthetic parser 的 unknown-field
-测试保持不变。
+V2 L1 已以 `transport_reentry_v2_l1_controlled_canary_passed` durable seal，但它只有 transport diagnostic authority，
+不能替代语义质量。当前 checklist 只验收 P1 设计：固定 `8` 条 zero-call guard、`6` 条 rewrite、`6` 条 FinalResponse，
+owner/通信/权限、最大并发 1、12 次 bounded candidate invocation、abort/stale/丢失任务/首错 breaker/no-retry、
+质量门和 authority 边界均已写入独立文档。
 
-固定检查：
+固定设计入口：
+
+- `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`
+- `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
+
+P1/G1/G2/S2 不读取 credential、不调用 Provider、不启动 Docker/API/browser、不写 Trace、BackgroundJob、Outbox 或
+业务数据；S2 gate 固定 `p1_mock_quality_not_evidence / qualityAuthority=none`。六条语义 lane 不生成 P95/SLA authority。
+
+固定检查（P1 文档提交前后）：
 
 ```text
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1.test.ts
@@ -23,13 +30,25 @@ bunx prettier --check <changed files>
 git diff --check
 ```
 
-- [x] diagnosis captured as configuration-only, no Provider/evidence
-- [x] selective root parser + Qwen alias compatibility fixture
-- [ ] 修复提交推送后 fresh source/proxy/data-boundary gate
-- [ ] 新的两条 exact authorization 后才可执行唯一 controlled canary
+- [x] L1 sealed result 与 root-env diagnosis 的历史边界分开记录
+- [x] P1 identity、manifest/policy/baseline anchor 与固定 case selection
+- [x] P1 权限、通信、并发、丢失任务、路由、质量门与 authority 停止门
+- [ ] G1 zero-provider manifest/subset baseline/scorer contract
 
-诊断与停止边界：
+L1 sealed 与历史 root-env 诊断：
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
+
+P1 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`。
+
+## 0F. Phase 6.9.8 Transport Re-entry V2 L1 root-env compatibility recovery（历史 checkpoint）
+
+首次受控入口在共享根 `.env` composition 以 `credential_configuration_invalid / unknown_key` 停止：共享文件含正常
+项目设置，Qwen 使用宿主兼容 `Qwen_API_KEY`。该尝试 `providerCalls=0`、`credentialReads=0`，未创建 marker/journal/
+report/artifact/recovery claim，也未写入产品数据。当前 production selector 只提取
+`DEEPSEEK_API_KEY`、`QWEN_API_KEY`、`Qwen_API_KEY`、`DASHSCOPE_API_KEY`，并把 Qwen alias 归一化为 canonical
+`QWEN_API_KEY`；多个 alias 同时存在时必须 `alias_conflict` fail-closed。C1 strict synthetic parser 的 unknown-field
+测试保持不变。
 
 ## 0E. Phase 6.9.8 Transport Re-entry V2 S1 reviewed Mock/static（历史 checkpoint）
 
@@ -69,8 +88,9 @@ artifact 路径占用（文件、目录或 symlink）都必须阻断，非 `ENOE
 branch/HEAD/upstream/origin CLI 回放必须为 `git_verified / formalArtifactCount=0`。
 
 S1 只形成 Mock/static 工程 authority，不形成真实模型语义、Provider health、P95/SLA、产品 API、Docker/browser、Trace、
-BackgroundJob/Outbox、业务写入或 `main` authority。下一步仅 V2 L1；必须重新接受 DeepSeek/Qwen 数据边界并提供两条
-exact authorization，普通“继续/好的”不替代授权。详见
+BackgroundJob/Outbox、业务写入或 `main` authority。S1 已由唯一 V2 L1 sealed run 收口；当时的下一步是 L1，当前
+路线已转为 P1/G1，未来
+L2 仍必须重新接受 DeepSeek/Qwen 数据边界并提供 exact authorization，普通“继续/好的”不替代授权。详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
 
 ## 0D. Phase 6.9.8 Transport Re-entry V2 C2 zero-provider runner/durability（历史 checkpoint）
@@ -2198,7 +2218,7 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 
 ## 12. Phase 6.9.8 Retriever / FinalResponse 验收入口
 
-### 当前路线：Transport Re-entry V2 L1（2026-08-08，已封存）
+### 历史封存：Transport Re-entry V2 L1（2026-08-08）
 
 - [x] D0/C1/C2/S1 zero-provider contract、runner/durability 与 reviewed Mock/static 已完成并分别留存验收文档；
 - [x] L1 production-shaped launcher 已完成：exact argv、source/remote parity、loopback proxy、数据边界、授权、
@@ -2213,13 +2233,28 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] L1 marker/journal/report/root artifact 已以 `evidence_published` 收口，journal `16` 条；authority 仅为
       `controlled_live_transport_reentry_v2 / qualityAuthority=none`，不解锁 semantic/product/Docker/API/browser/Trace/main；
 - [x] 一次性名额已消费；禁止 retry/resume/replay/backfill、recovery/seal、单 case/curl 或追加 Provider 探测；
-- [ ] 下一原子任务：从已合并的 `main` 新建分支，冻结 P1 zero-provider semantic-gate（manifest、baseline、质量门、
-      reviewed Mock），不直接进入产品语义验收。
+- [x] P1 zero-provider semantic-gate 设计已从最新 `main` 新建普通分支冻结；下一步转入 G1 manifest/subset
+      baseline/scorer，不直接进入产品语义验收。
 
 完整 sealed 证据：
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
 
 以上条目取代旧 R5 后遗留的“R6/Task 10/Task 11 直接推进”表述；旧条目保留为历史记录，不得作为当前执行顺序。
+
+### 当前路线：P1 zero-provider semantic-gate 设计（2026-08-08）
+
+- [x] 固定 lineage `phase-6.9.8-retriever-final-response-p1-v1`、manifest/policy/baseline anchor SHA 与 20-entry 选择；
+- [x] 固定 `8` 条 zero-call guard、`6` 条 rewrite、`6` 条 FinalResponse，以及 Retriever/FinalResponse 全部质量门；
+- [x] 固定 owner/通信/权限、`ragIncluded=false` 清零、最大并发 1、12 次 candidate 上限、abort/stale/丢失任务、
+      首错 breaker/no-retry 与 semantic mismatch 不开 breaker 的规则；
+- [x] P1/G1/G2/S2 的 zero-provider、Docker/API/browser、Trace/BackgroundJob/Outbox 与业务写入边界；
+- [ ] G1 zero-provider manifest/subset baseline/scorer contract；完成后另立提交、推送并合并 main 验收。
+
+P1 设计、计划与验收：
+
+- `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`
+- `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
 
 Task 0 `zero_provider_retriever_final_response_design`：
 

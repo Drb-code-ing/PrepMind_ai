@@ -1,11 +1,11 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 设计
 
-> 日期：2026-08-07
+> 日期：2026-08-07（2026-08-08 状态更新）
 > 状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static、L1 implementation 与唯一 L1 controlled-Live
 > 均已完成；run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上
 > 以 `transport_reentry_v2_l1_controlled_canary_passed / qualityAuthority=none` durable seal。root `.env` 的
-> `unknown_key` 是 Live 前历史诊断，当前下一任务为 P1 zero-provider semantic-gate
-> 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
+> `unknown_key` 是 Live 前历史诊断；P1 zero-provider semantic-gate 设计已另立分支冻结，当前下一任务为 G1。
+> 历史实现分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
 > 当前 checkpoint authority：`controlled_live_transport_reentry_v2 / qualityAuthority=none`；L1 implementation/root-env diagnosis
 > 与 S1 的 zero-provider authority 保留为历史 checkpoint
@@ -183,8 +183,12 @@ semantic/product authority 并完成 Docker/API/browser/main 回放。
 任一 gate、预算、wire、journal、artifact、validator 或安全边界失败，停止当前阶段并封存 bounded diagnostic；
 不能自动推进下一阶段。L1 一次性名额一旦 marker durable 即消费，无论结果成功或失败均不得重跑。
 
-当前 S1 完成后的 L1 授权门已被唯一 run 消费；不得再次读取 credential 或调用 Provider。下一原子任务是 P1
-zero-provider semantic-gate 设计，不能把本次 transport success 当作 semantic/product authority。
+当前 S1 完成后的 L1 授权门已被唯一 run 消费；不得再次读取 credential 或调用 Provider。P1 zero-provider
+semantic-gate 设计已冻结，下一原子任务是 G1 manifest/subset baseline/scorer contract；不能把本次 transport
+success 当作 semantic/product authority。P1 文档见
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`。
 
 ## 9. L1 implementation checkpoint（2026-08-08，zero-provider，Live 前历史）
 
