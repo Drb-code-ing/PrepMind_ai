@@ -114,7 +114,7 @@ export const PHASE_6_9_8_P1_L2_SOURCE_SCHEMA = z
     manifestSha256: z.literal(PHASE_6_9_8_P1_FROZEN_MANIFEST_SHA256),
     policySha256: z.literal(PHASE_6_9_8_P1_FROZEN_POLICY_SHA256),
     baselineSha256: z.literal(PHASE_6_9_8_P1_BASELINE_FROZEN_SHA256),
-    s2FactorySha256: z.string().regex(/^[0-9a-f]{64}$/u),
+    s2FactorySha256: z.string().regex(/^sha256:[0-9a-f]{64}$/u),
     final11CompatibilitySha256: z.string().regex(/^[0-9a-f]{64}$/u),
     formalEvidencePaths: z.array(z.string().max(240)).length(0),
     oldLineagePaths: z.array(z.string().max(240)).length(0),
