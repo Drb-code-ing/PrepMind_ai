@@ -1,8 +1,9 @@
 # Phase 6.9.8 Transport Re-entry V2 L1 实现与 zero-provider 验收
 
 > 日期：2026-08-08
-> 状态：L1 runner/launcher 已完成实现与 zero-provider 回归；随后一次受控入口在 root `.env` admission 以
-> `unknown_key` 阻断，未创建正式 Live evidence；compatibility 修复另见独立诊断记录。
+> 状态：Live 前 implementation checkpoint（历史）；L1 runner/launcher 的 zero-provider 回归与 root `.env` 首次
+> `unknown_key` configuration-only 阻断记录保持不可变。随后唯一 controlled-Live 已成功封存，当前状态见独立 sealed
+> 验收：`phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
 > Branch：`drb/phase-6-9-8-retriever-final-response-contract`
 > Lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
 > 当前 checkpoint authority：`zero_provider_transport_reentry_v2_l1_implementation / qualityAuthority=none`
@@ -95,3 +96,6 @@ profile 的修复规则与脱敏证据见：
 
 修复完成后仍必须在新的 source commit 上重新通过 clean/parity、fresh proxy、DeepSeek/Qwen data-boundary 与两条 exact
 authorization；在新授权前不得继续调用 Provider。
+
+> 以上“仍必须授权”是本文件所记录的 Live 前历史停止门；唯一授权已随后在 source `ee3dbf91` 上消费并以 run
+> `ce0c3257-a5d9-4389-90ec-814d5e9cde34` durable seal。请勿把本历史 checkpoint 当作当前未执行状态。

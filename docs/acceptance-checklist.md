@@ -2198,19 +2198,26 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 
 ## 12. Phase 6.9.8 Retriever / FinalResponse 验收入口
 
-### 当前路线：Transport Re-entry V2 L1（2026-08-08）
+### 当前路线：Transport Re-entry V2 L1（2026-08-08，已封存）
 
 - [x] D0/C1/C2/S1 zero-provider contract、runner/durability 与 reviewed Mock/static 已完成并分别留存验收文档；
 - [x] L1 production-shaped launcher 已完成：exact argv、source/remote parity、loopback proxy、数据边界、授权、
       bounded root `.env` projection、capability shape、exclusive marker/reservation 与 adapter handoff 顺序固定；
 - [x] L1 固定 `rewrite -> qwen -> final_response` 三槽、最多 `3` calls、总预算 `0.024096 CNY`、首错 breaker、
       suffix no-dispatch、no-retry，以及 strict journal/hash-chain、hard-link artifact、reserved/dispatch recovery；
-- [x] L1 zero-provider focused `13/13`、C1+C2+S1+L1 `47/47`、Agent full `1409/1409`，targeted lint/Prettier/Bun build
-      通过；正式 marker/journal/report/artifact/recovery claim 与 Provider/credential 均为 `0`；
-- [ ] 当前唯一动作：在提交并推送后的最终 source commit 上重新确认 DeepSeek/Qwen 数据边界与 exact authorization，
-      通过 fresh proxy preflight 后执行一次 controlled canary；不可 retry/replay/backfill/追加探测；
-- [ ] L1 即使成功也不解锁 semantic/product/Docker/API/browser/Trace/main，只能进入下一项 zero-provider semantic-gate
-      设计；失败则按封存结果重新做架构决策。
+- [x] L1 zero-provider implementation focused `13/13`、C1+C2+S1+L1 `47/47`、Agent full `1409/1409`，targeted
+      lint/Prettier/Bun build 通过；这些是 Live 前 checkpoint，正式 marker/evidence 当时为 `0`；
+- [x] 在推送 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上重新通过 source/proxy/data-boundary/authorization，
+      执行唯一 controlled canary；run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 的 `3/3` slots、`3` Provider calls、
+      `145/28/173` usage、`0.000573 CNY` 与 validator `ok=true` 已 durable seal；
+- [x] L1 marker/journal/report/root artifact 已以 `evidence_published` 收口，journal `16` 条；authority 仅为
+      `controlled_live_transport_reentry_v2 / qualityAuthority=none`，不解锁 semantic/product/Docker/API/browser/Trace/main；
+- [x] 一次性名额已消费；禁止 retry/resume/replay/backfill、recovery/seal、单 case/curl 或追加 Provider 探测；
+- [ ] 下一原子任务：从已合并的 `main` 新建分支，冻结 P1 zero-provider semantic-gate（manifest、baseline、质量门、
+      reviewed Mock），不直接进入产品语义验收。
+
+完整 sealed 证据：
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
 
 以上条目取代旧 R5 后遗留的“R6/Task 10/Task 11 直接推进”表述；旧条目保留为历史记录，不得作为当前执行顺序。
 

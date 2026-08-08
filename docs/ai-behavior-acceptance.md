@@ -2,19 +2,19 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Transport Re-entry V2 L1 实现 checkpoint（2026-08-08）
+## Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live sealed（2026-08-08）
 
-L1 implementation 已完成，但尚未形成本次 controlled-Live 证据。它把 root launcher、source/proxy/data-boundary/
+L1 implementation 与唯一 controlled-Live 均已完成并封存。它把 root launcher、source/proxy/data-boundary/
 authorization gate、bounded root `.env` projection、三槽真实 adapter seam、strict journal/hash-chain validator、
 hard-link publication 与 crash-only recovery 固定为一条不可扩展的 transport canary 流。真正的 dedicated key handoff
 只在 durable marker/reservation 后进入 adapter constructor；marker 前仅做 capability 的 lineage/family/call
 shape 检查。固定顺序为 `rewrite -> qwen -> final_response`，最多 3 calls、总 cap `0.024096 CNY`，首错即停止后缀。
 
-zero-provider 回归：L1 focused `13/13`（44 assertions）、C1+C2+S1+L1 `47/47`（224 assertions）、Agent full
-`1409/1409`（24069 assertions）；真实 `.env`/credential/Provider/formal evidence/Docker/API/browser/Trace/
-BackgroundJob/Outbox/业务写入均为 `0`。因此当前不能写成“模型质量通过”或“产品可用”。提交推送后，只有在当前 source
-commit 上重新接受 DeepSeek/Qwen 数据边界并给出 exact authorization，才能消费唯一一次 L1 controlled canary；成功最多
-形成 `qualityAuthority=none` 的 transport diagnostic authority，随后仍需独立 zero-provider semantic/product 路线。
+zero-provider 工程回归仍为 L1 focused `13/13`（44 assertions）、C1+C2+S1+L1 `47/47`（224 assertions）、Agent full
+`1409/1409`（24069 assertions）；该回归是 Live 前 checkpoint。唯一 sealed run
+`ce0c3257-a5d9-4389-90ec-814d5e9cde34` 的 `3/3` slots、`3` Provider calls、usage `145/28/173`、费用
+`0.000573 CNY`、journal `16`、validator `ok=true` 只形成 `controlled_live_transport_reentry_v2` transport
+diagnostic authority，`qualityAuthority=none`；不能写成“模型质量通过”或“产品可用”。
 
 首次受控入口在共享 root `.env` composition 以 `credential_configuration_invalid / unknown_key` 停止：共享文件包含正常
 项目配置，Qwen 使用宿主兼容 `Qwen_API_KEY`。该次没有 Provider call、marker/evidence 或产品写入；当前 production
@@ -22,7 +22,10 @@ profile 已改为只选择性提取 `DEEPSEEK_API_KEY` 与 `QWEN_API_KEY`/`Qwen_
 canonical `QWEN_API_KEY`，alias 冲突仍 fail-closed。这是 zero-provider compatibility recovery，不是模型质量或网络
 健康证据。
 
-验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`。
+sealed 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
+Live 前 implementation 与 root-env 诊断仍分别见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 Root admission 诊断记录：
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 

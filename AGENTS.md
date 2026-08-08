@@ -1,24 +1,23 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前任务：Phase 6.9.8 Transport Re-entry V2 L1 root `.env` compatibility recovery（2026-08-08）
+## 当前任务：Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live 已封存（2026-08-08）
 
-L1 implementation 已在独立 lineage 上完成 production-shaped launcher、固定
-`rewrite -> qwen -> final_response` runner、source/proxy/data-boundary/authorization gate、deferred adapter
-handoff、strict journal state machine、hash-chain validator、lineage path fence、existing-artifact recovery 与
-recovery-claim integrity check。focused L1 `13/13`、C1+C2+S1+L1 `47/47`（224 assertions）、Agent full `1409/1409`（24069 assertions）
-通过，targeted ESLint/Prettier/Bun build 通过。
+唯一 run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 已在推送提交
+`ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上通过 clean/source parity、fresh `direct_ready` proxy、当次
+DeepSeek/Qwen 数据边界与 exact authorization，并按 `rewrite -> qwen -> final_response` 完成三次真实 Provider call。
+终态为 `transport_reentry_v2_l1_controlled_canary_passed`、`authority=controlled_live_transport_reentry_v2`、
+`qualityAuthority=none`；usage `145/28/173`、费用 `0.000573 CNY`、journal `16` 条、validator `ok=true`、
+root artifact SHA=`472c727db12a0115a918440795ff72b59df980521867841d778373c91484718a`。
 
-首次受控入口在 root `.env` composition 以 `credential_configuration_invalid / unknown_key` 停止：共享根 `.env` 含正常
-项目配置字段，并使用宿主兼容别名 `Qwen_API_KEY`。该次尝试没有读取 credential、调用 Provider、创建 marker/journal/
-report/artifact/recovery claim 或写入产品数据。当前已落地 selective root profile：只提取
-`DEEPSEEK_API_KEY` 与 `QWEN_API_KEY`/`Qwen_API_KEY`/`DASHSCOPE_API_KEY`，其它项目字段不进入 projection；多个 Qwen
-alias 同时存在时 `alias_conflict` fail-closed。strict synthetic parser 的 unknown-field contract 保持不变。
+该结果只形成 transport diagnostic authority：不证明 Retriever/FinalResponse 语义、P95/SLA、产品 `/api/chat`、
+Docker/API/browser、Trace、BackgroundJob/Outbox、业务写入或 `main` authority。L1 marker/证据已 durable，唯一名额已
+消费，禁止 retry/resume/replay/backfill、recovery/seal 或追加 Provider 探测。完整记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
 
-修复提交推送后，必须重新接受当前 source 的 DeepSeek/Qwen 数据边界并给出新的 exact authorization，才可执行唯一一次
-L1 controlled-Live；成功也只形成 transport diagnostic authority，不解锁 semantic/product/main。当前停止门与诊断证据见
-`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
-
-验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`。
+此前 root `.env` 的 `unknown_key` 是本次修复前的 configuration-only 历史诊断；selective root profile 与 zero-provider
+实现验收仍保留在 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`
+与 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`，不改写其
+当时的 `providerCalls=0` 事实。下一原子任务是从已合并的 `main` 新建分支，冻结 P1 zero-provider semantic-gate。
 
 ## 历史 checkpoint：Phase 6.9.8 Transport Re-entry V2 S1 已完成（2026-08-07）
 

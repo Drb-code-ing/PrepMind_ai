@@ -1,5 +1,21 @@
 # PrepMind AI 开发日志
 
+> 2026-08-08 — Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live 已完成并 durable seal：
+>
+> 在推送 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上，fresh proxy 为 `direct_ready`，当次 DeepSeek/Qwen
+> 数据边界与 exact authorization 通过后，唯一 run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 按
+> `rewrite -> qwen -> final_response` 完成 `3/3` slots。Provider/credential reads=`3/3`，usage=`145/28/173`，
+> verified cost=`0.000573 CNY`，breaker closed，recoveryRequired=`false`，gate=
+> `transport_reentry_v2_l1_controlled_canary_passed`，authority=`controlled_live_transport_reentry_v2`、
+> `qualityAuthority=none`。
+>
+> Journal `16` 条并以 `evidence_published` 收口，validator `ok=true`；logical report SHA=`fc0409acbc6446ae3ccaf6917905ac465678006384fbf2325c839715ff1a2685`，
+> root artifact SHA=`472c727db12a0115a918440795ff72b59df980521867841d778373c91484718a`。这只形成 transport diagnostic authority，不证明 semantic/product/main；L1
+> 一次性名额已消费，禁止 retry/resume/replay/backfill、recovery/seal 或追加 Provider 探测。完整验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
+
+> 以下两条 2026-08-08 记录是该 Live 前的历史 checkpoint，保留其当时的 zero-provider/configuration-only 事实：
+>
 > 2026-08-08 — Phase 6.9.8 L1 root `.env` admission diagnosis 与 compatibility recovery：
 >
 > 首次受控入口在 credential composition 返回 `credential_configuration_invalid / unknown_key`。根因是共享根 `.env`
@@ -9,11 +25,11 @@
 > `QWEN_API_KEY`/`Qwen_API_KEY`/`DASHSCOPE_API_KEY` 并归一化为 canonical `QWEN_API_KEY`；其它项目字段不进入
 > projection，多个 Qwen alias 以 `alias_conflict` fail-closed。C1 strict synthetic parser 与历史验收不变。
 >
-> 修复仍是 zero-provider checkpoint，不是 Live 证据；提交推送后须重新通过 source/proxy/data-boundary gate 并取得新的
-> exact authorization。验收见
+> （历史 Live 前 checkpoint）修复当时仍是 zero-provider checkpoint，不是 Live 证据；随后已在新 source 上完成唯一
+> controlled-Live。诊断验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
-> 2026-08-08 — Phase 6.9.8 Transport Re-entry V2 L1 implementation 与 zero-provider 回归已完成：
+> 2026-08-08 — Phase 6.9.8 Transport Re-entry V2 L1 implementation 与 zero-provider 回归已完成（Live 前历史 checkpoint）：
 >
 > 新增 production-shaped L1 launcher、固定 `rewrite -> qwen -> final_response` runner、source/proxy/data-boundary/
 > authorization gate、deferred adapter handoff、strict dispatch/response/usage journal state machine、hash-chain

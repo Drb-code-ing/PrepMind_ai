@@ -1,18 +1,16 @@
 # PrepMind AI 数据流
 
-> 当前 L1 implementation checkpoint（2026-08-08）：V2 已从 S1 reviewed Mock/static 收口到可受控执行的
+> 当前 L1 controlled-Live sealed（2026-08-08）：V2 已从 S1 reviewed Mock/static 收口到唯一可受控执行的
 > production-shaped launcher。固定入口顺序为 `exact argv -> source/remote parity -> loopback proxy preflight ->
 DeepSeek/Qwen data boundary -> exact authorization -> root .env bounded projection -> capability shape check ->
 exclusive marker/reservation -> adapter construction -> rewrite -> qwen -> final_response -> durable publication`。
 > marker 前不构造第一方 adapter、不把 raw key 放入 runtime/report/journal/artifact；首错 breaker、suffix no-dispatch、
-> no-retry 与 reserved/dispatch crash-only recovery 均由 L1 runner 固定。当前 zero-provider 回归为 L1 `12/12`、
-> C1+C2+S1+L1 `47/47`、Agent full `1409/1409`；真实 `.env`/credential/Provider、正式 evidence、Docker/API/browser、
-> Trace、BackgroundJob、Outbox 与业务写入仍为 `0`。首次受控入口曾在共享 root `.env` composition 以 `unknown_key`
-> 停止；现在 launcher 只选择性提取 `DEEPSEEK_API_KEY` 与 `QWEN_API_KEY`/`Qwen_API_KEY`/`DASHSCOPE_API_KEY`，其它
-> 项目字段不进入 projection。修复提交并推送后才可在新 source 上重新申请本次唯一 controlled canary；即使成功也只
-> 形成 transport diagnostic authority，不等同于 Retriever/FinalResponse 语义或产品可用。
-> 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`。
-> 诊断见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
+> no-retry 与 reserved/dispatch crash-only recovery 均由 L1 runner 固定。唯一 run
+> `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 三槽全部完成，Provider calls=`3`、usage=`145/28/173`、费用=`0.000573 CNY`，
+> journal=`16`、validator=`ok=true`，authority 仅为 transport diagnostic、`qualityAuthority=none`。
+> 该结果不等同于 Retriever/FinalResponse 语义、产品 `/api/chat`、Docker/API/browser、Trace、BackgroundJob、Outbox
+> 或业务写入可用；implementation 与 root-env diagnosis 是 Live 前历史 checkpoint，sealed 证据见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
 
 > 当前 S1（2026-08-07）：C2 durability 之上的三个 bounded synthetic first-party adapter 复用同一
 > `rewrite -> qwen -> final_response` runner seam。success flow 的 runner wire 与 adapter/provider wire 分别为

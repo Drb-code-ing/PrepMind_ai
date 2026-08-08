@@ -1,11 +1,13 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 实施计划
 
 > 设计来源：[Transport Re-entry V2 设计](../specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md)
-> 当前状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static 与 L1 zero-provider implementation 已完成；首次
-> L1 root-env admission 以 `unknown_key` 阻断，compatibility 修复已落地，当前停止在修复后 source commit 的新授权门
+> 当前状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static、L1 implementation 与唯一 L1
+> controlled-Live 均已完成；run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 已以
+> `transport_reentry_v2_l1_controlled_canary_passed / qualityAuthority=none` durable seal，当前进入 P1
+> zero-provider semantic-gate 设计
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
-> 当前 authority：`zero_provider_transport_reentry_v2_l1_implementation / qualityAuthority=none`；S1 的
-> `zero_provider_transport_reentry_v2_s1 / qualityAuthority=none` 保留为历史 reviewed Mock/static checkpoint
+> 当前 authority：L1 `controlled_live_transport_reentry_v2 / qualityAuthority=none`；implementation/root-env diagnosis 与
+> S1 的 zero-provider authority 均保留为历史 checkpoint
 
 ## 执行原则
 
@@ -82,7 +84,7 @@ validator（`ok=true`）均通过。未读取真实 `.env`、未调用 Provider�
 
 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock-static.md`。
 
-## L1：唯一 controlled canary（待授权）
+## L1：唯一 controlled canary（已封存）
 
 ### L1 implementation checkpoint（已完成，zero-provider）
 
@@ -106,7 +108,7 @@ validator（`ok=true`）均通过。未读取真实 `.env`、未调用 Provider�
   L1 一次性名额；修复提交推送后必须重新做 source/proxy/data-boundary gate 并取得新的 exact authorization。
 - 详见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
 
-仅在 S1 source parity、clean tree、formal artifact=0、新数据边界接受与新 exact authorization 全部通过后执行：
+以下是 Live 前历史授权门；它已在新 source 上完成一次且不可重用：
 
 ```text
 I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_TRANSPORT_REENTRY_V2_DEEPSEEK_AND_QWEN_DATA_BOUNDARY
@@ -116,14 +118,26 @@ I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_TRANSPORT_REENTRY_V2_CONTROLLED
 L1 最多三次 Provider call，失败即 durable seal；不得 retry/resume/replay/backfill、curl、单 case 或追加探测。
 成功也只解锁 P1 zero-provider semantic-gate design，不直接进入产品或 `main`。
 
-## P1：L1 终态后的下一决策（待 L1）
+### L1 controlled-Live sealed result（2026-08-08）
 
-- L1 完整 transport success：另立 zero-provider 小样本 semantic gate；
-- 任一 transport/configuration/durability failure：保留 bounded evidence，禁止重跑，重新做架构决策；
+- source：`ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6`；run：`ce0c3257-a5d9-4389-90ec-814d5e9cde34`；proxy：`direct_ready`；
+- runtime：`3/3` slots completed，Provider/credential reads=`3/3`，usage=`145/28/173`，费用=`0.000573 CNY`，
+  breaker closed，recoveryRequired=`false`；
+- durability：journal=`16`，final=`evidence_published`，validator=`ok=true`，artifact SHA=`472c727d...4718`；
+- authority：`controlled_live_transport_reentry_v2 / qualityAuthority=none`，仅为 transport diagnostic，不形成 semantic、
+  product、Docker/API/browser、Trace、SLA 或 `main` authority；
+- marker 已 durable，唯一名额已消费，禁止任何 retry/resume/replay/backfill、recovery/seal 或追加 Provider 探测；
+- 完整证据：`docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
+
+## P1：L1 终态后的下一决策（下一原子任务）
+
+- L1 完整 transport success（当前终态）：另立 zero-provider 小样本 semantic gate，先冻结 manifest/baseline/质量门与
+  reviewed Mock，再决定是否申请独立语义样本；
+- 任一 transport/configuration/durability failure（本 run 未发生）：保留 bounded evidence，禁止重跑，重新做架构决策；
 - 不论结果如何，旧 T3/R5/Task 9C bytes 与 authority 永不改写。
 
 ## 当前停止边界
 
-T3 controlled canary 已失败封存，T3-C guard 与本 V2 D0/C1/C2/S1 已完成。当前允许读取旧 validator、运行 zero-provider
-回归和同步文档；当前仅等待 L1 的新数据边界与 exact authorization，禁止旧 T3/L1、产品 Docker/API/browser、`main`、
-Task 10/11 以及任何 Provider 追加调用。
+T3 controlled canary 已失败封存，T3-C guard、V2 D0/C1/C2/S1 与唯一 L1 controlled-Live 已完成。当前允许读取旧
+validator、运行 zero-provider 回归和同步文档；禁止旧 T3/L1 重跑、产品 Docker/API/browser 语义验收、Task 10/11 或
+任何追加 Provider 调用。下一任务必须从已合并的 `main` 新建普通分支，先完成 P1 zero-provider semantic-gate 设计。

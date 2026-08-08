@@ -1,13 +1,14 @@
 # Phase 6.9.8 Retriever / FinalResponse Transport Re-entry V2 设计
 
 > 日期：2026-08-07
-> 状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static 与 L1 zero-provider implementation 已完成；首次
-> L1 controlled-Live admission 在共享 root `.env` 以 `unknown_key` 阻断，selective root-env compatibility 修复已落地，
-> 新 source commit 尚未重新授权
+> 状态：D0、C1、C2 zero-provider runner/durability、S1 reviewed Mock/static、L1 implementation 与唯一 L1 controlled-Live
+> 均已完成；run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上
+> 以 `transport_reentry_v2_l1_controlled_canary_passed / qualityAuthority=none` durable seal。root `.env` 的
+> `unknown_key` 是 Live 前历史诊断，当前下一任务为 P1 zero-provider semantic-gate
 > 当前分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
-> 当前 checkpoint authority：`zero_provider_transport_reentry_v2_l1_implementation / qualityAuthority=none`；S1 的
-> `zero_provider_transport_reentry_v2_s1 / qualityAuthority=none` 保留为历史 reviewed Mock/static checkpoint
+> 当前 checkpoint authority：`controlled_live_transport_reentry_v2 / qualityAuthority=none`；L1 implementation/root-env diagnosis
+> 与 S1 的 zero-provider authority 保留为历史 checkpoint
 
 ## 1. 决策摘要
 
@@ -140,7 +141,7 @@ V2 未来 L1 最多三个 Provider slots，固定顺序和预算，不接受 CLI
 知识库 chunk 或产品 Trace。
 
 V2 L1 的通过最多只能形成
-`controlled_live_transport_evidence_reentry_v2 / qualityAuthority=none` transport authority：必须同时有
+`controlled_live_transport_reentry_v2 / qualityAuthority=none` transport authority：必须同时有
 strict response、verified usage、wire/stage 完整、artifact validator `ok=true` 和无安全/预算/持久化异常；即使
 通过，也不能直接宣称 Retriever/FinalResponse semantic 或产品可用。
 
@@ -182,10 +183,10 @@ semantic/product authority 并完成 Docker/API/browser/main 回放。
 任一 gate、预算、wire、journal、artifact、validator 或安全边界失败，停止当前阶段并封存 bounded diagnostic；
 不能自动推进下一阶段。L1 一次性名额一旦 marker durable 即消费，无论结果成功或失败均不得重跑。
 
-当前 S1 完成后，下一原子任务仅为 L1 授权门；没有新的 exact authorization 前不得执行 L1，不得读取真实 `.env`、
-credential 或调用 Provider。
+当前 S1 完成后的 L1 授权门已被唯一 run 消费；不得再次读取 credential 或调用 Provider。下一原子任务是 P1
+zero-provider semantic-gate 设计，不能把本次 transport success 当作 semantic/product authority。
 
-## 10. L1 implementation checkpoint（2026-08-08，zero-provider）
+## 9. L1 implementation checkpoint（2026-08-08，zero-provider，Live 前历史）
 
 L1 的 production-shaped launcher、固定三槽 runner、source/proxy/data-boundary/authorization gate、deferred
 adapter handoff、strict journal state machine、existing-artifact recovery 与 recovery-claim validator 已完成。
@@ -193,11 +194,22 @@ focused `13/13`、C1+C2+S1+L1 `47/47`、Agent full `1409/1409` 通过；targeted
 通过。实现阶段未读取真实 `.env`、credential、Provider，也未创建正式 evidence。真正的 adapter constructor 只在
 exclusive marker/reservation durable 后执行，marker 前仅做 capability shape/lineage/family/call preflight。
 
-该 checkpoint 不是 Live authority；source commit 固定并推送后，仍需重新接受当前 source 的 DeepSeek/Qwen 数据边界
-并给出 exact authorization，才可执行唯一一次 L1 controlled canary。无论终态如何，不能解锁 semantic/product/
-Docker/API/browser、SLA 或 `main`。
+该 checkpoint 不是 Live authority；随后唯一 controlled-Live 已在新 source 上执行并封存。无论终态如何，不能解锁
+semantic/product/Docker/API/browser、SLA 或 `main`。
 
-## 9. Reader questions
+## 10. L1 controlled-Live sealed result（2026-08-08）
+
+唯一 run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 `direct_ready` proxy 下完成 `rewrite -> qwen -> final_response` 三槽：
+Provider/credential reads=`3/3`、usage=`145/28/173`、verified cost=`0.000573 CNY`、journal=`16`、validator=`ok=true`，
+gate=`transport_reentry_v2_l1_controlled_canary_passed`，authority=`controlled_live_transport_reentry_v2`、
+`qualityAuthority=none`。marker、journal、report 与 root hard-link artifact 已 durable seal；marker SHA、logical/physical
+report SHA 与 artifact SHA 的完整值见 sealed acceptance。
+
+该终态只证明受限 transport/wire/usage/durability，不能证明 Retriever/FinalResponse 语义、P95/SLA、产品/API/browser、
+Trace、BackgroundJob/Outbox 或 `main`。一次性名额已消费，禁止 retry/resume/replay/backfill、recovery/seal 或追加探测。
+完整记录见 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
+
+## 11. Reader questions
 
 1. 为什么 generic root key 可以作为 operator input，却不能进入 V2 runtime core 或产品容器？
 2. 为什么 V2 要在 marker 前完成 configuration preflight，而旧 T3 的 sealed 结果不能被修复后重跑？

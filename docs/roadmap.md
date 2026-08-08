@@ -1,9 +1,10 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前原子任务（2026-08-08）：Phase 6.9.8 Transport Re-entry V2 L1 implementation 与 zero-provider 回归已完成；首次
-> 受控入口在共享 root `.env` composition 以 `unknown_key` 停止，selective root-env compatibility 修复已完成。当前停止
-> 在修复后新 source commit 的唯一 controlled-Live 授权门。L1 focused `13/13`、C1+C2+S1+L1 `47/47`、Agent full
-> `1409/1409`；Provider calls/formal evidence 仍为 `0`。
+> 当前原子任务（2026-08-08）：Phase 6.9.8 Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。
+> run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上以
+> `transport_reentry_v2_l1_controlled_canary_passed` 收口，`3` slots、Provider calls `3`、usage `145/28/173`、费用
+> `0.000573 CNY`、journal `16`、validator `ok=true`；authority 仅为 transport diagnostic、`qualityAuthority=none`。
+> 一次性名额已消费，禁止 retry/resume/replay/backfill、recovery/seal 或追加 Provider 探测。
 > 新 lineage `phase-6.9.8-retriever-final-response-transport-reentry-v2` 不复用旧 T3 marker/authorization/evidence；C1
 > 先完成 root launcher 与 dedicated projection，C2 再将三项 projection 收口为 opaque single-use configuration
 > capability，并落地 `rewrite -> qwen -> final_response` 固定三槽、exclusive marker、reservation-before-dispatch、
@@ -13,8 +14,8 @@
 > first-party adapter、wire/usage/fault matrix 与 reviewed Mock/static；S1 authority 为
 > `zero_provider_transport_reentry_v2_s1 / qualityAuthority=none`。S1 source admission 已修复历史 `.tmp` 误计并在
 > clean branch/HEAD/upstream/origin 上完成 `git_verified / formalArtifactCount=0` 回放；focused（S1+C2）`22/22`、
-> Agent full `1394/1394`。下一任务仅为 V2 L1 exact authorization；
-> V2 L1 仍需新的数据边界接受与 exact authorization。设计、计划与 C1/C2 验收见
+> Agent full `1394/1394`。V2 L1 已随后完成并封存，下一任务仅为 P1 zero-provider semantic-gate；设计、计划、L1 sealed
+> 与 C1/C2 验收见
 > `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1-zero-provider-launcher-projection.md` 与
@@ -23,6 +24,7 @@
 > L1 zero-provider implementation 与 root-env diagnosis 验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`。
 > `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis-zero-provider.md`。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
 >
 > 历史封存结果（2026-08-07）：Phase 6.9.8 Transport Evidence Recovery T3 controlled canary 已按一次性授权执行并失败封存。
 > source admission 绑定 branch/HEAD/upstream/origin/approved ref、clean tree、formal artifact=0、T2 gate 与 source
@@ -682,13 +684,15 @@ qualityAuthority=none`；该 checkpoint 当时只解锁 R4，后续 R4 已完成
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-zero-provider-admission.md` 与
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-controlled-canary-failure.md` 与
   `docs/acceptance/phase-6-9-8-retriever-final-response-transport-evidence-recovery-t3-configuration-zero-provider.md`）
-- Phase 6.9.8 Transport Re-entry V2 L1 implementation：在 S1 后新增 production-shaped launcher、fixed three-slot
-  runner、deferred adapter handoff、strict journal state machine、lineage path fence、reserved/dispatch crash-only
-  recovery、existing-artifact recovery 与 recovery-claim integrity check。zero-provider focused `12/12`、全 Agent
-  `1409/1409`；真正 adapter 只在 durable reservation 后构造，当前尚未消费 marker 或执行 Provider。提交推送后必须
-  重新接受 DeepSeek/Qwen 数据边界并授权唯一一次 controlled-Live；成功也只解锁 P1 zero-provider semantic-gate
-  设计，不进入产品、Docker/API/browser 或 `main`。（已完成 implementation，证据见
-  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md`）
+- Phase 6.9.8 Transport Re-entry V2 L1：在 S1 后新增 production-shaped launcher、fixed three-slot runner、deferred
+  adapter handoff、strict journal state machine、lineage path fence、reserved/dispatch crash-only recovery、
+  existing-artifact recovery 与 recovery-claim integrity check；随后唯一 run
+  `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 `ee3dbf91...` 上以
+  `transport_reentry_v2_l1_controlled_canary_passed` durable seal，Provider calls=`3`、费用=`0.000573 CNY`、
+  validator=`ok=true`、authority 仅为 transport diagnostic。成功不进入产品/Docker/API/browser/`main` 语义验收；下一步
+  是 P1 zero-provider semantic-gate。implementation 历史 checkpoint 与 sealed 证据分别见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-implementation-zero-provider.md` 与
+  `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。（已完成）
 - Phase 6.9.9：MemoryAgent 敏感凭据修复、40-case paired eval 与真实模型候选提取，不做 Chat 注入。（规划中）
 - Phase 6.9.10：MCP-ready Orchestrator、工具权限、可执行 LangGraph 与全 Agent 阶段验收。（规划中）
 - Phase 6.10：全部 Agent 完成后再实施结构化长期记忆注入与 Episodic Memory。（规划中）

@@ -1,5 +1,9 @@
 # Phase 6.9.8 Transport Re-entry V2 L1 root `.env` admission 诊断与兼容修复
 
+> 历史 Live 前 checkpoint：本文件记录的 `unknown_key` 是修复前 configuration-only 入口诊断；修复后唯一
+> controlled-Live 已在新 source 上成功封存，当前终态见
+> `phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`。
+
 > 日期：2026-08-08  
 > Branch：`drb/phase-6-9-8-retriever-final-response-contract`  
 > Source commit（诊断时）：`c278d8c7686d2b321af95eff365d35478321c0b0`  
@@ -53,7 +57,10 @@ synthetic parser 的 hostile unknown-field 断言继续通过。修复后的真�
 
 ## 5. 下一停止门
 
-本文件不是 controlled-Live 证据，也不形成 transport/semantic/product/main authority。修复提交并推送后，必须重新验证
+本文件本身不是 controlled-Live 证据，也不形成 transport/semantic/product/main authority。修复提交并推送后，必须重新验证
 当前 source 的 clean/parity、fresh proxy preflight，再次接受当次 DeepSeek/Qwen 数据边界并给出新的两条 exact
 authorization；不得复用本次 configuration-blocked 尝试继续 dispatch。获得新授权前不得调用 Provider、启动产品
 Docker/API/browser 或进入 `main`。
+
+> 以上是本诊断发生时的历史停止门；唯一 L1 run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 已随后 durable seal，
+> 不得据此重新申请或重跑任何 Provider。
