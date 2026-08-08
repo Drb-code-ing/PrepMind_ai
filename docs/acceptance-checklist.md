@@ -5,12 +5,13 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0G. Phase 6.9.8 P1/G1 zero-provider semantic-gate（当前）
+## 0G. Phase 6.9.8 P1/G1/G2 zero-provider semantic-gate（当前）
 
 V2 L1 已以 `transport_reentry_v2_l1_controlled_canary_passed` durable seal，但它只有 transport diagnostic authority，
-不能替代语义质量。当前 checklist 已完成 G1 contract/baseline/scorer：固定 `8` 条 zero-call guard、`6` 条 rewrite、
-`6` 条 FinalResponse，owner/通信/权限、最大并发 1、12 次 bounded candidate invocation、abort/stale/丢失任务、首错
-breaker/no-retry、strict aggregate 与 authority 边界均已由源码和测试固定。
+不能替代语义质量。当前 checklist 已完成 G1 contract/baseline/scorer 与 G2 one-shot runner/durability：固定 `8` 条
+zero-call guard、`6` 条 rewrite、`6` 条 FinalResponse；owner/通信/权限、最大并发 `1`、`12` 次 bounded candidate
+invocation、abort/stale/丢失任务、首错 breaker/no-retry、exclusive marker、hash-chain journal、hard-link artifact、
+strict validator 与 crash-only recovery 均已由源码和测试固定。
 
 固定设计入口：
 
@@ -18,9 +19,11 @@ breaker/no-retry、strict aggregate 与 authority 边界均已由源码和测试
 - `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`
 
 P1/G1/G2/S2 不读取 credential、不调用 Provider、不启动 Docker/API/browser、不写 Trace、BackgroundJob、Outbox 或
-业务数据；S2 gate 固定 `p1_mock_quality_not_evidence / qualityAuthority=none`。六条语义 lane 不生成 P95/SLA authority。
+业务数据；G2 authority=`zero_provider_retriever_final_response_p1_g2_runner_durability / qualityAuthority=none`，
+S2 gate 固定 `p1_mock_quality_not_evidence / qualityAuthority=none`。六条语义 lane 不生成 P95/SLA authority。
 
 固定检查（P1 文档提交前后）：
 
@@ -35,7 +38,7 @@ git diff --check
 - [x] P1 identity、manifest/policy/baseline anchor 与固定 case selection
 - [x] P1 权限、通信、并发、丢失任务、路由、质量门与 authority 停止门
 - [x] G1 zero-provider manifest/subset baseline/scorer contract（focused `5/5`、Agent full `1414/1414`、Provider/credential/formal evidence `0`）
-- [ ] G2 one-shot runner/durability、exclusive marker、journal/artifact、strict validator 与 crash-only recovery
+- [x] G2 one-shot runner/durability、exclusive marker、journal/artifact、strict validator 与 crash-only recovery（focused `5/5`、Agent full `1419/1419`、synthetic provider/credential/formal evidence `0`）
 
 L1 sealed 与历史 root-env 诊断：
 `docs/acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-controlled-live-sealed.md`、
@@ -43,6 +46,10 @@ L1 sealed 与历史 root-env 诊断：
 
 P1 设计验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`。
 G1 实施验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
+G2 实施验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。
+
+G2 完成后的下一步是从最新、已推送的 `main` 新建普通 git 分支推进 S2 reviewed Mock/static；S2 完成前不申请 L2，
+不执行真实 Provider、Docker/API/browser 或产品写入。
 
 ## 0F. Phase 6.9.8 Transport Re-entry V2 L1 root-env compatibility recovery（历史 checkpoint）
 
@@ -2244,7 +2251,7 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 
 以上条目取代旧 R5 后遗留的“R6/Task 10/Task 11 直接推进”表述；旧条目保留为历史记录，不得作为当前执行顺序。
 
-### 当前路线：P1/G1 zero-provider semantic-gate（2026-08-08）
+### 当前路线：P1/G1/G2 zero-provider semantic-gate（2026-08-08）
 
 - [x] 固定 lineage `phase-6.9.8-retriever-final-response-p1-v1`、manifest/policy/baseline anchor SHA 与 20-entry 选择；
 - [x] 固定 `8` 条 zero-call guard、`6` 条 rewrite、`6` 条 FinalResponse，以及 Retriever/FinalResponse 全部质量门；
@@ -2253,7 +2260,8 @@ providerCalls=0`；本任务新增 Provider/fetch/credential/marker/journal/arti
 - [x] P1/G1/G2/S2 的 zero-provider、Docker/API/browser、Trace/BackgroundJob/Outbox 与业务写入边界；
 - [x] G1 zero-provider manifest/subset baseline/scorer contract；manifest/policy/baseline SHA 已冻结，focused `5/5`、
       Agent full `1414/1414`，未读取 credential、未调用 Provider；
-- [ ] G2 one-shot runner/durability；完成后另立提交、推送并合并 main 验收。
+- [x] G2 one-shot runner/durability；focused `5/5`、Agent full `1419/1419`，synthetic CLI `12` candidate invocations /
+      `72` journal records / validator `ok=true`，Provider/credential/formal evidence `0`；已完成提交、推送与 main 合并后复验。
 
 P1 设计、计划与验收：
 
@@ -2261,6 +2269,7 @@ P1 设计、计划与验收：
 - `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`
 
 Task 0 `zero_provider_retriever_final_response_design`：
 

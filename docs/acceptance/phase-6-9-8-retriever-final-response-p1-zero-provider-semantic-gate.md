@@ -1,7 +1,7 @@
 # Phase 6.9.8 Retriever / FinalResponse P1 zero-provider semantic-gate 验收
 
 日期：2026-08-08
-状态（本文件原始设计验收）：P1 设计完成，zero-provider；G1 后续已独立完成，G2/S2 尚未开始
+状态（本文件原始设计验收）：P1 设计完成，zero-provider；G1/G2 后续已独立完成，S2 尚未开始
 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 基线：`main` merge `3fdb9908`
 Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
@@ -9,8 +9,10 @@ Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
 > 后续状态（2026-08-08，非本次设计证据改写）：G1 已在
 > `drb/phase-6-9-8-g1-manifest-baseline-scorer` 完成 manifest、subset baseline、candidate projection 与 strict
 > scorer/gate；authority=`zero_provider_retriever_final_response_p1_g1_contract_baseline`、`qualityAuthority=none`，
-> focused `5/5`、Agent full `1414/1414`，Provider/credential/formal evidence 均为 `0`。当前下一步为 G2 one-shot
-> runner/durability，详见 `phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
+> focused `5/5`、Agent full `1414/1414`，Provider/credential/formal evidence 均为 `0`。随后 G2 在独立分支
+> `drb/phase-6-9-8-g2-runner-durability` 完成 one-shot runner/durability，focused `5/5`、Agent full `1419/1419`，
+> authority=`zero_provider_retriever_final_response_p1_g2_runner_durability / qualityAuthority=none`，详见
+> `phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`。当前下一步为 S2 reviewed Mock/static。
 
 ## 1. 本次验收结论
 
@@ -98,10 +100,10 @@ P95/SLA authority:              null
 
 ## 6. 下一步与停止门
 
-本文件形成时的下一步曾是 G1；该步骤现已完成。当前下一步是 G2：从最新 `main` 新建普通分支，实现 one-shot runner、
-exclusive marker、hash-chain journal、hard-link publication、strict validator 与 crash-only recovery。G2 仍
-zero-provider，完成后单独提交、推送并同步文档；随后合并 `main`、推送 `origin/main`，在 `main` 上做不访问 Provider
-的回归验收。G1 的实现与结果见
+本文件形成时的下一步曾是 G1；该步骤现已完成。G2 也已在独立普通分支完成 one-shot runner、exclusive marker、
+hash-chain journal、hard-link publication、strict validator 与 crash-only recovery；G2 focused `5/5`、Agent full
+`1419/1419`，synthetic CLI `candidateInvocations=12`、`journalRecords=72`、validator `ok=true`，且 Provider/credential/
+formal evidence 为 `0`。实现、推送、合并 `main` 与合并后复验完成后，当前下一步是从最新 `main` 新建 S2 分支。G1 的实现与结果见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
 
 只有 S2 reviewed Mock/static 通过后，才可讨论独立 L2 admission。L2 必须重新接受当次 DeepSeek/Qwen 数据边界并提供

@@ -27,6 +27,8 @@
     "./review": "./src/nodes/review.ts",
     "./realtime-chat": "./src/contracts/realtime-chat.ts",
     "./retriever-query-rewrite": "./src/model-candidates/retriever-query-rewrite-model-candidate.ts",
+    "./phase-6-9-8-p1-g2": "./src/evals/phase-6-9-8-retriever-final-response-p1-g2-runner.ts",
+    "./phase-6-9-8-p1-g2-durability": "./src/evals/phase-6-9-8-retriever-final-response-p1-g2-durability.ts",
     "./transport-reentry-v2-c1": "./src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-c1.ts",
     "./transport-reentry-v2-c2": "./src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2.ts",
     "./transport-reentry-v2-s1": "./src/evals/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1-reviewed-mock.ts",
@@ -127,6 +129,9 @@
     "eval:phase-6-9-8:transport-reentry:v2:c2": "bun scripts/phase-6-9-8-retriever-final-response-transport-reentry-v2-c2.ts",
     "eval:phase-6-9-8:transport-reentry:v2:s1": "bun scripts/phase-6-9-8-retriever-final-response-transport-reentry-v2-s1.ts",
     "eval:phase-6-9-8:transport-reentry:v2:l1": "bun scripts/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1.ts",
+    "eval:phase-6-9-8:p1:g2": "bun scripts/phase-6-9-8-retriever-final-response-p1-g2-cli.ts RUN_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_P1_G2_ZERO_PROVIDER_ONCE",
+    "eval:phase-6-9-8:p1:g2:validate": "bun scripts/phase-6-9-8-retriever-final-response-p1-g2-cli.ts VALIDATE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_P1_G2_BUNDLE_ZERO_PROVIDER",
+    "eval:phase-6-9-8:p1:g2:recover": "bun scripts/phase-6-9-8-retriever-final-response-p1-g2-cli.ts RECOVER_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_P1_G2_CRASH_ONLY_ONCE",
     "lint": "eslint src/ scripts/",
     "test": "bun test tests",
     "typecheck": "tsc --noEmit"

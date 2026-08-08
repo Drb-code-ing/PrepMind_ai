@@ -2,14 +2,15 @@
 
 > 设计来源：[P1 zero-provider semantic-gate 设计](../specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)
 > 日期：2026-08-08
-> 当前状态：P1 设计与后续 G1 zero-provider contract/baseline/scorer 已完成；下一步为 G2 one-shot runner/durability
+> 当前状态：P1 设计、G1 zero-provider contract/baseline/scorer 与 G2 one-shot runner/durability 已完成；下一步为 S2 reviewed Mock/static
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：`main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
 
-> 状态更新（2026-08-08）：本计划的 P1 设计步骤保持为历史冻结记录；G1 已在独立分支
-> `drb/phase-6-9-8-g1-manifest-baseline-scorer` 完成并推送，下一步为从最新 `main` 新建 G2 one-shot runner/durability
-> 分支。G1 结果与 SHA 见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
+> 状态更新（2026-08-08）：本计划的 P1 设计步骤保持为历史冻结记录；G1 已合并到 `main` `a12db738`，G2 在独立
+> 分支 `drb/phase-6-9-8-g2-runner-durability` 完成并通过 focused `5/5`、Agent full `1419/1419`，authority=
+> `zero_provider_retriever_final_response_p1_g2_runner_durability / qualityAuthority=none`。G2 结果见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g2-runner-durability.md`；下一步必须从最新 `main` 新建 S2 分支。
 
 ## 1. 执行原则
 
@@ -63,7 +64,7 @@ G1 已完成并通过 focused `5/5`、Agent full `1414/1414`、typecheck、lint�
 qualityAuthority=none`，正式 evidence 与业务写入均为 `0`。独立验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md`。
 
-## 4. G2：one-shot runner 与 durability（G1 后独立提交）
+## 4. G2：one-shot runner 与 durability（已完成，zero-provider）
 
 ### 4.1 运行顺序
 
@@ -91,12 +92,14 @@ strict_validated/terminal/published`；
 - exclusive marker、hash-chain journal、hard-link artifact 和 strict validator 只在隔离 synthetic temp root 使用，
   case 结束精确清理，正式 evidence 仍为 `0`。
 
-### 4.3 G2 验收
+### 4.3 G2 验收（已完成）
 
 focused durability/fault matrix、source admission、validator、crash prefix、multiple marker、stale/abort/预算和旧
-lineage 双向拒绝全部通过；出现任一未定义状态时停止，不增加重试。
+lineage 双向拒绝全部通过；focused `5/5`、Agent full `1419/1419`、typecheck/lint/Prettier/`git diff --check` 通过。
+synthetic CLI 形成 `12` candidate invocations、`72` journal records、`evidence_published` 与 validator `ok=true`，
+而 `providerCalls=0 / credentialReads=0 / formalEvidence=0`。完整回执见独立 G2 acceptance 文档。
 
-## 5. S2：reviewed Mock/static（G2 后独立提交）
+## 5. S2：reviewed Mock/static（下一步，独立提交）
 
 - 使用 reviewed responder，只读取实际 bounded prompt；不得读取 expected/oracle 或逐字复用 L1/SR5 response；
 - 真实穿过 Retriever original/candidate、rewrite candidate、Qwen synthetic port、evidence projector、FinalResponse、

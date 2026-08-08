@@ -1,7 +1,7 @@
 # Phase 6.9.8 Retriever / FinalResponse P1 zero-provider semantic-gate 设计
 
 > 日期：2026-08-08
-> 状态：P1 设计已冻结；后续 G1 已在独立 zero-provider 分支完成；G2/S2 尚未完成，也没有任何真实模型或产品 authority
+> 状态：P1 设计已冻结；G1 与 G2 已在独立 zero-provider 分支完成；S2 尚未完成，也没有任何真实模型或产品 authority
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：已合并并推送的 `main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
@@ -19,9 +19,12 @@ reviewed Mock ->（未来、另行授权的）L2 semantic canary` 逐步实现�
 业务数据。
 
 > 后续状态（2026-08-08）：G1 已落成独立 manifest、subset deterministic baseline、candidate-only projection 与 strict
-> scorer/gate；其 authority 为 `zero_provider_retriever_final_response_p1_g1_contract_baseline / qualityAuthority=none`。
-> G1 focused `5/5`、Agent full `1414/1414`，未读取 credential、未调用 Provider。当前只允许从最新 `main` 新建 G2
-> one-shot runner/durability 分支；本设计文档的历史冻结输入不被改写。
+> scorer/gate；G2 又在从 `main` `a12db738` 派生的
+> `drb/phase-6-9-8-g2-runner-durability` 上落成 one-shot runner、source admission、exclusive marker、hash-chain
+> journal、hard-link publication、strict validator 与 crash-only recovery。G2 authority 为
+> `zero_provider_retriever_final_response_p1_g2_runner_durability / qualityAuthority=none`，focused `5/5`、Agent full
+> `1419/1419`、provider/credential/formal evidence `0`。当前只允许从最新已推送 `main` 新建 S2 reviewed Mock/static
+> 分支；本设计文档的历史冻结输入不被改写。
 
 ## 2. 目标与非目标
 
