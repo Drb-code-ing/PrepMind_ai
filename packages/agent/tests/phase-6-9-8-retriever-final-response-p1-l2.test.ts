@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { readdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
@@ -70,6 +70,75 @@ describe('Phase 6.9.8 P1 L2 independent runner/durability', () => {
       });
     } finally {
       await removePhase698P1L2SyntheticRootForTest(root);
+    }
+  });
+
+  test('ignores immutable historical evidence and ordinary repository files', async () => {
+    const baseline = await buildPhase698P1DeterministicSubsetBaseline();
+    const admissionInput = createPhase698P1L2SyntheticAdmissionInput('f'.repeat(40));
+    const admission = admitPhase698P1L2ZeroProvider(admissionInput);
+    if (!admission.ok) throw new Error('fixture admission failed');
+    const root = await createPhase698P1L2SyntheticRootForTest();
+    try {
+      await mkdir(join(root, '.tmp'), { recursive: true });
+      await Bun.write(join(root, 'README.md'), 'ordinary repository content\n');
+      await Bun.write(
+        join(root, '.tmp', 'phase-6-9-7-tutor-organizer-v9-controlled-live.marker'),
+        'sealed historical marker\n',
+      );
+      await Bun.write(
+        join(root, '.tmp', 'phase-6-9-8-retriever-final-response-task9c-controlled-live.marker'),
+        'sealed historical marker\n',
+      );
+      await Bun.write(
+        join(root, 'phase-6-9-8-retriever-final-response-task9c-historical.json'),
+        '{}\n',
+      );
+      const reservation = await reservePhase698P1L2Attempt({
+        root,
+        runId: randomUUID(),
+        source: sourceFromPhase698P1L2Admission(admission.admission),
+      });
+      const run = await runPhase698P1L2({
+        runId: reservation.runId,
+        admissionCapability: issuePhase698P1L2AdmissionCapability(admissionInput),
+        baselineBundle: baseline,
+        harness: createPhase698P1L2ReviewedMockHarness(baseline),
+        allowReviewedMock: true,
+        lifecycle: reservation.lifecycle,
+        signal: new AbortController().signal,
+      });
+      await reservation.publishArtifact(run.report);
+      expect(await validatePhase698P1L2Bundle({ root })).toMatchObject({
+        ok: true,
+        providerCalls: 0,
+        formalEvidence: 1,
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects a collision in the current L2 namespace', async () => {
+    const input = createPhase698P1L2SyntheticAdmissionInput('1'.repeat(40));
+    const admission = admitPhase698P1L2ZeroProvider(input);
+    if (!admission.ok) throw new Error('fixture admission failed');
+    const root = await createPhase698P1L2SyntheticRootForTest();
+    try {
+      await mkdir(join(root, '.tmp'), { recursive: true });
+      await Bun.write(
+        join(root, '.tmp', 'phase-6-9-8-retriever-final-response-p1-l2.marker'),
+        '{}\n',
+      );
+      await expect(
+        reservePhase698P1L2Attempt({
+          root,
+          runId: randomUUID(),
+          source: sourceFromPhase698P1L2Admission(admission.admission),
+        }),
+      ).rejects.toThrow('PHASE_6_9_8_P1_L2_FORMAL_EVIDENCE_PRESENT');
+    } finally {
+      await rm(root, { recursive: true, force: true });
     }
   });
 

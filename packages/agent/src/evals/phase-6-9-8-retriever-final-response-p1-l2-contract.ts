@@ -47,6 +47,26 @@ export const PHASE_6_9_8_P1_L2_RECOVERY_RELATIVE_PATH =
 export const PHASE_6_9_8_P1_L2_ARTIFACT_PREFIX =
   'phase-6-9-8-retriever-final-response-p1-l2-' as const;
 
+/**
+ * Returns whether a repository-relative path belongs to the current L2
+ * evidence namespace. Historical sealed evidence is intentionally outside
+ * this namespace and must remain readable/immutable without blocking a new
+ * one-shot admission. The predicate is deliberately name-only: callers still
+ * apply their own exact file/schema/hash validation after this fence.
+ */
+export function isPhase698P1L2FormalRelativePath(value: string): boolean {
+  if (typeof value !== 'string') return false;
+  const normalized = value.replaceAll('\\', '/');
+  if (normalized === PHASE_6_9_8_P1_L2_MARKER_RELATIVE_PATH) return true;
+  if (
+    /^\.tmp\/phase-6-9-8-retriever-final-response-p1-l2-[^/]+\.(?:journal\.jsonl|report\.json|recovery\.claim|artifact\.tmp)$/u.test(
+      normalized,
+    )
+  )
+    return true;
+  return /^phase-6-9-8-retriever-final-response-p1-l2-[^/]+\.json$/u.test(normalized);
+}
+
 export const PHASE_6_9_8_P1_L2_LANE_ORDER = Object.freeze([
   'rewrite_01',
   'rewrite_03',

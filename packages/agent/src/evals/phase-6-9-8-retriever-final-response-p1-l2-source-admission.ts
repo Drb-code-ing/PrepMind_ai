@@ -14,16 +14,13 @@ import {
   PHASE_6_9_8_P1_L2_LINEAGE,
   type Phase698P1L2SourceSnapshot,
 } from './phase-6-9-8-retriever-final-response-p1-l2-admission.ts';
+import { isPhase698P1L2FormalRelativePath } from './phase-6-9-8-retriever-final-response-p1-l2-contract.ts';
 const PHASE_6_9_8_P1_S2_FACTORY_FROZEN_SHA256 =
   'sha256:8ad0a12ae7bd6365873631cb4908b41888617b9599fdd6865cf7e45c788f0e7d' as const;
 const PHASE_6_9_8_P1_S2_FINAL_11_COMPATIBILITY_FROZEN_SHA256 =
   'b492487db888a2e2d89810faac8cc7b0e50c36b464fb6eb6cfa9a4bc4680a532' as const;
 
 const SHA40 = /^[0-9a-f]{40}$/u;
-const L2_FORMAL = /(?:^|[\\/])phase-6-9-8-retriever-final-response-p1-l2(?:[.-]|$)/u;
-const OLD_FORMAL =
-  /(?:^|[\\/])(?:phase-6-9-8-retriever-final-response-(?:task9|task9c|p1-g2|architecture-recovery|transport)|phase-6-9-7).*\.(?:marker|journal\.jsonl|report\.json|claim|json)$/iu;
-
 export type Phase698P1L2RepositoryObservation = Readonly<{
   root: string;
   branch: string;
@@ -126,8 +123,8 @@ function scanFormal(root: string) {
   const old: string[] = [];
   try {
     for (const entry of readdirSync(resolve(root, '.tmp'))) {
-      if (L2_FORMAL.test(entry)) formal.push(`.tmp/${entry}`);
-      if (OLD_FORMAL.test(entry)) old.push(`.tmp/${entry}`);
+      const relative = `.tmp/${entry}`;
+      if (isPhase698P1L2FormalRelativePath(relative)) formal.push(relative);
     }
   } catch (error) {
     if (!isNotFound(error)) {
@@ -137,12 +134,7 @@ function scanFormal(root: string) {
   }
   try {
     for (const entry of readdirSync(root)) {
-      if (
-        entry.startsWith('phase-6-9-8-retriever-final-response-p1-l2-') &&
-        entry.endsWith('.json')
-      )
-        formal.push(entry);
-      if (OLD_FORMAL.test(entry)) old.push(entry);
+      if (isPhase698P1L2FormalRelativePath(entry)) formal.push(entry);
     }
   } catch {
     formal.push('root/read_error');

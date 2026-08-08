@@ -43,6 +43,7 @@ import {
   type Phase698P1L2Marker,
   type Phase698P1L2Report,
   type Phase698P1L2Source,
+  isPhase698P1L2FormalRelativePath,
 } from './phase-6-9-8-retriever-final-response-p1-l2-contract.ts';
 import { PHASE_6_9_8_P1_L2_LINEAGE } from './phase-6-9-8-retriever-final-response-p1-l2-admission.ts';
 import { PHASE_6_9_8_P1_MANIFEST } from './phase-6-9-8-retriever-final-response-p1-manifest.ts';
@@ -926,15 +927,14 @@ function enqueueResult<T>(state: State, operation: () => Promise<T>) {
   return next;
 }
 async function assertNoFormalFiles(root: string) {
-  const entries = await readdir(join(root, '.tmp'));
+  const entries = await readdir(join(root, '.tmp')).catch((error: unknown) => {
+    if (isNotFound(error)) return [] as string[];
+    throw error;
+  });
+  const rootEntries = await readdir(root);
   if (
-    entries.some(
-      (entry) =>
-        entry.includes('p1-l2') ||
-        entry.includes('task9') ||
-        entry.includes('g2') ||
-        entry.endsWith('.marker'),
-    )
+    entries.some((entry) => isPhase698P1L2FormalRelativePath(`.tmp/${entry}`)) ||
+    rootEntries.some((entry) => isPhase698P1L2FormalRelativePath(entry))
   )
     throw new Error('PHASE_6_9_8_P1_L2_FORMAL_EVIDENCE_PRESENT');
 }
@@ -946,11 +946,14 @@ async function assertOnlyExpectedFiles(root: string, runId: string, hasClaim: bo
     fill(PHASE_6_9_8_P1_L2_REPORT_RELATIVE_PATH, runId).split('/').at(-1)!,
     fill(PHASE_6_9_8_P1_L2_RECOVERY_RELATIVE_PATH, runId).split('/').at(-1)!,
   ]);
-  for (const entry of tmp) if (!allowed.has(entry)) throw new Error(ERROR_CODE);
+  for (const entry of tmp) {
+    if (isPhase698P1L2FormalRelativePath(`.tmp/${entry}`) && !allowed.has(entry))
+      throw new Error(ERROR_CODE);
+  }
   if (!hasClaim)
     allowed.delete(fill(PHASE_6_9_8_P1_L2_RECOVERY_RELATIVE_PATH, runId).split('/').at(-1)!);
   const rootEntries = await readdir(root);
   const artifact = artifactPathFor(runId);
-  if (rootEntries.some((entry) => entry !== '.tmp' && entry !== artifact))
+  if (rootEntries.some((entry) => isPhase698P1L2FormalRelativePath(entry) && entry !== artifact))
     throw new Error(ERROR_CODE);
 }
