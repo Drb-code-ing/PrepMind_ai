@@ -23,8 +23,15 @@ import {
   validatePhase698P1L2Bundle,
 } from '../src/evals/phase-6-9-8-retriever-final-response-p1-l2-durability.ts';
 import { buildPhase698P1DeterministicSubsetBaseline } from '../src/evals/phase-6-9-8-retriever-final-response-p1-baseline.ts';
+import { isPhase698P1L2GitStatusClean } from '../src/evals/phase-6-9-8-retriever-final-response-p1-l2-source-admission.ts';
 
 describe('Phase 6.9.8 P1 L2 independent runner/durability', () => {
+  test('treats empty porcelain status as clean while git failure stays fail-closed', () => {
+    expect(isPhase698P1L2GitStatusClean('')).toBe(true);
+    expect(isPhase698P1L2GitStatusClean(' M tracked.ts')).toBe(false);
+    expect(isPhase698P1L2GitStatusClean(null)).toBe(false);
+  });
+
   test('admission capability is single-use and source projection is isolated', () => {
     const input = createPhase698P1L2SyntheticAdmissionInput('b'.repeat(40));
     expect(admitPhase698P1L2ZeroProvider(input)).toMatchObject({ ok: true });

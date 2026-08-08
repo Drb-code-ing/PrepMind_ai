@@ -97,7 +97,7 @@ function inspectRepository(repositoryRoot: string): Phase698P1L2RepositoryObserv
     !upstream ||
     !origin ||
     !tagCommit ||
-    !status ||
+    !isPhase698P1L2GitStatusClean(status) ||
     !SHA40.test(head) ||
     !SHA40.test(upstream) ||
     !SHA40.test(origin) ||
@@ -111,11 +111,19 @@ function inspectRepository(repositoryRoot: string): Phase698P1L2RepositoryObserv
     head,
     upstream,
     origin,
-    clean: status.length === 0,
+    clean: isPhase698P1L2GitStatusClean(status),
     approvedTag: { name: PHASE_6_9_8_P1_L2_APPROVED_TAG, commit: tagCommit },
     formalEvidencePaths: paths.formal,
     oldLineagePaths: paths.old,
   });
+}
+
+/**
+ * An empty porcelain status is the valid clean result. A null status means
+ * the git command failed and must remain fail-closed.
+ */
+export function isPhase698P1L2GitStatusClean(status: string | null): boolean {
+  return status !== null && status.length === 0;
 }
 
 function scanFormal(root: string) {
