@@ -16,9 +16,11 @@ recovery/seal、curl、单 case或追加 Provider 探测；不得删除、格式
 
 完整证据见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`；Live 前实现与 source-gate
-修复历史见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。当前只允许
-zero-provider 回归、证据/文档提交、合并与 `main` 二次零 Provider 验收；下一功能任务必须从最新 `main` 新开独立
-schema recovery/diagnostic lineage。Docker 容器、镜像、卷、数据库、Redis、MinIO 保持原状，不使用 worktree。
+修复历史见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。证据/文档已在
+`1f3c0d9b` 提交、通过 `--no-ff` 合并到 `main`，并在 `f4fac048` 的 `main == origin/main` 上完成二次零 Provider 验收；
+main parity 记录见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。下一功能任务必须
+从最新 `main` 新开独立 schema recovery/diagnostic lineage。Docker 容器、镜像、卷、数据库、Redis、MinIO 保持原状，
+不使用 worktree。
 
 ## 历史 checkpoint：Phase 6.9.8 P1 L2 admission contract（2026-08-08）
 
@@ -47,7 +49,8 @@ report SHA=`cfb48cb8108768ace9b8e5c5714344f2be74e16300d6997a5e874085275b9db5`。
 Docker/API/browser，不写 Trace、BackgroundJob、Outbox 或业务数据。final_11 的 required-citation compatibility 只
 是经过冻结 hash/contract 验证的 S2 diagnostic，不改写 G1/G2 authority。
 
-下一原子任务是完成本分支文档与源码 parity 后推送、合并 `main` 并在 `main` 二次回归；之后如需 L2 semantic canary，
+当时的下一原子任务是完成本分支文档与源码 parity 后推送、合并 `main` 并在 `main` 二次回归；该历史动作已由当前收口完成。
+之后如需 L2 semantic canary，
 必须重新接受当次 DeepSeek/Qwen 数据边界并给出新的 exact authorization。不得重跑已封存的 L1/T3/R5/Task 9C/SR5 evidence，
 不使用 worktree，Docker 容器、镜像和卷保持原状。
 

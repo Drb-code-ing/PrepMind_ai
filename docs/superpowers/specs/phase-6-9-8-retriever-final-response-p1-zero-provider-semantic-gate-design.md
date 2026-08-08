@@ -35,7 +35,8 @@ reviewed Mock ->（未来、另行授权的）L2 semantic canary` 逐步实现�
 > strict/wire/synthetic usage、semantic `1/1/1`、candidate invocation `12`、synthetic Qwen port calls `17`，gate=
 > `p1_mock_quality_not_evidence / qualityAuthority=none`；S2 focused `4/4`、G1+G2 `10/10`、Agent full `1423/1423`。
 > 详见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。本设计文档的历史冻结输入
-> 不被改写；`main` 合并后二次 zero-provider 回归已完成，当前只允许重新接受数据边界并另立 L2 authorization。
+> 不被改写；`main` 合并后二次 zero-provider 回归已完成。当前唯一 L2 已执行并失败封存，后续只能重新接受数据边界并
+> 从最新 `main` 另立独立 schema recovery/diagnostic lineage。
 
 ## 2. 目标与非目标
 

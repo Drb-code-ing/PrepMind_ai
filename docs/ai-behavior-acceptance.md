@@ -13,8 +13,10 @@ durable seal。8/8 guard 继续 zero-call；真实行为只执行 `rewrite_01` �
 `0.00069 CNY` 写成整轮费用。Journal `41` 条并以 `evidence_published` 收口，strict validator=`bundle_valid`，无
 recovery claim。`schema` 只代表未满足本地 strict contract，不能推断具体 Provider JSON 字段、网络、账号、余额或模型权限
 根因。该失败不证明 P1 semantic、`/api/chat`、Docker/API/browser、Trace、P95/SLA 或 `main` 产品可用；唯一名额已
-消费，禁止重跑和追加探测。完整记录见
+消费，禁止重跑和追加探测。源码/文档已合并到 `main` merge `f4fac048` 并完成 `main == origin/main` 的零 Provider
+回归；完整记录见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
+main parity 记录见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 
 ## Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live sealed（2026-08-08）
 
@@ -71,7 +73,7 @@ citation-recall diagnostic，不改变 G1/G2 或 S2 gate。
 preservation `>=0.95`、grounded rubric `>=0.90`、citation precision `=1`、required citation recall `>=0.90`、critical
 notice recall `=1`，unsafe rewrite/false tool success/false citation/safety failure 全为 `0`。六条语义 lane 只记录
  median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。该段的分支文档 parity、推送、`main` 合并与合并后二次
-回归是已完成的历史动作；当前 Agent full 为 `1436/1436`，controlled-Live 状态以本文顶部和新的验收记录为准。
+回归是已完成的历史动作；当前 Agent full 为 `1437/1437`，controlled-Live 状态以本文顶部和新的验收记录为准。
 完整设计、计划与验收见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`

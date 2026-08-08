@@ -5,9 +5,11 @@
 > `p1_l2_quality_gate_failed / qualityAuthority=none`。8/8 guards zero-call；第二条真实 DeepSeek rewrite 以 bounded
 > `schema` failure 打开 breaker，实际 Provider calls=`2/12`、Qwen calls=`0`、usage=`343/40`、aggregate cost=`null`，
 > 后续 10 条 lane 未启动。Journal `41`、validator=`bundle_valid`、recovery claim=`null`。该结果不形成 P1 semantic、
-> 产品 Docker/API/browser、Trace、SLA 或 `main` 产品 authority，且不得重跑/追加探测。当前只允许证据/文档收口与
-> zero-provider 合并回归；下一功能任务为独立 schema recovery/diagnostic lineage。验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
+> 产品 Docker/API/browser、Trace、SLA 或 `main` 产品 authority，且不得重跑/追加探测。证据/文档已在 `1f3c0d9b` 提交，
+> 以 `--no-ff` 合并到 `main` merge `f4fac048` 并完成 `main == origin/main` 的 zero-provider 回归。下一功能任务为独立
+> schema recovery/diagnostic lineage。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 
 > 历史 checkpoint（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成并已合并推送；当时
 > `main == origin/main`（具体 HEAD 以 `git rev-parse main origin/main` 为准），合并后 zero-provider 回归已通过（Agent `1427/1427`，

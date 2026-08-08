@@ -21,8 +21,10 @@
 > 完整验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。唯一名额已消费；禁止
 > retry/resume/replay/backfill、recovery/seal、curl、单 case或追加 Provider 探测。该失败不形成 P1 semantic、产品
-> Docker/API/browser、Trace、SLA、业务写入或 `main` 产品 authority。当前只完成证据/文档提交、合并与 `main`
-> zero-provider 二次回归；下一功能任务必须是从最新 `main` 新建的独立 schema recovery/diagnostic lineage。
+> Docker/API/browser、Trace、SLA、业务写入或 `main` 产品 authority。证据与文档已在 `1f3c0d9b` 提交，以 `--no-ff`
+> 合并到 `main` merge `f4fac048` 并推送 `origin/main`；合并后二次 zero-provider 回归已通过。完整 main parity 记录见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。下一功能任务必须是从最新
+> `main` 新建的独立 schema recovery/diagnostic lineage。
 
 > 2026-08-08 — Phase 6.9.8 P1 L2 zero-provider admission contract 已完成：
 >
