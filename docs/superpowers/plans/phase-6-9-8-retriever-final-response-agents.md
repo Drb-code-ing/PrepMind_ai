@@ -588,7 +588,7 @@ T2+T3-C/proxy/data-boundary/authorization 均先于 credential composition，con
 V2 固定后续阶段为 C1 launcher/projection contract、C2 runner/durability、S1 reviewed Mock/static、L1 唯一最多三槽
 controlled canary 和 P1 终态决策。D0 自身 zero-provider、无正式 evidence，authority 固定为
 `zero_provider_transport_reentry_v2_design / qualityAuthority=none`。完整设计、计划与验收见
-[V2 设计](./phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md)、
+[V2 设计](../specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md)、
 [V2 计划](./phase-6-9-8-retriever-final-response-transport-reentry-v2.md) 与
 [D0 验收](../../acceptance/phase-6-9-8-retriever-final-response-transport-reentry-v2-d0-zero-provider-design.md)。
 
