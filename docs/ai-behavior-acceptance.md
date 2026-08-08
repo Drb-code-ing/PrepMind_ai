@@ -56,8 +56,10 @@ citation-recall diagnostic，不改变 G1/G2 或 S2 gate。
 质量门仍固定为：Recall@5 `>=0.90`、nDCG@5 `>=0.85`、eligible subset uplift `>=0.08`、critical recall `=1`、intent
 preservation `>=0.95`、grounded rubric `>=0.90`、citation precision `=1`、required citation recall `>=0.90`、critical
 notice recall `=1`，unsafe rewrite/false tool success/false citation/safety failure 全为 `0`。六条语义 lane 只记录
-median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。完成本分支文档 parity、推送并合并 `main` 后须在
-`main` 再做 focused 回归；未来 L2 仍必须重新接受当次 DeepSeek/Qwen 数据边界并给出新的 exact authorization。完整设计、计划与验收见：
+ median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。分支文档 parity、推送、`main` 合并与合并后二次回归均已
+完成；当前 `main == origin/main == c00e6b057f0c379133192d660d931ba08d6fabd7`，全量 Agent 回归 `1427/1427`。未来 L2
+controlled-Live 仍必须重新接受当次 DeepSeek/Qwen 数据边界并给出精确绑定当前 source/lineage 的 exact authorization。
+完整设计、计划与验收见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`
 - `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md`

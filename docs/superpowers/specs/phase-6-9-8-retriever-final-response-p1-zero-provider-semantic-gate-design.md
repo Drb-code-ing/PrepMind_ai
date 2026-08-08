@@ -1,8 +1,8 @@
 # Phase 6.9.8 Retriever / FinalResponse P1 zero-provider semantic-gate 设计
 
 > 日期：2026-08-08
-> 状态：P1 设计已冻结；G1、G2、S2 reviewed Mock/static 与 L2 zero-provider admission contract 已在独立分支完成；
-> L2 contract 仍没有真实模型或产品 authority
+> 状态：P1 设计已冻结；G1、G2、S2 reviewed Mock/static 与 L2 zero-provider admission contract 已在独立分支完成并合并
+> `main`；L2 contract 仍没有真实模型或产品 authority
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：已合并并推送的 `main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
@@ -28,7 +28,7 @@ reviewed Mock ->（未来、另行授权的）L2 semantic canary` 逐步实现�
 > strict/wire/synthetic usage、semantic `1/1/1`、candidate invocation `12`、synthetic Qwen port calls `17`，gate=
 > `p1_mock_quality_not_evidence / qualityAuthority=none`；S2 focused `4/4`、G1+G2 `10/10`、Agent full `1423/1423`。
 > 详见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。本设计文档的历史冻结输入
-> 不被改写，当前只允许在 main 二次回归后重新接受数据边界并另立 L2 authorization。
+> 不被改写；`main` 合并后二次 zero-provider 回归已完成，当前只允许重新接受数据边界并另立 L2 authorization。
 
 ## 2. 目标与非目标
 

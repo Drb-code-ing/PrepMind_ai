@@ -10,9 +10,11 @@
 > `.env`、未执行 proxy/network、Provider、Docker/API/browser、Trace、BackgroundJob、Outbox 或业务写入。
 >
 > focused `4/4`（19 assertions），G1+G2+S2+L2 focused `18/18`（142 assertions），typecheck/lint/`git diff --check`
-> 通过。完整验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
-> 下一步完成相关文档 parity、推送并合并 `main` 后二次 zero-provider 回归；只有重新接受当次 DeepSeek/Qwen 数据边界并
-> 给出新的 exact authorization，才可执行唯一 L2 controlled-Live。
+> 通过。随后已完成文档同步、fast-forward 合并并推送 `main`，当前 `main == origin/main == c00e6b057f0c379133192d660d931ba08d6fabd7`；
+> 合并后 `@repo/agent` 全量回归 `1427/1427`（24263 assertions，178 files），typecheck/lint/diff check 再次通过。
+> 完整验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
+> 下一步只有重新接受当次 DeepSeek/Qwen 数据边界并给出精确绑定当前 source/lineage 的 exact authorization，才可执行唯一
+> L2 controlled-Live。
 
 > 2026-08-08 — Phase 6.9.8 P1 S2 reviewed Mock/static 已完成：
 >
@@ -37,8 +39,8 @@
 > `credentialReads=0`、formal marker/journal/artifact/recovery claim=`0`，未读取根 `.env`、未启动 Docker/API/browser、
 > 未写 Trace/BackgroundJob/Outbox 或业务数据。完整验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
-> 下一步是完成相关文档 parity、推送并合并 `main` 后在 `main` 二次回归；若申请 L2，必须重新接受当次
-> DeepSeek/Qwen 数据边界并给出新的 exact authorization，不能重跑既有封存 evidence。
+> 该条记录中的“下一步是完成相关文档 parity、推送并合并 `main` 后在 `main` 二次回归”是 S2 完成时的历史 checkpoint；
+> 相关动作随后已完成。若申请 L2，仍必须重新接受当次 DeepSeek/Qwen 数据边界并给出新的 exact authorization，不能重跑既有封存 evidence。
 
 > 2026-08-08 — Phase 6.9.8 P1 G2 zero-provider runner/durability 已完成：
 >

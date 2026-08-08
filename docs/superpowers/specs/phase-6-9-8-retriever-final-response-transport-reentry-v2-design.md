@@ -5,7 +5,7 @@
 > 均已完成；run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上
 > 以 `transport_reentry_v2_l1_controlled_canary_passed / qualityAuthority=none` durable seal。root `.env` 的
 > `unknown_key` 是 Live 前历史诊断；P1 zero-provider semantic-gate 设计已另立分支冻结。该文档记录的是 V2 历史路线，
-> 当时下一任务为 G1；当前 P1/G1/G2/S2 已完成，状态以入口文档为准。
+> “当时下一任务为 G1”仅是历史 checkpoint；当前 P1/G1/G2/S2/L2 admission 已完成并在 `main` 完成二次回归，状态以入口文档为准。
 > 历史实现分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Lineage：`phase-6.9.8-retriever-final-response-transport-reentry-v2`
 > 当前 checkpoint authority：`controlled_live_transport_reentry_v2 / qualityAuthority=none`；L1 implementation/root-env diagnosis

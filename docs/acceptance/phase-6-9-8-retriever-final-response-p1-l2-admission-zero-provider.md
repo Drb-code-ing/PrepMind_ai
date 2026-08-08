@@ -3,8 +3,8 @@
 > 日期：2026-08-08  
 > 状态：已完成（zero-provider contract；未执行 Live）  
 > 分支：`drb/phase-6-9-8-l2-admission-contract`  
-> 基线：`main / origin/main = 313d6e48`  
-> 代码提交：`67199acf`
+> 基线：从 `main / origin/main = 313d6e48` 派生；最终合并：`main / origin/main = c00e6b05`
+> 代码提交：`67199acf`；文档/合并收口：`c00e6b05`
 
 ## 1. 结论
 
@@ -80,6 +80,7 @@ root/nested hostile Proxy、capability single-use、输入不可变和 raw confi
 当前仍未创建 approved tag，也未读取 credential、执行 proxy/network preflight、调用 Provider、启动 Docker/API/browser
 或接入 `/api/chat`。本 contract 不是 L2 semantic authority，也不是 Live authorization。
 
-下一步是完成相关文档 parity、推送并合并 `main`，在 `main` 上做一次 zero-provider 回归。只有之后用户重新接受当次
-DeepSeek/Qwen 数据边界并提供新的、精确绑定 source/lineage/confirmation 的 authorization，才可另立唯一 L2 controlled-Live。
+相关文档 parity、推送、`main` 合并与合并后二次 zero-provider 回归已完成：`@repo/agent` 全量
+`1427/1427`（24263 assertions，178 files），typecheck/lint/`git diff --check` 均通过。只有之后用户重新接受当次
+DeepSeek/Qwen 数据边界并提供新的、精确绑定当前 source/lineage/confirmation 的 authorization，才可另立唯一 L2 controlled-Live。
 已封存 L1/T3/R5/Task 9C/SR5 evidence 不得重跑或改写，Docker 容器、镜像和卷保持原状。

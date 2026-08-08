@@ -56,8 +56,10 @@ G2 实施验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1
 S2 实施验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
 L2 admission 验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
 
-当前下一步是完成本分支文档 parity、推送并合并 `main`，在 `main` 二次 zero-provider 回归；之后若申请 L2 controlled-Live，
-必须重新接受当次 DeepSeek/Qwen 数据边界并给出新的 exact authorization，不执行已封存 evidence 的重跑。
+当前 L2 admission contract 已完成文档 parity、推送、`main` 合并与合并后二次 zero-provider 回归；`main == origin/main ==
+c00e6b057f0c379133192d660d931ba08d6fabd7`，Agent full `1427/1427`、typecheck/lint/`git diff --check` 通过。之后若申请
+L2 controlled-Live，必须重新接受当次 DeepSeek/Qwen 数据边界并给出精确绑定当前 source/lineage 的 exact authorization，
+不执行已封存 evidence 的重跑。
 
 ## 0F. Phase 6.9.8 Transport Re-entry V2 L1 root-env compatibility recovery（历史 checkpoint）
 

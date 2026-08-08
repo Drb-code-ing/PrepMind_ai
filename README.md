@@ -1,15 +1,18 @@
 # PrepMind AI 智能备考助手
 
-> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成。在从已合并并推送的
-> `main / origin/main = 313d6e48` 派生的普通分支 `drb/phase-6-9-8-l2-admission-contract` 上，新增严格
+> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成并已合并推送到 `main`。
+> 普通分支 `drb/phase-6-9-8-l2-admission-contract` 已收口，当前
+> `main / origin/main = c00e6b057f0c379133192d660d931ba08d6fabd7`，
+> 新增严格
 > source/remote parity、协议 approved tag、冻结 S2 identity、DeepSeek/Qwen data-boundary receipt、exact
 > lineage/source authorization、bounded budget 与 WeakMap single-use capability。输出固定
 > `mode=zero_provider_admission`、`providerDispatchAllowed=false`、`providerCalls=0 / credentialReads=0 /
 > formalEvidence=0`；协议字符串不是用户授权，当前不创建 tag、不读 `.env`、不执行 proxy/network、Provider、Docker/API/browser
 > 或产品写入。L2 focused `4/4`、G1+G2+S2+L2 focused `18/18`、typecheck/lint 通过。详见
 > [`L2 admission contract 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md)。
-> 当前下一步是文档 parity、合并 `main` 后二次 zero-provider 回归；只有重新接受当次 DeepSeek/Qwen 数据边界并提供新的
-> exact authorization 后，才可执行唯一 L2 controlled-Live。
+> 合并后的 `@repo/agent` 全量回归 `1427/1427`（24263 assertions，178 files），typecheck/lint/`git diff --check` 通过。
+> 下一步只有重新接受当次 DeepSeek/Qwen 数据边界并提供精确绑定当前 source/lineage 的 exact authorization 后，才可执行唯一
+> L2 controlled-Live。
 
 > 当前任务（2026-08-08）：Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。run
 > `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上按
@@ -39,9 +42,9 @@
 > [`G1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-g1-contract-baseline-scorer.md)、
 > [`P1 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)、
 > [`P1 计划`](docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md) 与
-> [`P1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md)。下一步是完成分支文档/source
-> parity 后合并 `main` 并在 `main` 二次回归；L2 semantic canary 仍需重新接受当次 DeepSeek/Qwen 数据边界并给出新的
-> exact authorization。
+> [`P1 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md)。上述 S2 段落是合并前的历史
+> checkpoint；L2 admission 已在 `main` 完成二次 zero-provider 回归。L2 semantic canary 仍需重新接受当次 DeepSeek/Qwen
+> 数据边界并给出新的 exact authorization。
 
 > 历史回执（2026-08-07）：Transport Re-entry V2 S1 reviewed Mock/static 已完成。C2 zero-provider runner/durability
 > 已先完成；新的
@@ -404,7 +407,7 @@ bun --cwd packages/fsrs test
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
 2. Phase 6.9.7 已完成：V1--V9 Live 与 R3/L3 失败历史保持封存；Provider Canary V2、Small/Full Gate、Schema Recovery SR0--SR7 已按各自 authority 收口。唯一 SR5 run `63f8a76b...04cb` 形成分支语义门，SR6/SR7 完成 zero-provider 产品与 main/default-off 验收且不提升 SR5 语义 authority。
-3. Phase 6.9.8 Task 0--9B 已完成，唯一 Task 9C 已失败封存且不得补跑。Architecture Recovery R0--R4 随后完成独立设计、三链路 diagnostic/robustness、runner/durability/admission 与 reviewed Mock/static；唯一 R5 run `34eb99be...` 又在第二个 rewrite pair 的 DeepSeek `provider_dispatch / unknown` 后以 `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。该 run 仅有 `4` 次 external calls，rewrite strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`。R5 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测；R6/R7、Task 10/11、Docker/API/浏览器、main、Phase 6.9.9/6.9.10 和记忆注入继续阻断。下一步必须先做新的架构决策，不能把 R5 重试当作推进。全部 Agent 真正完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
+3. Phase 6.9.8 Task 0--9B 已完成，唯一 Task 9C 已失败封存且不得补跑。Architecture Recovery R0--R4 随后完成独立设计、三链路 diagnostic/robustness、runner/durability/admission 与 reviewed Mock/static；唯一 R5 run `34eb99be...` 又在第二个 rewrite pair 的 DeepSeek `provider_dispatch / unknown` 后以 `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。该 run 仅有 `4` 次 external calls，rewrite strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`。R5 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。当前新增的 P1 G1/G2/S2/L2 admission 仍是 zero-provider/diagnostic 边界；若要进入 L2 controlled-Live，必须先取得新的数据边界接受和 exact authorization。L2 完成后才评估产品 Docker/API/浏览器与后续 Task 10/11；全部 Agent 真正完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 executor、dispatch、response、verified usage 要拆成四个计数？”“为什么 recovery 只能 seal durable prefix，不能 resume/replay/retry？”“为什么 transport subtype 不直接回填 V9 Trace/evidence？”“为什么 `1/1/0/0` 不能证明 Provider 收到请求或产生费用？”“为什么 L1 的 `1/1/1/1` 仍是 `qualityAuthority=none`？”“Provider health canary 与 Agent semantic acceptance 为什么必须拆开？”
 

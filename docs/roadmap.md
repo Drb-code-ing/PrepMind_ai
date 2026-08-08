@@ -1,7 +1,8 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成，当前在
-> `drb/phase-6-9-8-l2-admission-contract` 完成文档 parity、推送并合并 `main`，随后在 `main` 二次 zero-provider 回归。
+> 当前原子任务（2026-08-08）：Phase 6.9.8 P1 L2 zero-provider admission contract 已完成并已合并推送；当前
+> `main == origin/main == c00e6b057f0c379133192d660d931ba08d6fabd7`，合并后 zero-provider 回归已通过（Agent `1427/1427`，
+> 24263 assertions，178 files；typecheck/lint/diff check 通过）。
 > Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。
 > run `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上以
 > `transport_reentry_v2_l1_controlled_canary_passed` 收口，`3` slots、Provider calls `3`、usage `145/28/173`、费用
@@ -19,9 +20,9 @@
 > Agent full `1394/1394`。V2 L1 已随后完成并封存；P1 G1、G2 与 S2 已以独立 zero-provider lineage 收口。S2
 > focused `4/4`、G1+G2 focused `10/10`、Agent full `1423/1423`，synthetic runner/validator `ok=true`、formal evidence `0`；
 > gate=`p1_mock_quality_not_evidence`、`qualityAuthority=none`。S2 验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`；完成 main 回归后，下一条受控路线
-> L2 admission contract 只形成 zero-provider contract authority；只有在重新接受 DeepSeek/Qwen 数据边界并取得新的 exact
-> authorization 后，才可启动唯一 controlled-Live。L2 admission 验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`；上述 S2 段落是合并前历史 checkpoint，
+> L2 admission contract 已在 `main` 完成二次回归，只形成 zero-provider contract authority；只有在重新接受 DeepSeek/Qwen
+> 数据边界并取得新的 exact authorization 后，才可启动唯一 controlled-Live。L2 admission 验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。
 > G2 验收、设计、计划、L1 sealed 与 C1/C2 验收见
 > `docs/superpowers/specs/phase-6-9-8-retriever-final-response-transport-reentry-v2-design.md` 与

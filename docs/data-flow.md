@@ -59,8 +59,8 @@ strict scorer -> marker/journal/artifact publication`。
 > formalEvidence=0`；不创建 approved tag、marker、journal、artifact 或 recovery claim，不读取 `.env`，不执行
 > proxy/network、Provider、Docker/API/browser、Trace、BackgroundJob、Outbox 或产品写入。L2 focused `4/4`，与 G1/G2/S2
 > focused `18/18`。协议 token 不代表用户已接受边界或已授权 Live；验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。下一步仅为文档 parity、
-> main 合并后二次回归，随后等待新的 exact authorization。
+> `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。该 admission 已完成文档 parity、
+> `main` 合并与合并后二次回归；当前只等待新的 exact authorization（并重新接受当次 DeepSeek/Qwen 数据边界）。
 
 > C2 历史设计（2026-08-07）：Transport Re-entry V2 C2 已完成 zero-provider runner/durability flow：
 > `exact argv -> source/T2+T3-C parity -> fresh proxy -> data boundary -> authorization -> launcher-location root-env

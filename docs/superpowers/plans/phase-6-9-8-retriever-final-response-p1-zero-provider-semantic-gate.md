@@ -3,7 +3,7 @@
 > 设计来源：[P1 zero-provider semantic-gate 设计](../specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md)
 > 日期：2026-08-08
 > 当前状态：P1 设计、G1 zero-provider contract/baseline/scorer、G2 one-shot runner/durability、S2 reviewed Mock/static 与
-> L2 zero-provider admission contract 均已完成；当前只剩本分支文档 parity、main 合并后的二次回归，L2 Live 需另行 fresh authorization
+> L2 zero-provider admission contract 均已完成；文档 parity、推送、`main` 合并与合并后二次回归均已完成，L2 Live 需另行 fresh authorization
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：`main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`
