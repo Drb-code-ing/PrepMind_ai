@@ -1,5 +1,31 @@
 # PrepMind AI 数据流
 
+## 当前 SR3 zero-provider durability flow（2026-08-09）
+
+当前分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3` 的数据流不进入产品 Chat：
+
+```text
+strict argv
+  -> Git/synthetic source admission
+  -> single-use capability + exclusive marker
+  -> fsync attempt_reserved
+  -> 8 zero-call guards
+  -> pair-interleaved [rewrite candidate -> FinalResponse candidate]（最多 12 次 synthetic dispatch）
+  -> dispatch/response/verified-usage journal stages
+  -> strict report recomputation
+  -> publication_started -> hard-link report/artifact -> validator
+```
+
+每条 lane 只允许一次 dispatch，最大并发为 `1`，首个 contract/permission/safety/budget/transport/schema/usage/abort
+失败打开 breaker；recovery 只补 durable prefix，不重放 Provider call、不创建 executor、不恢复 sibling。CLI 默认把 reviewed
+Mock 写入并清理 OS 临时 root；公开 validate/recover(seal) 参数 fail-closed。SIGINT/SIGTERM 在脚本层转换为 AbortSignal。
+
+本阶段固定 `providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`，不读取 root `.env`、不调用
+DeepSeek/Qwen、不启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser，不写 Trace/BackgroundJob/Outbox。authority=
+`zero_provider_retriever_final_response_schema_recovery_runner_durability`、gate=
+`schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`；因此不形成 semantic/product/main/P95/SLA authority。
+验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。
+
 > 最近封存的 P1 L2 controlled-Live flow（2026-08-09）：唯一 run 的入口围栏为
 > `exact argv -> source/remote parity -> approved tag -> frozen manifest/policy/baseline/S2 identity ->
 > DeepSeek/Qwen data-boundary receipt -> exact lineage/source authorization -> bounded budget -> selective root .env
@@ -15,7 +41,7 @@
 > 已在 `1f3c0d9b` 提交并以 `f4fac048` 合并源码/证据，文档 parity 再以 `613cc772` 合并、推送到 `main`；二次零 Provider parity 见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 
-> 当前功能流（SR2，zero-provider）：SR1 parser/candidate seam 已合并；SR2 功能提交 `2df35873` 已通过
+> 历史功能流（SR2，zero-provider）：SR1 parser/candidate seam 已合并；SR2 功能提交 `2df35873` 已通过
 > `17ce07ba` 合并并推送到 `main == origin/main == 17ce07ba386f3a54eb4fdfffdf050b561c319754`，功能分支为
 > `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`，继续使用独立
 > `phase-6.9.8-retriever-final-response-schema-recovery-v1`。本阶段数据只经过

@@ -2,19 +2,23 @@
 
 日期：2026-08-09
 
-当前状态：SR2 已在独立普通分支完成 zero-provider Provider-like robustness；没有读取凭据、调用 Provider、创建正式
-evidence 或启动产品。当前只解锁 SR3 独立 runner/source admission/durability。
+当前状态：SR3 已在独立普通分支完成 zero-provider runner/source admission/durability；没有读取凭据、调用 Provider、创建
+正式 evidence 或启动产品。当前只解锁 SR4 reviewed Mock/static。
 
 设计来源：
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
 
-当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`
 
-当前基线：`main@629acec49d9693f24ccded051d8d90cad77167cc`
+当前基线：`main@849af1c84231a4c0fbe54426ddae02d0a1b28a30`
 
 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
 
-SR2 authority：`zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`
+SR3 authority：`zero_provider_retriever_final_response_schema_recovery_runner_durability / qualityAuthority=none`
+
+SR3 identity：manifest SHA=`d14c08455126fad492f9f01ed07a1a4fd911241c62384fbd07537e4ffda1bede`，policy SHA=
+`6c1f1b0388b2b595f141061cb3d0d34607b6214a4772e7cb4a17309e431cebf8`；分母 `8/6/6/12/20`，最大并发 `1`，预算
+`37600/8800/0.176 CNY`。
 
 ## 1. 执行纪律
 
@@ -90,7 +94,7 @@ typecheck、lint、变更范围 Prettier 与 `git diff --check` 均已回放通�
 
 只解锁 SR2 robustness；不解锁正式 runner、Mock、Live、产品或 main。
 
-## 4. SR2：Provider-like robustness 与 anti-oracle
+## 4. SR2：Provider-like robustness 与 anti-oracle（历史已完成）
 
 - 状态：已完成。新增 `phase-6.9.8-retriever-schema-recovery-sr2-robustness-v1` fixture 与
   `phase-6.9.8-retriever-schema-recovery-sr2-prompt-derived-responder-v1` responder；fixture SHA=
@@ -109,7 +113,7 @@ SR2 GREEN：focused `12/12`（329 assertions）；SR1+SR2/node/query-rewrite 组
 
 只解锁 SR3；不提高 P1 分母、预算或 timeout。
 
-## 5. SR3：独立 runner、source admission 与 durability
+## 5. SR3：独立 runner、source admission 与 durability（已完成）
 
 - 固定 `8 guards + 6 rewrite + 6 FinalResponse`、最大并发 `1`、每 lane single dispatch、首错 breaker；
 - 为 bounded schema stage 增加 fsynced hash-chain journal、strict report/scorer/validator；
@@ -119,7 +123,14 @@ SR2 GREEN：focused `12/12`（329 assertions）；SR1+SR2/node/query-rewrite 组
   artifact conflict、二次 recovery 幂等测试；
 - source admission 在 credential/marker 前验证 clean/parity/manifest/authority/formal namespace=0。
 
-只解锁 SR4；SR3 仍没有 semantic/product/main authority。
+SR3 GREEN：focused `15/15`（49 assertions，5 files）；SR1+SR2+SR3+Task 9B 组合 `63/63`（635 assertions，14 files）；Agent full
+`1477/1477`（24908 expect()，189 files）、AI full `345/345`（2662 expect()，28 files），Agent typecheck/lint 与 `git diff --check`
+通过。CLI synthetic run 为 `12/12/12/12` reservations/dispatches/responses/verifiedUsage、`journalRecords=72`，
+`providerCalls=0 / credentialReads=0 / businessWrites=0`；正式 evidence=0。新增公开 validate/recover(seal) token，脚本
+默认临时 root，SIGINT/SIGTERM 映射为 AbortSignal。SR3 只解锁 SR4 reviewed Mock/static。
+
+只解锁 SR4；SR3 仍没有 semantic/product/main/P95/SLA authority。验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。
 
 ## 6. SR4：Reviewed Mock/static
 
@@ -151,7 +162,8 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
 - 计划：本文；
 - 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`、
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`、
-  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`；
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`、
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`；
 - 入口：`AGENTS.md`、`README.md`、`DEVLOG.md`、`docs/roadmap.md`、`docs/data-flow.md`、`docs/dev-start.md`、
   `docs/acceptance-checklist.md`、`docs/ai-behavior-acceptance.md`；
 - [x] SR2 fixture/responder SHA、shape/fault/metamorphic matrix 与 zero-provider authority 已记录；

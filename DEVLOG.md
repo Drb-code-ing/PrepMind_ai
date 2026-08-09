@@ -1,5 +1,28 @@
 # PrepMind AI 开发日志
 
+> 2026-08-09 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR3 zero-provider runner/source admission/durability 已完成：
+>
+> 从 `main == origin/main == 849af1c84231a4c0fbe54426ddae02d0a1b28a30` 新开普通 git 分支
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`，沿用 lineage
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1`。固定 `8 guards + 6 rewrite + 6 FinalResponse`、
+> `20` report entries、`12` candidate invocations、最大并发 `1`、pair-interleaved/no-retry/首错 breaker；预算 cap
+> `37600/8800/0.176 CNY`。manifest SHA=`d14c08455126fad492f9f01ed07a1a4fd911241c62384fbd07537e4ffda1bede`，
+> policy SHA=`6c1f1b0388b2b595f141061cb3d0d34607b6214a4772e7cb4a17309e431cebf8`。
+>
+> 实现包含 Git-verified 与 synthetic source admission、module-owned single-use capability、fsynced marker/hash-chain
+> journal、strict recomputation validator、hard-link artifact、PID/start-identity guard、publication-prefix crash-only
+> recovery，以及严格 run/validate/recover(seal) CLI。CLI 默认使用 OS 临时目录 reviewed Mock，并在退出时清理临时 root；
+> validate/recover 的默认路径已固定解析到仓库根，避免从 `packages/agent/scripts` 误指向 `packages`；
+> SIGINT/SIGTERM 映射为 AbortSignal。新增 SR3 focused `15/15`（49 assertions）、SR1+SR2+SR3+Task9B 组合回放
+> `63/63`（635 assertions，14 files）、Agent full `1477/1477`（24908 expect()，189 files）、AI full `345/345`
+> （2662 expect()），typecheck/lint 通过。
+>
+> 本阶段 authority=`zero_provider_retriever_final_response_schema_recovery_runner_durability`、gate=
+> `schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`；`providerCalls=0`、`credentialReads=0`、
+> `businessWrites=0`、formal evidence=`0`。未读取 root `.env`，未调用 DeepSeek/Qwen，未启动/清理 Docker/API/browser，未写
+> Trace/BackgroundJob/Outbox/业务数据。它只解锁 SR4 reviewed Mock/static，不形成真实语义、产品、main、P95/SLA 或博客 authority。
+> 完整验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。
+
 > 2026-08-09 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR2 zero-provider robustness 已完成：
 >
 > 从已合并并推送的 `main == origin/main == 629acec49d9693f24ccded051d8d90cad77167cc` 新建普通分支

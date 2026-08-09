@@ -2,12 +2,13 @@
 
 日期：2026-08-09
 
-状态：SR2 zero-provider robustness 已完成；本文件保留 SR0 设计与 SR1/SR2 handoff
+状态：SR3 zero-provider runner/source admission/durability 已完成；本文件保留 SR0 设计与 SR1/SR2 历史 handoff，并记录
+SR3 到 SR4 的停止门
 
-当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`
 
-当前基线：`main@629acec49d9693f24ccded051d8d90cad77167cc`，创建 SR2 分支时
-`main == origin/main`，工作树 clean
+当前基线：`main@849af1c84231a4c0fbe54426ddae02d0a1b28a30`，创建 SR3 分支时
+`main == origin/main`，工作树在实现前 clean
 
 独立 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
 
@@ -37,6 +38,26 @@ authority=`zero_provider_retriever_final_response_schema_recovery_robustness / q
 
 SR2 只解锁 SR3 独立 runner/source admission/durability；不提高 P1 分母、预算或 timeout，不形成 semantic/product/main
 authority。完整回执见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`。
+
+## SR3 implementation checkpoint（2026-08-09，zero-provider）
+
+SR3 已在独立普通分支落地固定 runner 与 durability boundary：`8` guards、`6` rewrite、`6` FinalResponse，按 pair
+interleaved 顺序执行，最大并发 `1`，每 lane single dispatch，首错 breaker 保留 suffix denominator。预算上限为
+input/output `37600/8800`、总成本 `0.176 CNY`；manifest SHA=
+`d14c08455126fad492f9f01ed07a1a4fd911241c62384fbd07537e4ffda1bede`，policy SHA=
+`6c1f1b0388b2b595f141061cb3d0d34607b6214a4772e7cb4a17309e431cebf8`。
+
+source admission 提供 Git-verified 与 synthetic fixture 两个隔离 seam；capability 由 module-owned WeakMap/WeakSet
+单次消费，reservation 时对 Git source 重新检查 branch/HEAD/upstream/origin/approved ref、clean tree、formal namespace
+和 source bundle。marker 固定 zero-provider 计数；journal 在每个 durable prefix 后 fsync，validator 重算 report/hash-chain、
+hard-link inode 与 artifact；crash-only recovery 只补 guard/lane/run/publication prefix，不重放调用、不创建 executor。
+CLI 仅开放严格 run/validate/recover(seal) token，脚本默认使用临时 reviewed Mock，SIGINT/SIGTERM 转 AbortSignal。
+
+SR3 focused `15/15`（49 assertions）、SR1+SR2+SR3+Task 9B 组合 `63/63`（635 assertions）、Agent full `1477/1477`、AI full `345/345`、Agent
+typecheck/lint 已通过；`providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`。authority=
+`zero_provider_retriever_final_response_schema_recovery_runner_durability / qualityAuthority=none`，gate=
+`schema_recovery_mock_quality_not_evidence`。SR3 只解锁 SR4 reviewed Mock/static，不产生 semantic/product/main/P95/SLA
+authority；验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。
 
 ## 1. 决策摘要
 

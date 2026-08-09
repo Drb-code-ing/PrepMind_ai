@@ -1,7 +1,32 @@
 # PrepMind AI 智能备考助手
 
-> 当前状态（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live 已正常 durable seal，但质量门失败；main parity 与
-> 合并后二次 zero-provider 回归均已完成。Schema Recovery SR1 与 SR2 zero-provider 已完成，当前只解锁 SR3
+## 当前工作回执：Schema Recovery SR3（2026-08-09）
+
+当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`，基线
+`main == origin/main == 849af1c84231a4c0fbe54426ddae02d0a1b28a30`。SR3 已完成 zero-provider runner、Git/synthetic
+source admission、durability、strict validate/recover CLI 与 reviewed Mock 回归；固定 `8 guards + 6 rewrite + 6
+FinalResponse`、12 次候选调用、最大并发 1、首错 breaker。
+
+```text
+authority       zero_provider_retriever_final_response_schema_recovery_runner_durability
+qualityAuthority none
+gate            schema_recovery_mock_quality_not_evidence
+manifestSha     d14c08455126fad492f9f01ed07a1a4fd911241c62384fbd07537e4ffda1bede
+policySha       6c1f1b0388b2b595f141061cb3d0d34607b6214a4772e7cb4a17309e431cebf8
+focused         15/15 tests, 49 assertions
+combo           63/63 tests, 635 assertions (14 files)
+agent/ai full   1477/1477 tests, 24908 / 2662 assertions
+provider/env    0 / 0; formal evidence 0
+```
+
+本回执只证明工程化边界和 zero-provider reviewed Mock，不证明真实 DeepSeek/Qwen 质量、RAG 召回、产品 `/api/chat`、
+Docker/API/browser、Trace、P95/SLA 或 `main` 产品可用性。SR3 acceptance、设计和计划见：
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`、
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`、
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md`。
+
+> 历史封存（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live 已正常 durable seal，但质量门失败；main parity 与
+> 合并后二次 zero-provider 回归均已完成。Schema Recovery SR1 与 SR2 zero-provider 已完成，当时只解锁 SR3
 > 独立 runner/source admission/durability。
 > run `ff035203-500f-4744-b33c-3c375ae4c785` 在 approved source/tag `fa502925...` 上完成 8/8 zero-call guards；
 > `rewrite_01` strict 成功，`rewrite_03` 在第二次真实 DeepSeek 调用后以 bounded `schema` failure 打开 breaker，剩余

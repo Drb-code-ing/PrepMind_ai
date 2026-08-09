@@ -1,6 +1,29 @@
 # PrepMind AI 学习与开发路线图
 
-> 最新封存状态（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live run
+## 当前原子阶段：Phase 6.9.8 Schema Recovery SR3（2026-08-09）
+
+SR3 已在普通分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3` 完成 zero-provider runner、source
+admission 与 durability；基线为 `main == origin/main == 849af1c84231a4c0fbe54426ddae02d0a1b28a30`。独立 lineage 为
+`phase-6.9.8-retriever-final-response-schema-recovery-v1`，authority=
+`zero_provider_retriever_final_response_schema_recovery_runner_durability / qualityAuthority=none`。
+
+固定 `8 guards + 6 rewrite + 6 FinalResponse = 20 report entries / 12 candidate invocations`，最大并发 `1`，pair
+interleaving、reservation-before-dispatch、single dispatch、首错 breaker、fsynced hash-chain journal、hard-link artifact
+和 crash-only prefix recovery 均已实现。manifest/policy SHA 为
+`d14c08455126fad492f9f01ed07a1a4fd911241c62384fbd07537e4ffda1bede /
+6c1f1b0388b2b595f141061cb3d0d34607b6214a4772e7cb4a17309e431cebf8`。
+
+回归：SR3 focused `15/15`（49 assertions），SR1+SR2+SR3+Task9B 组合 `63/63`（635 assertions，14 files），Agent full
+`1477/1477`（24908 expect()，189 files），AI full `345/345`（2662 expect()）。全程 `providerCalls=0 / credentialReads=0 / businessWrites=0 /
+formalEvidence=0`，不读 `.env`、不调用 Provider、不启动或清理 Docker/API/browser、不写 Trace/BackgroundJob/Outbox。
+reviewed Mock gate=`schema_recovery_mock_quality_not_evidence`，只解锁 SR4 reviewed Mock/static；不形成 semantic/product/main、
+P95/SLA 或博客 authority。验收记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。
+
+下一步：从该分支完成 parity 后提交/推送，合并 `main` 并在 `main` 二次回归；随后从最新推送 `main` 新开 SR4。任何
+controlled-Live 仍需重新接受当次 DeepSeek/Qwen 数据边界并给出 exact authorization。
+
+> 历史封存状态（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live run
 > `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag `fa502925...` 上 durable seal，但 gate 为
 > `p1_l2_quality_gate_failed / qualityAuthority=none`。8/8 guards zero-call；第二条真实 DeepSeek rewrite 以 bounded
 > `schema` failure 打开 breaker，实际 Provider calls=`2/12`、Qwen calls=`0`、usage=`343/40`、aggregate cost=`null`，
@@ -670,6 +693,16 @@ Phase 5.6 已完成知识库页面体验打磨：
   authority=`zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`，只解锁 SR3
   runner/source admission/durability。（已完成，zero-provider；证据见
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`）
+- Phase 6.9.8 Schema Recovery SR3：在
+  `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3` 落地独立 `8/6/6` runner、Git/synthetic source
+  admission、单次 capability、最大并发 `1`、首错 breaker、fsynced hash-chain journal、strict validator、hard-link
+  artifact 与 crash-only prefix recovery；公开 CLI 提供 zero-provider run/validate/recover(seal)，默认 reviewed Mock
+  仅使用临时 root。SR3 focused `15/15`（49 assertions），组合 `63/63`（635 assertions），Agent full `1477/1477`、AI full `345/345`，
+  `providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`，authority=
+  `zero_provider_retriever_final_response_schema_recovery_runner_durability / qualityAuthority=none`，gate=
+  `schema_recovery_mock_quality_not_evidence`。只解锁 SR4 reviewed Mock/static，不形成 semantic/product/main/P95/SLA
+  authority。（已完成，zero-provider；证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`）
 - Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R0：以独立
   `phase-6.9.8-retriever-final-response-architecture-recovery-v1` lineage 冻结三类调用阶段机、
   `providerWire/runnerWire` 双层观察、strict bounded diagnostic、no-raw/no-hash、source admission、durability、
