@@ -22,9 +22,9 @@ Transport Re-entry V2 L1 的三槽真实调用已经全部返回并 durable seal
 语义、证据安全评分或最终回答质量，因此不能直接把 L1 推进到产品 `/api/chat`、Docker、浏览器或 `main`。
 
 P1 先冻结一个足够小、可复算、可审计的语义门，随后按 `G1 contract/baseline -> G2 runner/durability -> S2
-reviewed Mock ->（未来、另行授权的）L2 semantic canary` 逐步实现。P1 本身只写设计文档，不读取 `.env`、credential，
-不构造 Provider adapter，不调用 DeepSeek/Qwen，不写正式 marker/journal/artifact、Trace、BackgroundJob、Outbox 或
-业务数据。
+reviewed Mock ->（历史计划，已由唯一一次性 L2 执行并失败封存）semantic canary` 逐步实现。P1 本身只写设计文档，不
+读取 `.env`、credential，不构造 Provider adapter，不调用 DeepSeek/Qwen，不写正式 marker/journal/artifact、Trace、
+BackgroundJob、Outbox 或业务数据。
 
 > 后续状态（2026-08-08）：G1 已落成独立 manifest、subset deterministic baseline、candidate-only projection 与 strict
 > scorer/gate；G2 又在从 `main` `a12db738` 派生的
@@ -36,7 +36,8 @@ reviewed Mock ->（未来、另行授权的）L2 semantic canary` 逐步实现�
 > `p1_mock_quality_not_evidence / qualityAuthority=none`；S2 focused `4/4`、G1+G2 `10/10`、Agent full `1423/1423`。
 > 详见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。本设计文档的历史冻结输入
 > 不被改写；`main` 合并后二次 zero-provider 回归已完成。当前唯一 L2 已执行并失败封存，后续只能重新接受数据边界并
-> 从最新 `main` 另立独立 schema recovery/diagnostic lineage。
+> 从最新 `main` 另立独立 `phase-6.9.8-retriever-final-response-schema-recovery-v1` SR0 zero-provider
+> schema-recovery/diagnostic lineage。
 
 ## 2. 目标与非目标
 

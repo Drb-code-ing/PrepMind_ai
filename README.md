@@ -1,6 +1,7 @@
 # PrepMind AI 智能备考助手
 
-> 当前原子任务（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live 已正常 durable seal，但质量门失败。
+> 当前状态（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live 已正常 durable seal，但质量门失败；main parity 与
+> 合并后二次 zero-provider 回归均已完成。当前原子任务是从最新 main 新开的 SR0 Schema Recovery zero-provider 设计。
 > run `ff035203-500f-4744-b33c-3c375ae4c785` 在 approved source/tag `fa502925...` 上完成 8/8 zero-call guards；
 > `rewrite_01` strict 成功，`rewrite_03` 在第二次真实 DeepSeek 调用后以 bounded `schema` failure 打开 breaker，剩余
 > 10 条 lane 未启动。最终 `p1_l2_quality_gate_failed / qualityAuthority=none / semanticGate=none`，Provider/credential/
@@ -13,8 +14,15 @@
 > recovery/seal、curl、单 case 或追加 Provider 探测。证据与文档已在 `1f3c0d9b` 提交，并以 `--no-ff` 合并到
 > 生产/证据 merge `f4fac048` 后，文档 parity 以 `613cc772` 合并；最终 `main == origin/main` 的零 Provider 二次回归已通过。main parity 记录见
 > [`P1 L2 main parity 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md)。
-> 下一功能任务必须从最新 `main` 新开独立 schema recovery/diagnostic lineage。不使用 worktree，不清理 Docker
-> 容器/镜像/卷/数据库/Redis/MinIO。
+> 已创建普通分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr0`，独立 lineage 为
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1`，SR0 authority 为
+> `zero_provider_retriever_final_response_schema_recovery_design / qualityAuthority=none`。本阶段只冻结
+> Provider content/envelope/projection/local-authority 四步 schema、bounded diagnostic、权限、并发与 crash-only 停止门，
+> 不读 `.env`、不调用 Provider、不创建正式 evidence、不启动产品。详见
+> [`Schema Recovery SR0 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md)、
+> [`SR0 实施计划`](docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md) 与
+> [`SR0 zero-provider 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md)。
+> 下一步只解锁 SR1 strict parser/projection TDD；不使用 worktree，不清理 Docker 容器/镜像/卷/数据库/Redis/MinIO。
 
 > 历史回执（2026-08-08）：Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。run
 > `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上按

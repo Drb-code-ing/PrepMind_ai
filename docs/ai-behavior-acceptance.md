@@ -2,7 +2,7 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 P1 L2 controlled-Live 失败封存（当前，2026-08-09）
+## Phase 6.9.8 P1 L2 controlled-Live 失败封存（最新封存状态，2026-08-09）
 
 唯一 run `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag `fa502925...` 上由正常 runtime 路径
 durable seal。8/8 guard 继续 zero-call；真实行为只执行 `rewrite_01` 与 `rewrite_03` 两条 DeepSeek lane，前者 strict
@@ -17,6 +17,23 @@ recovery claim。`schema` 只代表未满足本地 strict contract，不能推�
 回归；完整记录见
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
 main parity 记录见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
+
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR0（当前，zero-provider）
+
+P1 L2 已封存且不得重跑；当前从最新 `main` 新开普通分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr0`，冻结独立
+`phase-6.9.8-retriever-final-response-schema-recovery-v1`。SR0 只读复盘 `schema / runtime_untrusted` 的可证边界，
+不猜测 `rewrite_03` 原文或具体字段；设计 Provider content → envelope → canonical rewrite projection → local
+safety/authority 四步合同，并固定 bounded enum/bucket diagnostic 与 `rawDataRetained=false`。
+
+SR0 authority=`zero_provider_retriever_final_response_schema_recovery_design / qualityAuthority=none`。本阶段
+`providerCalls=0 / credentialReads=0 / formalEvidence=0`，不读 `.env`、不调用 DeepSeek/Qwen、不启动 Docker/API/browser、
+不写 Trace/BackgroundJob/Outbox/业务数据。它只解锁 SR1 strict parser/projection TDD，不形成真实模型质量、Qwen 检索、
+P95/SLA、产品或 `main` authority。设计、计划与验收见：
+
+- `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
+- `docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`
 
 ## Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live sealed（2026-08-08）
 

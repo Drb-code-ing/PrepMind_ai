@@ -1,14 +1,16 @@
 # PrepMind AI 学习与开发路线图
 
-> 当前原子任务（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live run
+> 最新封存状态（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live run
 > `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag `fa502925...` 上 durable seal，但 gate 为
 > `p1_l2_quality_gate_failed / qualityAuthority=none`。8/8 guards zero-call；第二条真实 DeepSeek rewrite 以 bounded
 > `schema` failure 打开 breaker，实际 Provider calls=`2/12`、Qwen calls=`0`、usage=`343/40`、aggregate cost=`null`，
 > 后续 10 条 lane 未启动。Journal `41`、validator=`bundle_valid`、recovery claim=`null`。该结果不形成 P1 semantic、
 > 产品 Docker/API/browser、Trace、SLA 或 `main` 产品 authority，且不得重跑/追加探测。证据/文档已在 `1f3c0d9b` 提交，
 > 以 `--no-ff` 生成生产/证据 merge `f4fac048`，文档 parity 再以 `613cc772` 合并，最终完成 `main == origin/main` 的
-> zero-provider 回归。下一功能任务为独立
-> schema recovery/diagnostic lineage。验收见
+> zero-provider 回归。P1 L2 已收口，不能重跑或继续追加探测；下一功能任务为从该 `main` 新开的独立
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1` SR0 schema-recovery/diagnostic 设计（zero-provider），
+> authority=`zero_provider_retriever_final_response_schema_recovery_design / qualityAuthority=none`。SR0 只解锁 SR1，
+> 不形成 Provider、产品或 main authority。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 

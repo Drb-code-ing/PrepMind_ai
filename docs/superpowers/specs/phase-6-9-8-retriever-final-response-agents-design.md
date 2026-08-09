@@ -1,15 +1,17 @@
 # Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计
 
 > 状态：本文是 Task 0--8 的历史设计基线；Task 9C/R5 已失败封存，V2 L1 已以 transport diagnostic authority
-> durable seal。当前 P1 zero-provider semantic-gate 设计已另立独立 lineage 冻结，G1 尚未开始；产品/main 与后续
-> 阶段仍受各自 semantic/product gate 约束。
+> durable seal。P1/G1/G2/S2 与唯一 L2 已完成并封存，当前语义路线已从最新 `main` 转入独立
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1` 的 SR0 zero-provider schema-recovery/diagnostic 设计；
+> 产品/main 与后续阶段仍受各自 gate 约束。
 > 日期：2026-08-05
 > 分支：`drb/phase-6-9-8-retriever-final-response-contract`
 > Design Authority：`zero_provider_retriever_final_response_design`
 > Current Checkpoint Authority（本文历史上下文）：`architecture_recovery_mock_quality_not_evidence / qualityAuthority=none`
 
-> 当前入口：`docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、
-> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与对应 acceptance。
+> 当前入口：`docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`、
+> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md` 与对应 SR0 acceptance；P1 入口保留为
+> 历史冻结记录。
 
 ## 1. 决策与目标
 

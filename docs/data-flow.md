@@ -1,6 +1,6 @@
 # PrepMind AI 数据流
 
-> 当前 P1 L2 controlled-Live sealed flow（2026-08-09）：唯一 run 的入口围栏为
+> 最近封存的 P1 L2 controlled-Live flow（2026-08-09）：唯一 run 的入口围栏为
 > `exact argv -> source/remote parity -> approved tag -> frozen manifest/policy/baseline/S2 identity ->
 > DeepSeek/Qwen data-boundary receipt -> exact lineage/source authorization -> bounded budget -> selective root .env
 > projection -> credential capability -> exclusive marker/reservation -> 8 guards -> 6 DeepSeek rewrite -> 6 DeepSeek
@@ -14,6 +14,15 @@
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。随后文档与 root artifact
 > 已在 `1f3c0d9b` 提交并以 `f4fac048` 合并源码/证据，文档 parity 再以 `613cc772` 合并、推送到 `main`；二次零 Provider parity 见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
+
+> 当前功能流（SR0，zero-provider）：从最新 `main@6dbe96e2` 的普通分支
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr0` 冻结独立
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1`。本阶段数据只经过
+> `sealed P1 L2 read-only facts -> content/envelope/projection/local-authority design -> bounded diagnostic contract ->
+> permission/concurrency/durability stop gates -> document acceptance`；不读取 `.env`/credential，不创建
+> marker/journal/report/artifact/recovery claim，不调用 DeepSeek/Qwen，不进入 Docker/API/browser、Trace、BackgroundJob、
+> Outbox 或产品写入。SR0 authority=`zero_provider_retriever_final_response_schema_recovery_design / qualityAuthority=none`，
+> 只解锁下一阶段 SR1 strict parser/projection TDD；该设计不改变已封存 P1 L2 flow。
 
 > 当前 L1 controlled-Live sealed（2026-08-08）：V2 已从 S1 reviewed Mock/static 收口到唯一可受控执行的
 > production-shaped launcher。固定入口顺序为 `exact argv -> source/remote parity -> loopback proxy preflight ->
