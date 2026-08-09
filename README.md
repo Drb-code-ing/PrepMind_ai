@@ -1,26 +1,32 @@
 # PrepMind AI 智能备考助手
 
-## 当前工作回执：Schema Recovery SR3（2026-08-09）
+## 当前工作回执：Schema Recovery SR4 reviewed Mock/static（2026-08-09）
 
-当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`，基线
-`main == origin/main == 849af1c84231a4c0fbe54426ddae02d0a1b28a30`。SR3 已完成 zero-provider runner、Git/synthetic
-source admission、durability、strict validate/recover CLI 与 reviewed Mock 回归；固定 `8 guards + 6 rewrite + 6
-FinalResponse`、12 次候选调用、最大并发 1、首错 breaker。
+当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4`，基线
+`main == origin/main == 421015dbf472e008fad32200fa8a89e240818fcf`。SR4 已完成 zero-provider reviewed Mock/static：实际
+穿过 Retriever original/query-rewrite、bounded raw-content policy parser、synthetic Qwen search port、verified-evidence
+projector、FinalResponse stream、local merger 与 SR3 fixed-denominator runner；固定 `8 guards + 6 rewrite + 6
+FinalResponse`、12 次候选调用、最大并发 1、每 lane single dispatch、首错 breaker。
 
 ```text
-authority       zero_provider_retriever_final_response_schema_recovery_runner_durability
+authority       zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock
 qualityAuthority none
-gate            schema_recovery_mock_quality_not_evidence
-manifestSha     d14c08455126fad492f9f01ed07a1a4fd911241c62384fbd07537e4ffda1bede
-policySha       6c1f1b0388b2b595f141061cb3d0d34607b6214a4772e7cb4a17309e431cebf8
-focused         15/15 tests, 49 assertions
-combo           63/63 tests, 635 assertions (14 files)
-agent/ai full   1477/1477 tests, 24908 / 2662 assertions
+gate            schema_recovery_mock_quality_not_evidence (passed=true)
+factorySha      7bc32c8ed68c3c8d76c9c983b40e771f24c0181cda7976cbc97ab1fb4c26d157
+upstreamSha     d14c0845...da1bede / 6c1f1b03...1cebf8 / 73f06485...951ef8
+focused         11/11 tests, 99 assertions
+runtime         12/12/12/12 reservations/dispatches/responses/verifiedUsage
+schema          4 canonical + 2 extension discarded + 0 rejected
+nodePath        18/6/6/6/6 original/candidate/projector/final/merger
+combo           74/74 tests, 734 assertions (15 files)
+agent full      1488/1488 tests, 25020 expect() (190 files)
+ai/types/web    345/345; 42/42 + tsc; 487/487
 provider/env    0 / 0; formal evidence 0
 ```
 
 本回执只证明工程化边界和 zero-provider reviewed Mock，不证明真实 DeepSeek/Qwen 质量、RAG 召回、产品 `/api/chat`、
-Docker/API/browser、Trace、P95/SLA 或 `main` 产品可用性。SR3 acceptance、设计和计划见：
+Docker/API/browser、Trace、P95/SLA 或 `main` 产品可用性。SR4 acceptance、设计和计划见：
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`、
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md`。

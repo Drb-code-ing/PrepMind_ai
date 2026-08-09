@@ -2,12 +2,12 @@
 
 日期：2026-08-09
 
-状态：SR3 zero-provider runner/source admission/durability 已完成；本文件保留 SR0 设计与 SR1/SR2 历史 handoff，并记录
-SR3 到 SR4 的停止门
+状态：SR4 zero-provider reviewed Mock/static 已完成；本文件保留 SR0 设计与 SR1/SR2/SR3 handoff，并记录 SR4 到
+fresh SR5 admission 的停止门
 
-当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4`
 
-当前基线：`main@849af1c84231a4c0fbe54426ddae02d0a1b28a30`，创建 SR3 分支时
+当前基线：`main@421015dbf472e008fad32200fa8a89e240818fcf`，创建 SR4 分支时
 `main == origin/main`，工作树在实现前 clean
 
 独立 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
@@ -15,6 +15,28 @@ SR3 到 SR4 的停止门
 SR0 authority：`zero_provider_retriever_final_response_schema_recovery_design`
 
 qualityAuthority：`none`
+
+## SR4 handoff（2026-08-09，reviewed Mock/static）
+
+SR4 已在当前普通分支完成 reviewed Mock/static，authority=
+`zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock / qualityAuthority=none`，gate=
+`schema_recovery_mock_quality_not_evidence`。它不是 SR5 controlled-Live，也不读取 credential、不调用 Provider、不写正式
+evidence 或产品数据。
+
+实现先由 prompt-only responder 从实际 bounded prompt 生成 canonical query，再在内存构造 raw JSON，交给
+`parseModelAgentJsonContentWithPolicy` 做有界语法/投影；extension 只形成 bounded `extension_fields_discarded` 诊断并丢弃。
+完整生产形状路径为 `Retriever original -> query-rewrite candidate -> synthetic Qwen search port -> evidence projector ->
+FinalResponse stream -> local merger -> SR3 runner`，并固定 `8/6/6/12/20` 分母、最大并发 `1`、无 retry/replay。
+
+固定结果：guards `8/8`，runtime `12/12/12/12`，schema `4 canonical + 2 extension discarded + 0 rejected`，FinalResponse
+strict `6`，节点路径 `18/6/6/6/6`，synthetic Qwen port `18`，临时 evidence `1` 创建后 `0` 残留，formal namespace=`0`；
+factory SHA=`sha256:7bc32c8ed68c3c8d76c9c983b40e771f24c0181cda7976cbc97ab1fb4c26d157`，SR3 upstream report SHA=
+`73f0648549e02ec02de2907718d27b71fded2b76e91ac153e7df312a40951ef8`。
+
+SR4 focused `11/11`（99 assertions）、组合 `74/74`（734 assertions）、Agent full `1488/1488`、AI full `345/345`、Types
+`42/42 + tsc`、Web `487/487`、Server build 与 Agent/AI typecheck/lint 均通过；文档 parity 与 main 二次回归以 SR4 acceptance
+为准。SR4 只解锁
+fresh SR5 admission；任何真实 Live 必须重新接受当次 DeepSeek/Qwen 数据边界并给出绑定新 source 的 exact authorization。
 
 ## SR1 handoff（2026-08-09，独立实现 checkpoint）
 
@@ -58,6 +80,27 @@ typecheck/lint 已通过；`providerCalls=0 / credentialReads=0 / businessWrites
 `zero_provider_retriever_final_response_schema_recovery_runner_durability / qualityAuthority=none`，gate=
 `schema_recovery_mock_quality_not_evidence`。SR3 只解锁 SR4 reviewed Mock/static，不产生 semantic/product/main/P95/SLA
 authority；验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。
+
+## SR4 implementation checkpoint（2026-08-09，reviewed Mock/static）
+
+SR4 在从已推送 `main@421015dbf472e008fad32200fa8a89e240818fcf` 新开的普通分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 上完成。它没有复用或改写任何 sealed Live 文件，也没有
+读取 credential、调用 Provider 或创建正式 evidence。SR4 factory identity 为
+`phase-6.9.8-retriever-final-response-schema-recovery-sr4-factory-v1`，SHA=
+`sha256:7bc32c8ed68c3c8d76c9c983b40e771f24c0181cda7976cbc97ab1fb4c26d157`。
+
+reviewed Mock 的 responder 只消费实际 bounded prompt；先生成 canonical query，再通过 raw-content policy parser 构造并
+解析内存 JSON，最后把 canonical projection 交给真实 Retriever/FinalResponse production-shaped nodes。extension 只生成
+固定 `extension_fields_discarded` sidecar 后丢弃，`rawDataRetained=false`；SR3 runner 负责 fixed denominator、wire、usage、
+breaker 与 fault 分类。默认回放为 `8/8` guards、`12/12/12/12` reservations/dispatches/responses/verifiedUsage、
+`12/0/0` succeeded/failed/notStarted、schema `4 canonical + 2 extension discarded + 0 rejected`、FinalResponse strict `6`，
+节点路径 `18/6/6/6/6`，synthetic Qwen port `18`，临时 evidence `1 -> 0`。
+
+SR4 focused `11/11`（99 assertions）及 CLI smoke 已通过；authority=
+`zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock / qualityAuthority=none`，gate=
+`schema_recovery_mock_quality_not_evidence`。该阶段只解锁 fresh SR5 admission，不解锁 Provider、Docker/API/browser、产品、
+Trace、P95/SLA 或 `main`；验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`。
 
 ## 1. 决策摘要
 

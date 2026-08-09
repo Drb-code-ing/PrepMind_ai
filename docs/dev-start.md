@@ -3,9 +3,33 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 Schema Recovery SR3 入口（zero-provider，2026-08-09）
+## 当前 Schema Recovery SR4 reviewed Mock 入口（zero-provider，2026-08-09）
 
-当前普通分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`，基线
+当前普通分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4`，基线
+`main == origin/main == 421015dbf472e008fad32200fa8a89e240818fcf`。SR4 固定 `8 guards + 6 rewrite + 6 FinalResponse`
+与 `12` 次 candidate invocation，最大并发 `1`，每 lane single dispatch、首错 breaker；它真实穿过 Retriever、bounded
+schema parser、synthetic Qwen port、evidence projector、FinalResponse、local merger 与 SR3 runner。
+
+安全回放（只使用内存/OS 临时目录，结束自动清理）：
+
+```powershell
+bun --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr4:mock
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock.test.ts
+```
+
+默认结果为 guards `8/8`、runtime `12/12/12/12`、schema `4 canonical + 2 extension discarded + 0 rejected`、
+FinalResponse strict `6`、节点计数 `18/6/6/6/6`、synthetic Qwen port `18`；gate=
+`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。focused `11/11`（99 assertions）、组合 `74/74`（734
+assertions）、Agent full `1488/1488`、AI full `345/345`、Types `42/42 + tsc`、Web `487/487` 与 Server build 已通过。
+
+SR4 全程 `providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`，不读 root `.env`、不调用
+DeepSeek/Qwen、不启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser、不写 Trace/BackgroundJob/Outbox/业务数据。
+SR4 不是真实模型质量、产品 `/api/chat`、P95/SLA 或 `main` authority；未来 SR5 必须重新接受当次数据边界并给出 exact
+authorization。
+
+## 历史 Schema Recovery SR3 入口（zero-provider，2026-08-09）
+
+历史普通分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`，历史基线
 `main == origin/main == 849af1c84231a4c0fbe54426ddae02d0a1b28a30`。SR3 固定 `8 guards + 6 rewrite + 6 FinalResponse`
 与 `12` 次 candidate invocation，最大并发 `1`；已实现 source admission、strict runner、hash-chain durability、hard-link
 publication、validate 与 crash-only recover/seal CLI。authority=

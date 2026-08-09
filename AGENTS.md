@@ -1,33 +1,35 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前状态：Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR3 已完成实现与 zero-provider 验收（2026-08-09）
+## 当前状态：Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR4 reviewed Mock/static（2026-08-09）
 
-当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`，基线为
-`main == origin/main == 849af1c84231a4c0fbe54426ddae02d0a1b28a30`；SR3 文档/源码 parity 完成后按一阶段一提交推送，
+当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4`，基线为
+`main == origin/main == 421015dbf472e008fad32200fa8a89e240818fcf`；代码与文档 parity 完成后按一阶段一提交推送，
 再以 `--no-ff` 合并回 `main`，合并后必须二次回归并推送 `origin/main`。不使用 worktree，不清理 Docker、数据库、Redis 或 MinIO。
 
-独立 lineage 仍为 `phase-6.9.8-retriever-final-response-schema-recovery-v1`；SR3 authority=
-`zero_provider_retriever_final_response_schema_recovery_runner_durability / qualityAuthority=none`。固定分母为
-`8 guards + 6 rewrite candidates + 6 FinalResponse candidates = 20 report entries / 12 candidate invocations`，最大并发
-`1`、pair-interleaved、每 lane 单次 dispatch、首错 breaker；预算上限为 input/output `37600/8800`、总成本 `0.176 CNY`。
-manifest SHA=`d14c08455126fad492f9f01ed07a1a4fd911241c62384fbd07537e4ffda1bede`，policy SHA=
-`6c1f1b0388b2b595f141061cb3d0d34607b6214a4772e7cb4a17309e431cebf8`，SR2 fixture SHA=
-`59010e16fd665df6d497517276dbeacb3f5973036a07e8cf00010569da171505`。
+独立 lineage 仍为 `phase-6.9.8-retriever-final-response-schema-recovery-v1`；SR4 authority=
+`zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock`、gate=
+`schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`。SR4 固定 `8 guards + 6 rewrite candidates + 6
+FinalResponse candidates = 20 report entries / 12 candidate invocations`，最大并发 `1`、每 lane 单次 dispatch、首错
+breaker；factory SHA=`sha256:7bc32c8ed68c3c8d76c9c983b40e771f24c0181cda7976cbc97ab1fb4c26d157`，上游 SR3 manifest/policy/report
+SHA=`d14c0845...da1bede / 6c1f1b03...1cebf8 / 73f06485...951ef8`。
 
-SR3 已落地独立 source admission、WeakMap/WeakSet single-use capability、fsynced marker/hash-chain journal、严格
-report/validator、hard-link artifact、PID/start-identity 检查、publication-prefix 与 crash-only recovery；CLI 提供严格
-zero-provider run/validate/recover(seal) 参数，脚本默认只在临时目录执行 reviewed Mock。Git-verified source seam 会在
-reservation 时重新检查 source drift；根 `packages/agent/src/index.ts` 已纳入 source bundle path。
+SR4 reviewed Mock 真实穿过 `Retriever original -> query-rewrite candidate -> bounded raw-content policy parser ->
+synthetic Qwen search port -> verified-evidence projector -> FinalResponse stream -> local merger -> SR3 runner`；extension
+字段只形成有界诊断并丢弃，不保存 raw content/hash。默认结果为 guards `8/8`、reservations/dispatches/responses/
+verifiedUsage/succeeded/failed/notStarted=`12/12/12/12/12/0/0`，schema=`4 canonical + 2 extension discarded + 0 rejected`，
+FinalResponse strict=`6`，节点计数 Retriever original/candidate/projector/FinalResponse/merger=`18/6/6/6/6`，synthetic Qwen
+port=`18`，正式 evidence=`0`。
 
-当前证据：SR3 focused `15/15`（49 assertions，5 files），SR1+SR2+SR3+Task9B 组合回放 `63/63`
-（635 expect()，14 files）；Agent full `1477/1477`（24908 expect()，189 files），AI full `345/345`（2662 expect()，28 files），
-Agent typecheck/lint 通过。
-全程 `providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`，未读取根 `.env`、未调用 DeepSeek/Qwen、
-未启动 Docker/API/browser、未写 Trace/BackgroundJob/Outbox 或业务数据。reviewed Mock gate=
-`schema_recovery_mock_quality_not_evidence`，不形成真实模型质量、产品、`main`、P95/SLA 或博客 authority。
+SR4 focused `11/11`（99 assertions）、SR1+SR2+SR3+Task9B+SR4 组合 `74/74`（734 assertions，15 files）、Agent full
+`1488/1488`（25020 expect()，190 files）、AI full `345/345`（2662 expect()，28 files）、Types `42/42 + tsc`、Web
+`487/487`、Server build、Agent/AI typecheck/lint 均通过；historical SR3 validator/SHA parity 由组合回放覆盖。全程
+`providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`，未读取根 `.env`、
+未调用 DeepSeek/Qwen、未启动 Docker/API/browser、未写 Trace/BackgroundJob/Outbox 或业务数据。SR4 只解锁 fresh SR5
+admission，不形成真实模型质量、产品、`main`、P95/SLA 或博客 authority。
 
-完整 SR3 验收见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`；SR2/SR1 及设计入口见
+完整 SR4 验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`；SR3/SR2/SR1 及设计入口见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`、
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md` 与
@@ -82,7 +84,7 @@ recovery/seal、curl、单 case或追加 Provider 探测；不得删除、格式
 `main == origin/main` 上完成二次零 Provider 验收；
 main parity 记录见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。P1 L2 已完成
 源码/证据合并、远程推送与合并后二次 zero-provider 回归；不得把它称为仍待完成的 Live。其后 SR0 已作为历史设计
-checkpoint 合并；当时实现状态以该 checkpoint 的 SR2 回执和 SR2 acceptance 为准，当前状态以本文件顶部 SR3 回执为准；SR0/SR1 设计、计划和验收分别见
+checkpoint 合并；当时实现状态以该 checkpoint 的 SR2 回执和 SR2 acceptance 为准，当前状态以本文件顶部 SR4 回执为准；SR0/SR1 设计、计划和验收分别见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`。Docker 容器、镜像、

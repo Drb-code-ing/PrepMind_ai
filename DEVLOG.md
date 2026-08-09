@@ -1,5 +1,33 @@
 # PrepMind AI 开发日志
 
+> 2026-08-09 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR4 reviewed Mock/static 已完成：
+>
+> 从已推送 `main == origin/main == 421015dbf472e008fad32200fa8a89e240818fcf` 新开普通 git 分支
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4`。SR4 沿用
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1` lineage，factory version 为
+> `phase-6.9.8-retriever-final-response-schema-recovery-sr4-factory-v1`，factory SHA=
+> `sha256:7bc32c8ed68c3c8d76c9c983b40e771f24c0181cda7976cbc97ab1fb4c26d157`。
+>
+> 本次修复了 reviewed Mock 直接把 object 交给 Zod、导致 extension 被误判为 schema failure 的链路。prompt-only responder
+> 先根据实际 bounded prompt 生成 canonical query，再在内存构造 raw JSON，经 `parseModelAgentJsonContentWithPolicy`
+> 完成有界 parser/projection；extension 字段只形成固定诊断并丢弃，raw content、raw hash、字段名和值不保留。解析失败统一
+> 复用 SR3 runtime error 分类，避免把 schema/usage/transport/timeout/abort/cross-owner 混成 transport。
+>
+> 生产形状链路为 `Retriever original -> query-rewrite candidate -> bounded raw-content parser -> synthetic Qwen search
+> port -> evidence projector -> FinalResponse stream -> local merger -> SR3 runner`。固定 `8 guards + 6 rewrite + 6
+> FinalResponse = 20 report entries / 12 candidate invocations`、最大并发 `1`、single dispatch、no retry/replay；默认结果
+> 为 guards `8/8`、runtime `12/12/12/12`、schema `4 canonical + 2 extension discarded + 0 rejected`、FinalResponse
+> strict `6`、节点计数 `18/6/6/6/6`、synthetic Qwen port `18`，gate=
+> `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。
+>
+> SR4 focused `11/11`（99 assertions）、SR1+SR2+SR3+Task9B+SR4 组合 `74/74`（734 assertions，15 files）、Agent full
+> `1488/1488`（25020 expect()，190 files）、AI full `345/345`（2662 expect()，28 files）、Types `42/42 + tsc`、Web
+> `487/487`、Server build、Agent/AI typecheck/lint 均通过；historical SR3 validator/SHA parity 由组合回放覆盖。全程
+> `providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`，不读根
+> `.env`、不调用 DeepSeek/Qwen、不启动/清理 Docker/API/browser、不写 Trace/BackgroundJob/Outbox/业务数据。SR4 只解锁
+> fresh SR5 admission；不形成真实模型、产品、main、P95/SLA 或博客 authority。完整验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`。
+
 > 2026-08-09 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR3 zero-provider runner/source admission/durability 已完成：
 >
 > 从 `main == origin/main == 849af1c84231a4c0fbe54426ddae02d0a1b28a30` 新开普通 git 分支

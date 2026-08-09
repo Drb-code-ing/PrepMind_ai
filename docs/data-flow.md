@@ -1,30 +1,42 @@
 # PrepMind AI 数据流
 
-## 当前 SR3 zero-provider durability flow（2026-08-09）
+## 当前 SR4 reviewed Mock/static flow（2026-08-09）
 
-当前分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3` 的数据流不进入产品 Chat：
+当前分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 的数据流不进入产品 Chat：
 
 ```text
-strict argv
-  -> Git/synthetic source admission
-  -> single-use capability + exclusive marker
-  -> fsync attempt_reserved
-  -> 8 zero-call guards
-  -> pair-interleaved [rewrite candidate -> FinalResponse candidate]（最多 12 次 synthetic dispatch）
-  -> dispatch/response/verified-usage journal stages
-  -> strict report recomputation
-  -> publication_started -> hard-link report/artifact -> validator
+actual bounded prompt
+  -> prompt-only responder（不接收 expected/oracle/caseId）
+  -> in-memory raw JSON（canonical + bounded extension）
+  -> bounded policy parser / canonical projection
+  -> Retriever original + rewrite candidate
+  -> synthetic Qwen search port
+  -> verified-evidence projector
+  -> FinalResponse stream
+  -> local citation ledger / merger
+  -> SR3 fixed-denominator runner（8 guards + 12 lanes）
+  -> strict report/hash recomputation
 ```
 
 每条 lane 只允许一次 dispatch，最大并发为 `1`，首个 contract/permission/safety/budget/transport/schema/usage/abort
-失败打开 breaker；recovery 只补 durable prefix，不重放 Provider call、不创建 executor、不恢复 sibling。CLI 默认把 reviewed
-Mock 写入并清理 OS 临时 root；公开 validate/recover(seal) 参数 fail-closed。SIGINT/SIGTERM 在脚本层转换为 AbortSignal。
+失败打开 breaker；SR4 的 extension 只记录固定 stage/reason/type/count/shape 诊断后丢弃，raw content/hash 不进入 report、
+Trace 或产品 prompt。SR3 runner 仍负责固定分母、wire accounting、首错 breaker 与 synthetic fault 分类；本阶段不创建
+正式 marker/journal/report/artifact/recovery claim，临时 evidence probe 在 case 后精确清理。
 
 本阶段固定 `providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`，不读取 root `.env`、不调用
-DeepSeek/Qwen、不启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser，不写 Trace/BackgroundJob/Outbox。authority=
-`zero_provider_retriever_final_response_schema_recovery_runner_durability`、gate=
-`schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`；因此不形成 semantic/product/main/P95/SLA authority。
-验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。
+DeepSeek/Qwen、不启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser，不写 Trace/BackgroundJob/Outbox。默认回放结果为
+`8/8` guards、`12/12/12/12` reservations/dispatches/responses/verifiedUsage、schema `4 canonical + 2 extension discarded`
+、Retriever node path `18/6/6/6/6`、synthetic Qwen port `18`；authority=
+`zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock`、gate=
+`schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`。因此不形成 semantic/product/main/P95/SLA authority。
+验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`；focused `11/11`、组合
+`74/74`、Agent full `1488/1488`、AI full `345/345`、Types `42/42` 与 Web `487/487` 已通过，Server build 通过。
+
+## SR3 历史 durability flow
+
+SR3 仍保留 `strict argv -> source admission -> single-use capability -> exclusive marker -> fsynced journal -> strict
+validator -> crash-only prefix recovery` 的独立 zero-provider 流；其 authority 与封存证据不可变，详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。
 
 > 最近封存的 P1 L2 controlled-Live flow（2026-08-09）：唯一 run 的入口围栏为
 > `exact argv -> source/remote parity -> approved tag -> frozen manifest/policy/baseline/S2 identity ->

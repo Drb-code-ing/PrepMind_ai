@@ -1,27 +1,36 @@
 # PrepMind AI 学习与开发路线图
 
-## 当前原子阶段：Phase 6.9.8 Schema Recovery SR3（2026-08-09）
+## 当前原子阶段：Phase 6.9.8 Schema Recovery SR4 reviewed Mock/static（2026-08-09）
 
-SR3 已在普通分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3` 完成 zero-provider runner、source
-admission 与 durability；基线为 `main == origin/main == 849af1c84231a4c0fbe54426ddae02d0a1b28a30`。独立 lineage 为
+SR4 已在普通分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 完成 zero-provider reviewed Mock/static；
+基线为 `main == origin/main == 421015dbf472e008fad32200fa8a89e240818fcf`。独立 lineage 为
 `phase-6.9.8-retriever-final-response-schema-recovery-v1`，authority=
-`zero_provider_retriever_final_response_schema_recovery_runner_durability / qualityAuthority=none`。
+`zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock / qualityAuthority=none`，gate=
+`schema_recovery_mock_quality_not_evidence`。
 
-固定 `8 guards + 6 rewrite + 6 FinalResponse = 20 report entries / 12 candidate invocations`，最大并发 `1`，pair
-interleaving、reservation-before-dispatch、single dispatch、首错 breaker、fsynced hash-chain journal、hard-link artifact
-和 crash-only prefix recovery 均已实现。manifest/policy SHA 为
-`d14c08455126fad492f9f01ed07a1a4fd911241c62384fbd07537e4ffda1bede /
-6c1f1b0388b2b595f141061cb3d0d34607b6214a4772e7cb4a17309e431cebf8`。
+SR4 真实穿过 `Retriever original -> query-rewrite candidate -> bounded raw-content parser -> synthetic Qwen search port
+-> evidence projector -> FinalResponse stream -> local merger -> SR3 runner`。固定 `8 guards + 6 rewrite + 6 FinalResponse`
+（20 report entries / 12 candidate invocations），最大并发 `1`，每 lane 单次 dispatch、首错 breaker；factory SHA=
+`sha256:7bc32c8ed68c3c8d76c9c983b40e771f24c0181cda7976cbc97ab1fb4c26d157`。
 
-回归：SR3 focused `15/15`（49 assertions），SR1+SR2+SR3+Task9B 组合 `63/63`（635 assertions，14 files），Agent full
-`1477/1477`（24908 expect()，189 files），AI full `345/345`（2662 expect()）。全程 `providerCalls=0 / credentialReads=0 / businessWrites=0 /
-formalEvidence=0`，不读 `.env`、不调用 Provider、不启动或清理 Docker/API/browser、不写 Trace/BackgroundJob/Outbox。
-reviewed Mock gate=`schema_recovery_mock_quality_not_evidence`，只解锁 SR4 reviewed Mock/static；不形成 semantic/product/main、
-P95/SLA 或博客 authority。验收记录见
+默认回放结果为 guards `8/8`、runtime reservations/dispatches/responses/verifiedUsage=`12/12/12/12`、succeeded/failed/
+notStarted=`12/0/0`，schema=`4 canonical + 2 extension discarded + 0 rejected`，FinalResponse strict=`6`，节点计数
+Retriever original/candidate/projector/FinalResponse/local merger=`18/6/6/6/6`，synthetic Qwen port=`18`。SR4 focused
+`11/11`（99 assertions）已通过；组合 `74/74`（734 assertions，15 files）、Agent full `1488/1488`（25020 expect()，190 files）、
+AI full `345/345`、Types `42/42 + tsc`、Web `487/487`、Server build 与 Agent/AI typecheck/lint 均通过；全程
+`providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`，不读
+根 `.env`、不调用 DeepSeek/Qwen、不启动/清理 Docker/API/browser、不写 Trace/BackgroundJob/Outbox 或业务数据。
+
+SR4 只解锁 fresh SR5 admission，不形成真实模型语义、产品、`main`、P95/SLA 或博客 authority。完成本分支文档/代码 parity
+后，按一阶段一提交推送，`main --no-ff` 合并，合并后再跑 focused/static/typecheck 回归并推送远程。任何
+controlled-Live 都必须重新接受当次 DeepSeek/Qwen 数据边界并给出绑定新 source 的 exact authorization。验收记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`。
+
+## SR3 历史 checkpoint（已完成）
+
+SR3 的 runner/source admission/durability 已合并到上述基线，旧 authority、manifest/policy SHA 与 zero-provider 证据保持
+不可变；详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。
-
-下一步：从该分支完成 parity 后提交/推送，合并 `main` 并在 `main` 二次回归；随后从最新推送 `main` 新开 SR4。任何
-controlled-Live 仍需重新接受当次 DeepSeek/Qwen 数据边界并给出 exact authorization。
 
 > 历史封存状态（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live run
 > `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag `fa502925...` 上 durable seal，但 gate 为
