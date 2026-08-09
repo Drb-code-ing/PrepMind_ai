@@ -2,15 +2,15 @@
 
 日期：2026-08-09
 
-当前状态：SR3 已在独立普通分支完成 zero-provider runner/source admission/durability；没有读取凭据、调用 Provider、创建
-正式 evidence 或启动产品。当前只解锁 SR4 reviewed Mock/static。
+当前状态：SR4 已在独立普通分支完成 zero-provider reviewed Mock/static；没有读取凭据、调用 Provider、创建正式 evidence
+或启动产品。当前只解锁 fresh SR5 admission。
 
 设计来源：
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
 
-当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`
+当前分支：`main`（SR4 功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 已以 `--no-ff` 合并）
 
-当前基线：`main@849af1c84231a4c0fbe54426ddae02d0a1b28a30`
+当前基线：`main@421015dbf472e008fad32200fa8a89e240818fcf`
 
 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
 
@@ -19,6 +19,11 @@ SR3 authority：`zero_provider_retriever_final_response_schema_recovery_runner_d
 SR3 identity：manifest SHA=`d14c08455126fad492f9f01ed07a1a4fd911241c62384fbd07537e4ffda1bede`，policy SHA=
 `6c1f1b0388b2b595f141061cb3d0d34607b6214a4772e7cb4a17309e431cebf8`；分母 `8/6/6/12/20`，最大并发 `1`，预算
 `37600/8800/0.176 CNY`。
+
+SR4 identity：factory SHA=`sha256:7bc32c8ed68c3c8d76c9c983b40e771f24c0181cda7976cbc97ab1fb4c26d157`；固定结果
+`8/8` guards、`12/12/12/12` reservations/dispatches/responses/verifiedUsage、schema `4 canonical + 2 extension discarded
++ 0 rejected`、FinalResponse strict `6`、节点路径 `18/6/6/6/6`、synthetic Qwen port `18`；gate=
+`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。
 
 ## 1. 执行纪律
 
@@ -134,12 +139,16 @@ SR3 GREEN：focused `15/15`（49 assertions，5 files）；SR1+SR2+SR3+Task 9B �
 
 ## 6. SR4：Reviewed Mock/static
 
-- 实际穿过 recovery parser、Retriever node、synthetic adapter、local authority、Qwen/evidence projector、FinalResponse、
-  validator、merger 和 SR3 runner；
-- 记录 canonical 与 extension-discarded 计数，拒绝理想 Mock 直接充当 expected；
-- 固定 gate=`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；
-- 临时 evidence 精确删除，正式 SR5 namespace/tag/marker/journal/artifact/claim 保持 0；
-- 完成 Agent/AI/Types/Server/Web 与历史 validator/SHA parity 的新增风险回归。
+- [x] 实际穿过 recovery parser、Retriever original/query-rewrite node、synthetic Qwen port、evidence projector、
+  FinalResponse stream、local authority/merger 和 SR3 runner；
+- [x] responder 只消费实际 bounded prompt；expected/oracle/caseId/baseline/credential/provider 不可见；
+- [x] extension 只记录 bounded `extension_fields_discarded` 计数并丢弃 raw content/hash；
+- [x] 固定 `8/6/6/12/20` 分母、最大并发 `1`、single dispatch、首错 breaker 与 schema/usage/transport/timeout/abort/
+  cross-owner fail-closed fault matrix；
+- [x] 固定结果 `8/8` guards、`12/12/12/12` wire、schema `4/2/0`、FinalResponse strict `6`、节点路径 `18/6/6/6/6`，
+  gate=`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；
+- [x] 临时 evidence `1` 创建后精确清理为 `0`，正式 SR5 namespace/tag/marker/journal/artifact/claim 保持 `0`；
+- [x] 完成 Agent/AI/Types/Server/Web 与 historical validator/SHA parity 的最终回放；SR4 提交/推送、`main --no-ff` 合并与合并后二次 focused/static/typecheck 回放已完成，待本次 amend 后推送远程。
 
 只解锁 fresh SR5 admission，不解锁 Provider。
 
@@ -163,9 +172,12 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
 - 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`、
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`、
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`、
-  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`；
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`、
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`；
 - 入口：`AGENTS.md`、`README.md`、`DEVLOG.md`、`docs/roadmap.md`、`docs/data-flow.md`、`docs/dev-start.md`、
   `docs/acceptance-checklist.md`、`docs/ai-behavior-acceptance.md`；
 - [x] SR2 fixture/responder SHA、shape/fault/metamorphic matrix 与 zero-provider authority 已记录；
 - [x] SR2 focused/组合/AI/typecheck/lint/Prettier/diff evidence 已记录；
+- [x] SR4 factory SHA、production-shaped node path、schema accounting、anti-oracle、fault matrix 与 zero-provider authority 已记录；
+- [ ] SR4 Agent/AI/Types/Server/Web/historical validator parity、分支推送、`main --no-ff` 合并与合并后二次回归完成后勾选；
 - 历史 P1 spec/plan 与 Agents 设计计划只更新“当前状态/下一步”指针，不改写已封存事实。

@@ -2,7 +2,35 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR3（当前，zero-provider）
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR4（当前，zero-provider reviewed Mock/static）
+
+SR4 是 Retriever/FinalResponse 生产形状链路与 schema recovery 边界验收，不是真实 Provider 质量验收。当前 `main` 已由
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 以 `--no-ff` 合并；固定 `8` 条 zero-call guard、`6` 条 rewrite、`6` 条
+FinalResponse、最大并发 `1`、每 lane 单次 dispatch 与首错 breaker；链路为
+`actual bounded prompt -> raw-content policy parser -> Retriever -> synthetic Qwen port -> evidence projector ->
+FinalResponse stream -> local merger -> SR3 runner`。
+
+```text
+authority       zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock
+gate            schema_recovery_mock_quality_not_evidence
+qualityAuthority none
+providerCalls   0
+credentialReads 0
+formalEvidence  0
+```
+
+默认结果：runtime wire `12/12/12/12`，schema `4 canonical + 2 extension discarded + 0 rejected`，FinalResponse strict `6`，
+Retriever original/candidate/projector/FinalResponse/merger `18/6/6/6/6`，synthetic Qwen port `18`。parser 只允许 canonical
+projection；extension 仅形成 bounded diagnostic 后丢弃，raw content/hash、字段名和值不保留。anti-oracle 审计确认
+responder 只接收实际 bounded prompt，不接收 caseId/expected/oracle/baseline/credential/provider。
+
+SR4 focused `11/11`（99 assertions）、组合 `74/74`（734 assertions）、Agent full `1488/1488`、AI full `345/345`、Types
+`42/42 + tsc`、Web `487/487` 与 Server build 已通过；fault matrix 覆盖 schema/usage/transport/timeout/abort/cross-owner，
+均 fail-closed、无 retry/replay。它不进入 `/api/chat`、RAG、Trace、Docker/API/browser、BackgroundJob、Outbox 或业务写入，
+不证明 DeepSeek/Qwen 质量、召回、P95/SLA、产品或 `main` 可用性；只解锁 fresh SR5 admission。完整回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`。
+
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR3（历史，zero-provider）
 
 SR3 是 durability/通信边界验收，不是回答质量验收。当前分支
 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3` 固定 `8` 条 zero-call guard、`6` 条 rewrite、`6` 条

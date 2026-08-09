@@ -5,9 +5,43 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0K. Phase 6.9.8 Schema Recovery SR3（当前，zero-provider，2026-08-09）
+## 0K. Phase 6.9.8 Schema Recovery SR4 reviewed Mock/static（当前，zero-provider，2026-08-09）
 
-当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`；基线：
+当前分支：`main`（SR4 功能分支已以 `--no-ff` 合并，文档 amend 后推送远程）；SR4 功能提交为 `ed9e76f2`。
+
+SR4 固定 `8 guards + 6 rewrite + 6 FinalResponse`、`20` report entries、`12` candidate invocations、最大并发 `1`、
+single dispatch、首错 breaker，并真实穿过 Retriever original/query-rewrite、bounded raw-content parser、synthetic Qwen
+port、evidence projector、FinalResponse stream、local merger 与 SR3 runner。authority=
+`zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock`，gate=
+`schema_recovery_mock_quality_not_evidence`，`qualityAuthority=none`。
+
+先跑 SR4 focused 与 CLI，再跑包级与全量相关静态回归：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock.test.ts
+bun --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr4:mock
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+bun --filter @repo/ai typecheck
+bun --filter @repo/ai lint
+bunx prettier --check <changed files>
+git diff --check
+```
+
+固定回执：guards `8/8`；reservations/dispatches/responses/verifiedUsage=`12/12/12/12`；succeeded/failed/notStarted=`12/0/0`；
+schema=`4 canonical + 2 extension discarded + 0 rejected`；FinalResponse strict=`6`；节点计数
+Retriever original/candidate/projector/FinalResponse/local merger=`18/6/6/6/6`；synthetic Qwen port=`18`；临时 evidence
+`created=1 / remaining=0 / formalNamespace=0`。全程 `providerCalls=0 / credentialReads=0 / businessWrites=0 /
+formalEvidence=0`，不读 `.env`、不调用真实 Provider、不启动或清理 Docker/数据库/Redis/MinIO/API/browser，不写
+Trace/BackgroundJob/Outbox/业务数据。SR4 不形成真实语义、产品、main、P95/SLA authority。
+
+组合 `74/74`（734 assertions）、Agent full `1488/1488`（25020 expect()，190 files）、AI full `345/345`、Types `42/42 +
+tsc`、Web `487/487`、Server build 与 Agent/AI typecheck/lint 也已通过。验收记录：
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`。
+
+## 0K-H. Phase 6.9.8 Schema Recovery SR3（历史，zero-provider，2026-08-09）
+
+历史分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`；历史基线：
 `main == origin/main == 849af1c84231a4c0fbe54426ddae02d0a1b28a30`。
 
 SR3 固定 `8 guards + 6 rewrite + 6 FinalResponse`、`20` report entries、`12` candidate invocations、最大并发 `1`、

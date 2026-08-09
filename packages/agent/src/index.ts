@@ -17,6 +17,7 @@ export * from './evals/phase-6-9-8-retriever-final-response-schema-recovery-sr3-
 export * from './evals/phase-6-9-8-retriever-final-response-schema-recovery-sr3-runner.ts';
 export * from './evals/phase-6-9-8-retriever-final-response-schema-recovery-sr3-durability.ts';
 export * from './evals/phase-6-9-8-retriever-final-response-schema-recovery-sr3-cli-core.ts';
+export * from './evals/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock.ts';
 export * from './evals/phase-6-9-8-retriever-final-response-p1-manifest.ts';
 export * from './evals/phase-6-9-8-retriever-final-response-p1-baseline.ts';
 export * from './evals/phase-6-9-8-retriever-final-response-p1-candidate-contract.ts';
