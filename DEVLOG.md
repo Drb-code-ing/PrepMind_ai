@@ -13,13 +13,16 @@
 > local authority、sanitizer 与一次 dispatch/no-retry 边界；prompt-derived responder 不导入 expected/oracle/baseline/scorer。
 >
 > SR2 focused `12/12`（329 assertions），SR1+SR2/node/query-rewrite 组合 `43/43`（743 assertions）；Agent full
-> `1462/1462`（24841 expect()，184 files）、AI full `345/345`（2662 expect()，28 files）、Agent/AI typecheck/lint、
-> 变更范围 Prettier 与 `git diff --check` 通过。
+> `1462/1462`（24841 expect()，184 files）、AI full `345/345`（2662 expect()，28 files）、Agent/AI typecheck/lint 与
+> `git diff --check` 通过；SR2-owned TS/JSON 使用 `--end-of-line=crlf` 的 Prettier 回放通过，历史 Markdown 保持
+> Windows CRLF 换行风格。
 > 全程 `providerCalls=0`、`credentialReads=0`、formal marker/journal/report/artifact/recovery claim=`0`，不读根 `.env`、
 > 不调用 DeepSeek/Qwen、不启动或清理 Docker/API/browser、Trace、BackgroundJob、Outbox 或业务数据。
 >
 > 这一步只解锁 SR3 独立 runner/source admission/durability；不形成真实模型语义、产品、`main` 或 P95/SLA authority。
-> 完整验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`。
+> 完整验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`。随后已在
+> `17ce07ba` 以 `--no-ff` 合并回 `main` 并推送 `origin/main`；合并后 focused/组合/Agent/AI/typecheck/lint 回放保持
+> 通过，远程 SHA 已复核一致。SR2-owned TS/JSON 以 CRLF-aware Prettier 回放通过，未对历史 Markdown 做换行重排。
 >
 > 2026-08-09 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR1 zero-provider strict parser/projection TDD 已完成：
 >

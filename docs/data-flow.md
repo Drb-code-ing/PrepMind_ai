@@ -15,8 +15,9 @@
 > 已在 `1f3c0d9b` 提交并以 `f4fac048` 合并源码/证据，文档 parity 再以 `613cc772` 合并、推送到 `main`；二次零 Provider parity 见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 
-> 当前功能流（SR2，zero-provider）：SR1 parser/candidate seam 已合并；从最新 `main@629acec4` 的普通分支
-> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2` 继续使用独立
+> 当前功能流（SR2，zero-provider）：SR1 parser/candidate seam 已合并；SR2 功能提交 `2df35873` 已通过
+> `17ce07ba` 合并并推送到 `main == origin/main == 17ce07ba386f3a54eb4fdfffdf050b561c319754`，功能分支为
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`，继续使用独立
 > `phase-6.9.8-retriever-final-response-schema-recovery-v1`。本阶段数据只经过
 > `held-out/provider-like fixture -> bounded prompt-derived responder -> module-owned raw-content parser -> canonical
 > rewrittenQuery projection -> local safety/authority -> candidate outcome sidecar -> Retriever node observation projection`；

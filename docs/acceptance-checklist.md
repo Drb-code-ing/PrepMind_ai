@@ -69,8 +69,9 @@ git parity；不重复历史 Live 或产品验收。SR1 只解锁 SR2 zero-provi
 
 ## 0J. Phase 6.9.8 Schema Recovery SR2 Provider-like robustness（当前，zero-provider）
 
-SR1 parser/candidate seam 已完成并保持只读；当前从最新已推送 `main == origin/main == 629acec4` 新开普通分支
-`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`。SR2 使用独立 fixture/responder 与
+SR1 parser/candidate seam 已完成并保持只读；SR2 功能提交 `2df35873` 已通过 `17ce07ba` 合并并推送，当前
+`main == origin/main == 17ce07ba386f3a54eb4fdfffdf050b561c319754`。功能分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2` 已收口；SR2 使用独立 fixture/responder 与
 `reviewed_mock/mock/mock` synthetic runtime，fixture SHA=
 `sha256:59010e16fd665df6d497517276dbeacb3f5973036a07e8cf00010569da171505`，覆盖 `5` held-out、`24` Provider-like
 shape（5 accepted/19 rejected）、`7` fault、`4` metamorphic case。
@@ -100,8 +101,9 @@ git diff --check
 ```
 
 当前回执：SR2 focused `12/12`（329 assertions）；SR1+SR2/node/query-rewrite 组合 `43/43`（743 assertions）；Agent full
-`1462/1462`（24841 expect() calls，184 files）；AI full `345/345`（2662 expect() calls）。变更范围
-typecheck/lint/Prettier/diff check 通过。全程
+`1462/1462`（24841 expect() calls，184 files）；AI full `345/345`（2662 expect() calls）。typecheck/lint 与
+`git diff --check` 通过；SR2-owned TS/JSON 使用 `--end-of-line=crlf` 的 Prettier 回放通过，历史 Markdown 保持仓库既有
+CRLF 换行风格。全程
 `providerCalls=0 / credentialReads=0 / formalEvidence=0`，不读根 `.env`、不调用 DeepSeek/Qwen、不启动或清理 Docker、
 数据库、Redis、MinIO、API/browser，不写 Trace/BackgroundJob/Outbox/业务数据。
 

@@ -5,8 +5,9 @@
 
 ## 当前 Schema Recovery SR2 入口（zero-provider，2026-08-09）
 
-P1 L2 唯一 controlled-Live 已失败封存，SR0/SR1 已合并；当前在从最新 `main` 派生的普通分支
-`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2` 完成 SR2 Provider-like robustness。SR2 使用
+P1 L2 唯一 controlled-Live 已失败封存，SR0/SR1/SR2 已合并并推送；当前 `main == origin/main ==
+17ce07ba386f3a54eb4fdfffdf050b561c319754`，SR2 功能分支为
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`，下一步从该 main 新开 SR3 普通 git 分支。SR2 使用
 `reviewed_mock/mock/mock` 合成 runtime，不读取根 `.env`/credential，不调用 Provider，不启动 Docker/API/browser，也不执行
 任何 `live`、`controlled`、`seal`、`recover`、`replay` 或 `backfill` 命令。实现、计划、验收见：
 

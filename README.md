@@ -15,15 +15,17 @@
 > recovery/seal、curl、单 case 或追加 Provider 探测。证据与文档已在 `1f3c0d9b` 提交，并以 `--no-ff` 合并到
 > 生产/证据 merge `f4fac048` 后，文档 parity 以 `613cc772` 合并；最终 `main == origin/main` 的零 Provider 二次回归已通过。main parity 记录见
 > [`P1 L2 main parity 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md)。
-> 已从 SR1 合并后的 `main == origin/main == 629acec49d9693f24ccded051d8d90cad77167cc` 创建普通分支
+> SR2 功能提交 `2df35873` 已通过合并提交 `17ce07ba` 进入并推送到 `main`；当前
+> `main == origin/main == 17ce07ba386f3a54eb4fdfffdf050b561c319754`。功能分支为
 > `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`，独立 lineage 为
 > `phase-6.9.8-retriever-final-response-schema-recovery-v1`，SR2 authority 为
 > `zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`。SR2 冻结
 > `5` 个 held-out、`24` 个 Provider-like shape（5 accepted/19 rejected）、`7` 个 fault、`4` 个 metamorphic case，
 > fixture SHA=`sha256:59010e16fd665df6d497517276dbeacb3f5973036a07e8cf00010569da171505`；合成 runtime 为
 > `reviewed_mock/mock/mock`，仍真实穿过 SR1 raw-content parser/canonical projection/local authority/sanitizer，但不调用
-> Provider。focused `12/12`（329 assertions）、组合 `43/43`（743 assertions）、AI `345/345`、typecheck/lint/
-> 变更范围 Prettier/diff check 均通过。diagnostic 只在 candidate sidecar，Retriever node 会在产品边界丢弃，不进入
+> Provider。focused `12/12`（329 assertions）、组合 `43/43`（743 assertions）、Agent full `1462/1462`（24841 expect()，184
+> files）、AI full `345/345`（2662 expect()，28 files）、typecheck/lint 与 `git diff --check` 均通过；SR2-owned TS/JSON
+> 已用 CRLF-aware Prettier 回放通过，历史 Markdown 保持仓库既有换行风格。diagnostic 只在 candidate sidecar，Retriever node 会在产品边界丢弃，不进入
 > Chat/FinalResponse/账单/Trace。详见
 > [`Schema Recovery SR0 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md)、
 > [`SR1 实施计划`](docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md)、

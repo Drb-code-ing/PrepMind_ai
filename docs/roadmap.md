@@ -7,12 +7,13 @@
 > 后续 10 条 lane 未启动。Journal `41`、validator=`bundle_valid`、recovery claim=`null`。该结果不形成 P1 semantic、
 > 产品 Docker/API/browser、Trace、SLA 或 `main` 产品 authority，且不得重跑/追加探测。证据/文档已在 `1f3c0d9b` 提交，
 > 以 `--no-ff` 生成生产/证据 merge `f4fac048`，文档 parity 再以 `613cc772` 合并，最终完成 `main == origin/main` 的
-> zero-provider 回归。P1 L2 已收口，不能重跑或继续追加探测；当前功能任务已推进到从该 `main` 新开的独立
-> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`，lineage=
+> zero-provider 回归。P1 L2 已收口，不能重跑或继续追加探测；SR2 功能提交 `2df35873` 已通过合并提交 `17ce07ba`
+> 进入并推送到当前 `main == origin/main == 17ce07ba386f3a54eb4fdfffdf050b561c319754`。功能分支
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2` 的 lineage=
 > `phase-6.9.8-retriever-final-response-schema-recovery-v1`。SR1 与 SR2 已完成 zero-provider parser/projection 与
 > Provider-like robustness；SR2 authority=`zero_provider_retriever_final_response_schema_recovery_robustness /
-> qualityAuthority=none`；diagnostic 只在 candidate outcome sidecar，Retriever node 边界丢弃。SR2 只解锁 SR3，不形成
-> Provider、产品或 main authority。验收见
+> qualityAuthority=none`；diagnostic 只在 candidate outcome sidecar，Retriever node 边界丢弃。SR2 只解锁从该 main
+> 新开的 SR3，不形成 Provider、产品或 main 产品 authority。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`。历史 P1 L2 验收见

@@ -2,8 +2,7 @@
 
 ## 当前状态：Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR2 已完成（2026-08-09）
 
-当前从已合并并推送的 `main == origin/main == 629acec49d9693f24ccded051d8d90cad77167cc` 新开普通 git 分支
-`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`，不使用 worktree。独立 lineage 仍为
+SR2 功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2` 已以 `2df35873` 合并到普通 `main`，合并提交为 `17ce07ba`，并已推送使 `main == origin/main == 17ce07ba386f3a54eb4fdfffdf050b561c319754`；不使用 worktree。独立 lineage 仍为
 `phase-6.9.8-retriever-final-response-schema-recovery-v1`；SR2 authority=
 `zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`。
 
@@ -13,14 +12,15 @@ SR2 在 SR1 parser/candidate seam 之上冻结了独立 Provider-like fixture/re
 `reviewed_mock / mock / mock`，真实穿过 raw-content policy/parser、canonical projection、local authority 与 sanitizer，
 但不构造第一方 adapter；diagnostic 仍只在 candidate outcome sidecar，Retriever node/API boundary 丢弃。
 focused `12/12`（329 assertions），SR1+SR2/node/query-rewrite 组合 `43/43`（743 assertions）；Agent full
-`1462/1462`（24841 expect()，184 files）、AI full `345/345`（2662 expect()，28 files）、typecheck/lint、变更范围
-Prettier/`git diff --check` 通过。
+`1462/1462`（24841 expect()，184 files）、AI full `345/345`（2662 expect()，28 files）、typecheck/lint 与
+`git diff --check` 通过；受 Windows CRLF 工作树影响，SR2-owned TS/JSON 已用 `--end-of-line=crlf` 的 Prettier
+回放通过，未对历史 Markdown 做全仓库换行重排。
 
 本 SR2 全程 zero-provider：不读取根 `.env`/credential，不调用 DeepSeek/Qwen，不创建正式 marker/journal/report/
 artifact/recovery claim，不启动或清理 Docker、PostgreSQL、Redis、MinIO、API、browser，不写 Trace、BackgroundJob、
-Outbox 或业务数据。SR2 只解锁 SR3 独立 runner/source admission/durability；不形成真实模型质量、产品、`main` 或
-博客 authority。未来任何 controlled-Live 都必须重新接受当次 DeepSeek/Qwen 数据边界并给出绑定新 source 的 exact
-authorization。
+Outbox 或业务数据。SR2 只解锁从当前已推送 `main` 新开的 SR3 普通 git 分支，用于独立 runner/source admission/durability；不形成
+真实模型质量、产品或博客 authority。未来任何 controlled-Live 都必须重新接受当次 DeepSeek/Qwen 数据边界并给出
+绑定新 source 的 exact authorization。
 
 完整 SR2 验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`；SR1、设计/计划入口见

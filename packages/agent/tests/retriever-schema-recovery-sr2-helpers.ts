@@ -39,7 +39,11 @@ export const RETRIEVER_SCHEMA_RECOVERY_SR2_MOCK_CONFIG: RetrieverQueryRewriteCan
   });
 
 export type RetrieverSr2RuntimeFault =
-  'provider_failure' | 'usage_mismatch' | 'trace_mismatch' | 'timeout' | 'in_flight_abort';
+  | 'provider_failure'
+  | 'usage_mismatch'
+  | 'trace_mismatch'
+  | 'timeout'
+  | 'in_flight_abort';
 
 export type RetrieverSr2TrackedRuntimeOptions = Readonly<{
   content?: string;

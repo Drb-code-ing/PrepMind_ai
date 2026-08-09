@@ -4,7 +4,9 @@
 
 分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`
 
-基线：`main == origin/main == 629acec49d9693f24ccded051d8d90cad77167cc`
+分支起点：SR1 合并后的 `main == origin/main == 629acec49d9693f24ccded051d8d90cad77167cc`；
+合并后收口：功能提交 `2df35873` 经 `17ce07ba` 合并并推送，当前 `main == origin/main ==
+17ce07ba386f3a54eb4fdfffdf050b561c319754`
 
 独立 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
 
@@ -71,7 +73,8 @@ SR1 + SR2 + query-rewrite/node boundary 组合回归：`43 pass / 0 fail / 743 e
 - `bun --filter @repo/ai typecheck`；
 - `bun --filter @repo/ai lint`；
 - Agent full：`1462 pass / 0 fail / 24841 expect() calls`（184 files）；
-- 变更范围 Prettier 与 `git diff --check`。
+- `git diff --check`；SR2-owned TS/JSON 使用 `--end-of-line=crlf` 的 Prettier 回放通过。仓库文档沿用 Windows
+  CRLF 换行，未做全仓库 Markdown 换行重排。
 
 Agent 全量回归已在最终源码上回放；其结果只作为回归证据，不改变本页 authority。既有全量基线与新 SR2 focused 不能
 相加为语义分母，也不能拿 synthetic usage 当 Provider 计量。
