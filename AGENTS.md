@@ -3,7 +3,7 @@
 ## 当前状态：Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR4 reviewed Mock/static（2026-08-09）
 
 SR4 功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 已提交为 `ed9e76f2` 并推送；当前普通 git
-分支为 `main`，已完成 `--no-ff` 合并、合并后二次回归与远程推送，当前 `main == origin/main == 589ac4da343147cd04d707272c5bb441df14a973`。不使用 worktree，
+分支为 `main`，已完成 `--no-ff` 合并、合并后二次回归与远程推送，当前 `main == origin/main`。不使用 worktree，
 不清理 Docker、数据库、Redis 或 MinIO。
 
 独立 lineage 仍为 `phase-6.9.8-retriever-final-response-schema-recovery-v1`；SR4 authority=

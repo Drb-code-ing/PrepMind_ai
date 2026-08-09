@@ -8,7 +8,7 @@ fresh SR5 admission 的停止门
 当前分支：`main`（SR4 功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 已以 `--no-ff` 合并）
 
 创建 SR4 分支时基线为 `main@421015dbf472e008fad32200fa8a89e240818fcf`、`main == origin/main`；当前 merge 后二次回归与
-远程推送已通过，`main == origin/main == 589ac4da`（merge=`d5029f90`）。
+远程推送已通过，`main == origin/main`（merge=`d5029f90`）。
 
 独立 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
 
