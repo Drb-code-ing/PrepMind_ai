@@ -170,11 +170,11 @@ Redis flush 或 MinIO wipe。
 ## 未解锁与后续
 
 SR4 通过只说明 schema-recovery 的工程化 reviewed Mock/static 边界成立；它不能回答真实 Provider 是否能稳定返回正确
-schema，也不能证明 Retriever 召回、FinalResponse 质量、P95/SLA 或产品可用性。下一步是：
+schema，也不能证明 Retriever 召回、FinalResponse 质量、P95/SLA 或产品可用性。当前收口已完成：
 
-1. 将本分支代码与本验收/入口文档一阶段一提交并推送；
-2. 从该提交切换 `main`，`--no-ff` 合并，再执行 SR4 focused/static/typecheck 回归并推送 `origin/main`；
-3. 如需真实 SR5，重新接受当次 DeepSeek/Qwen 数据保留/训练边界，并针对新的 main source 给出唯一 exact authorization；
+1. SR4 代码、测试与入口文档已一阶段提交并推送；
+2. 已从该提交切换 `main`，以 `--no-ff` 合并，并完成合并后二次 focused/static/typecheck 回归与 `origin/main` 推送；
+3. 如需真实 SR5，必须重新接受当次 DeepSeek/Qwen 数据保留/训练边界，并针对新的 main source 给出唯一 exact authorization；
 4. SR5 即使 semantic gate 通过，也仍需独立 SR6 产品 Docker/API/可见浏览器/Trace 验收，不能自动进入产品或博客收尾。
 
 ## main parity 回执
