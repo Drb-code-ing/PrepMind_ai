@@ -8,11 +8,13 @@
 > 产品 Docker/API/browser、Trace、SLA 或 `main` 产品 authority，且不得重跑/追加探测。证据/文档已在 `1f3c0d9b` 提交，
 > 以 `--no-ff` 生成生产/证据 merge `f4fac048`，文档 parity 再以 `613cc772` 合并，最终完成 `main == origin/main` 的
 > zero-provider 回归。P1 L2 已收口，不能重跑或继续追加探测；当前功能任务已推进到从该 `main` 新开的独立
-> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1`，lineage=
-> `phase-6.9.8-retriever-final-response-schema-recovery-v1`。SR1 已完成 zero-provider strict parser/projection TDD，
-> authority=`zero_provider_retriever_final_response_schema_recovery_tdd / qualityAuthority=none`；diagnostic 只在 candidate
-> outcome sidecar，Retriever node 边界丢弃。SR1 只解锁 SR2，不形成 Provider、产品或 main authority。验收见
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`，lineage=
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1`。SR1 与 SR2 已完成 zero-provider parser/projection 与
+> Provider-like robustness；SR2 authority=`zero_provider_retriever_final_response_schema_recovery_robustness /
+> qualityAuthority=none`；diagnostic 只在 candidate outcome sidecar，Retriever node 边界丢弃。SR2 只解锁 SR3，不形成
+> Provider、产品或 main authority。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`。历史 P1 L2 验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
@@ -656,6 +658,17 @@ Phase 5.6 已完成知识库页面体验打磨：
   authority=`zero_provider_retriever_final_response_schema_recovery_tdd / qualityAuthority=none`，只解锁 SR2。（已完成，
   zero-provider；证据见
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`）
+- Phase 6.9.8 Schema Recovery SR2：在
+  `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2` 冻结独立 Provider-like fixture/responder 与
+  zero-provider robustness matrix：`5` held-out、`24` shape（5 accepted/19 rejected）、`7` fault、`4` metamorphic；
+  fixture SHA=`sha256:59010e16fd665df6d497517276dbeacb3f5973036a07e8cf00010569da171505`。合成 runtime 固定
+  `reviewed_mock/mock/mock`，focused `12/12`（329 assertions），SR1+SR2/node/query-rewrite 组合 `43/43`
+  （743 assertions）；Agent full `1462/1462`（24841 expect()，184 files）、AI full `345/345`，typecheck/lint/变更范围
+  Prettier/diff check 通过。全程
+  `providerCalls=0 / credentialReads=0 / formalEvidence=0`，不读 `.env`、不调用 Provider、不启动 Docker/API/browser，
+  authority=`zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`，只解锁 SR3
+  runner/source admission/durability。（已完成，zero-provider；证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`）
 - Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R0：以独立
   `phase-6.9.8-retriever-final-response-architecture-recovery-v1` lineage 冻结三类调用阶段机、
   `providerWire/runnerWire` 双层观察、strict bounded diagnostic、no-raw/no-hash、source admission、durability、

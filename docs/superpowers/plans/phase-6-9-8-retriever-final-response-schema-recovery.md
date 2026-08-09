@@ -2,19 +2,19 @@
 
 日期：2026-08-09
 
-当前状态：SR1 已在独立普通分支完成 zero-provider strict parser/projection TDD；没有读取凭据、调用 Provider、创建正式
-evidence 或启动产品。当前只解锁 SR2 zero-provider Provider-like robustness。
+当前状态：SR2 已在独立普通分支完成 zero-provider Provider-like robustness；没有读取凭据、调用 Provider、创建正式
+evidence 或启动产品。当前只解锁 SR3 独立 runner/source admission/durability。
 
 设计来源：
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
 
-分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1`
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`
 
-基线：`main@e5d575214dce636c89db69a26c934019da06a013`
+当前基线：`main@629acec49d9693f24ccded051d8d90cad77167cc`
 
 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
 
-SR1 authority：`zero_provider_retriever_final_response_schema_recovery_tdd / qualityAuthority=none`
+SR2 authority：`zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`
 
 ## 1. 执行纪律
 
@@ -92,11 +92,20 @@ typecheck、lint、变更范围 Prettier 与 `git diff --check` 均已回放通�
 
 ## 4. SR2：Provider-like robustness 与 anti-oracle
 
-- 覆盖所有 Retriever rewrite lane 的 bounded fixture 和 held-out/metamorphic query/context reorder；
+- 状态：已完成。新增 `phase-6.9.8-retriever-schema-recovery-sr2-robustness-v1` fixture 与
+  `phase-6.9.8-retriever-schema-recovery-sr2-prompt-derived-responder-v1` responder；fixture SHA=
+  `sha256:59010e16fd665df6d497517276dbeacb3f5973036a07e8cf00010569da171505`，覆盖 `5` held-out、`24` Provider-like
+  shape（5 accepted/19 rejected）、`7` fault、`4` metamorphic case；不是正式 full-gate 分母。
 - extension Unicode/emoji/NFC/NFD 只能影响 enum/bucket count，不能泄漏 raw；
-- responder 只读取真实 bounded prompt 与公开 protected terms，不 import expected、scorer、baseline、oracle；
+- responder 只读取真实 bounded prompt 与公开 protected terms，不 import expected、scorer、baseline、oracle；合成 runtime
+  固定 `reviewed_mock/mock/mock`，不构造第一方 adapter；
 - fault matrix 覆盖 schema/transport/HTTP/usage/abort/deadline/parent cancel；
-- 证明 `globalThis.fetch=0`、credential reads=0、formal evidence=0。
+- 证明 `globalThis.fetch=0`、credential reads=0、formal evidence=0；每个 eligible dispatch 一次且无 retry，hostile
+  context/pre-abort/expired deadline 在 runtime 前 zero-call。
+
+SR2 GREEN：focused `12/12`（329 assertions）；SR1+SR2/node/query-rewrite 组合 `43/43`（743 assertions）；AI full
+`345/345`（2662 expect()，28 files）、Agent typecheck/lint、AI typecheck/lint、变更范围 Prettier 与 `git diff --check`
+通过。验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`。
 
 只解锁 SR3；不提高 P1 分母、预算或 timeout。
 
@@ -141,7 +150,10 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
 - 设计：`docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`；
 - 计划：本文；
 - 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`、
-  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`；
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`、
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`；
 - 入口：`AGENTS.md`、`README.md`、`DEVLOG.md`、`docs/roadmap.md`、`docs/data-flow.md`、`docs/dev-start.md`、
   `docs/acceptance-checklist.md`、`docs/ai-behavior-acceptance.md`；
+- [x] SR2 fixture/responder SHA、shape/fault/metamorphic matrix 与 zero-provider authority 已记录；
+- [x] SR2 focused/组合/AI/typecheck/lint/Prettier/diff evidence 已记录；
 - 历史 P1 spec/plan 与 Agents 设计计划只更新“当前状态/下一步”指针，不改写已封存事实。

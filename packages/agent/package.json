@@ -117,6 +117,7 @@
     "eval:phase-6-9-7:schema-recovery:validate": "bun scripts/phase-6-9-7-tutor-organizer-schema-recovery-cli.ts VALIDATE_PHASE_6_9_7_TUTOR_ORGANIZER_SCHEMA_RECOVERY_SR3_BUNDLE_ZERO_PROVIDER",
     "eval:phase-6-9-7:schema-recovery:sr5": "bun scripts/phase-6-9-7-tutor-organizer-schema-recovery-sr5-cli.ts",
     "eval:phase-6-9-8:retriever-baseline": "bun scripts/run-phase-6-9-8-retriever-baseline.ts",
+    "eval:phase-6-9-8:schema-recovery:sr2": "bun test tests/retriever-schema-recovery-sr2-provider-robustness.test.ts tests/retriever-schema-recovery-sr2-runtime-metamorphic.test.ts tests/retriever-schema-recovery-sr2-fault-runner.test.ts",
     "eval:phase-6-9-8:static": "bun scripts/run-phase-6-9-8-retriever-final-response-static.ts",
     "eval:phase-6-9-8:task9:cli": "bun scripts/phase-6-9-8-retriever-final-response-task9-cli.ts",
     "eval:phase-6-9-8:task9:seal": "bun scripts/phase-6-9-8-retriever-final-response-task9-cli.ts I_SEAL_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_TASK9C_CRASH_ONLY_ONCE",

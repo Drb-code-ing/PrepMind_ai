@@ -40,6 +40,29 @@ DeepSeek/Qwen、不启动 Docker/API/browser、不写 Trace/BackgroundJob/Outbox
 SR1 focused 为 `35/35`（430 assertions），Agent/AI full 为 `1450/1450` 与 `345/345`；usage/trace 不一致或无法细分的
 generic sanitizer failure 只记录 bounded `unknown` sidecar，不把它解释成具体 Provider 根因。
 
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR2（当前，zero-provider）
+
+SR2 在 SR1 strict parser/candidate seam 之上验证 Provider-like shape robustness、held-out prompt-derived responder、
+metamorphic 输入变换和 transport/HTTP/usage/trace/timeout/abort fault boundary。它使用独立 fixture SHA=
+`sha256:59010e16fd665df6d497517276dbeacb3f5973036a07e8cf00010569da171505`，覆盖 `5` 个 held-out、`24` 个 shape
+（5 accepted/19 rejected）、`7` 个 fault、`4` 个 metamorphic case；合成 runtime 明确为 `reviewed_mock/mock/mock`，
+不是 DeepSeek 网络调用，也不产生 `deepseek_network` provenance。
+
+SR2 focused `12/12`（329 assertions），与 SR1/node/query-rewrite 组合 `43/43`（743 assertions）；Agent full
+`1462/1462`（24841 expect()，184 files），AI full `345/345`。每个 eligible dispatch
+只有一次且无 retry；canonical/extension/Unicode/NFC/NFD、duplicate/alias/wrapper/limit、no-raw、single-dispatch、
+pre-abort/expired deadline 和 hostile prompt authority 均 fail-closed。usage/trace mismatch 统一为
+`runtime_untrusted / projected_schema / unknown`，不把 parser sidecar 保留为具体 Provider 根因。
+
+authority=`zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`。全程
+`providerCalls=0 / credentialReads=0 / formalEvidence=0`，不读 `.env`、不调用 DeepSeek/Qwen、不启动 Docker/API/browser、
+不写 Trace/BackgroundJob/Outbox/业务数据。SR2 只解锁 SR3 durability，不形成真实模型质量、RAG/FinalResponse 质量、
+P95/SLA、产品 `/api/chat`、`main` 或生产可用性证据。验收见：
+
+- `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`
+- `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
+- `docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md`
+
 ## Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live sealed（2026-08-08）
 
 L1 implementation 与唯一 controlled-Live 均已完成并封存。它把 root launcher、source/proxy/data-boundary/
