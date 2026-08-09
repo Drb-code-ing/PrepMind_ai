@@ -28,8 +28,8 @@
 > fresh SR5 admission；不形成真实模型、产品、main、P95/SLA 或博客 authority。完整验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`。
 >
-> 随后已切回 `main`，以 `--no-ff` 合并 SR4；合并后二次 focused/组合/CLI/typecheck/lint 回放保持通过。文档 amend 后
-> 推送 `origin/main`，并以 `main == origin/main` 作为本阶段最终 parity 停止门。
+> 随后已切回 `main`，以 `--no-ff` 合并 SR4；合并后二次 focused/组合/CLI/typecheck/lint 回放保持通过，并已推送
+> `origin/main`。最终 `main == origin/main == d5029f90eea473e22ec1c80b473b5649332acf6a`。
 
 > 2026-08-09 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR3 zero-provider runner/source admission/durability 已完成：
 >

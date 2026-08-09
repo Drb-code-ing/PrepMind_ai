@@ -5,7 +5,7 @@
 
 ## 当前 Schema Recovery SR4 reviewed Mock 入口（zero-provider，2026-08-09）
 
-当前普通分支为 `main`（SR4 功能分支已以 `--no-ff` 合并，待文档 amend 后推送远程）；SR4 固定
+当前普通分支为 `main`（SR4 功能分支已以 `--no-ff` 合并并推送远程）；SR4 固定
 `8 guards + 6 rewrite + 6 FinalResponse`
 与 `12` 次 candidate invocation，最大并发 `1`，每 lane single dispatch、首错 breaker；它真实穿过 Retriever、bounded
 schema parser、synthetic Qwen port、evidence projector、FinalResponse、local merger 与 SR3 runner。

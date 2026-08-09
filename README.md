@@ -3,7 +3,7 @@
 ## 当前工作回执：Schema Recovery SR4 reviewed Mock/static（2026-08-09）
 
 SR4 功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 已以 `ed9e76f2` 提交并推送；当前普通 git
-分支为 `main`，`--no-ff` 合并与合并后二次 zero-provider 回归已通过，文档 amend 后将推送使 `main == origin/main`。SR4 已
+分支为 `main`，`--no-ff` 合并、合并后二次 zero-provider 回归与远程推送已通过，当前 `main == origin/main == d5029f90eea473e22ec1c80b473b5649332acf6a`。SR4 已
 完成 zero-provider reviewed Mock/static：实际
 穿过 Retriever original/query-rewrite、bounded raw-content policy parser、synthetic Qwen search port、verified-evidence
 projector、FinalResponse stream、local merger 与 SR3 fixed-denominator runner；固定 `8 guards + 6 rewrite + 6

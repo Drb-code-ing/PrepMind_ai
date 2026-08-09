@@ -7,7 +7,7 @@
 
 ## 0K. Phase 6.9.8 Schema Recovery SR4 reviewed Mock/static（当前，zero-provider，2026-08-09）
 
-当前分支：`main`（SR4 功能分支已以 `--no-ff` 合并，文档 amend 后推送远程）；SR4 功能提交为 `ed9e76f2`。
+当前分支：`main`（SR4 功能分支已以 `--no-ff` 合并并推送远程）；SR4 功能提交为 `ed9e76f2`，main merge=`d5029f90`。
 
 SR4 固定 `8 guards + 6 rewrite + 6 FinalResponse`、`20` report entries、`12` candidate invocations、最大并发 `1`、
 single dispatch、首错 breaker，并真实穿过 Retriever original/query-rewrite、bounded raw-content parser、synthetic Qwen

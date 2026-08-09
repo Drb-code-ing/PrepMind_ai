@@ -190,5 +190,5 @@ Agent/AI typecheck passed
 Agent/AI lint      passed
 ```
 
-本文件 amend 后将推送 `origin/main`，再用 `git rev-parse main origin/main` 复核远程 parity。该动作不改变 SR4 report、factory
-SHA、formal namespace 或 zero-provider authority。
+main merge=`d5029f90eea473e22ec1c80b473b5649332acf6a` 已推送；`git rev-parse main origin/main` 复核结果一致。该动作不改变
+SR4 report、factory SHA、formal namespace 或 zero-provider authority。
