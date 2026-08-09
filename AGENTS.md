@@ -1,6 +1,29 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前状态：Phase 6.9.8 P1 L2 已失败封存；下一步为 SR0 Schema Recovery 设计（2026-08-09）
+## 当前状态：Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR1 已完成（2026-08-09）
+
+当前从已合并并推送的 `main == origin/main == e5d575214dce636c89db69a26c934019da06a013` 新开普通 git 分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1`，不使用 worktree。独立 lineage 仍为
+`phase-6.9.8-retriever-final-response-schema-recovery-v1`；SR1 authority=
+`zero_provider_retriever_final_response_schema_recovery_tdd / qualityAuthority=none`。
+
+SR1 已落地 module-owned exact schema、bounded native JSON parser、duplicate-key scanner、canonical
+`{ rewrittenQuery }` projection、bounded no-raw diagnostic collector 与实际 query-rewrite candidate 接线。diagnostic
+只保留在 candidate outcome 的内部 sidecar；Retriever node 只投影 observation，因此不会进入产品 Chat、FinalResponse
+prompt、账单或 Trace。focused `35/35`（430 assertions，含 node/API boundary）、Agent full `1450/1450`（24512 expect()，
+181 files）、AI full `345/345`（2662 expect()，28 files）、typecheck、lint、Prettier、`git diff --check` 均通过。
+
+本 SR1 全程 zero-provider：不读取根 `.env`/credential，不调用 DeepSeek/Qwen，不创建正式 marker/journal/report/
+artifact/recovery claim，不启动或清理 Docker、PostgreSQL、Redis、MinIO、API、browser，不写 Trace、BackgroundJob、
+Outbox 或业务数据。下一步只解锁 SR2 zero-provider Provider-like robustness；未来任何 controlled-Live 都必须重新接受
+当次 DeepSeek/Qwen 数据边界并给出绑定新 source 的 exact authorization。
+
+完整 SR1 验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`；设计/计划入口见
+`docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md` 与
+`docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md`。
+
+## 历史 checkpoint：Phase 6.9.8 P1 L2 已失败封存；禁止重跑（2026-08-09）
 
 唯一 P1 L2 controlled-Live run `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag
 `fa50292509d7c3e2e4ad017e7e730fd434a29cde` 上由正常 runtime 路径 durable seal。8/8 guards 保持 zero-call；
@@ -20,16 +43,12 @@ recovery/seal、curl、单 case或追加 Provider 探测；不得删除、格式
 `1f3c0d9b` 提交、通过 `--no-ff` 生成生产/证据 merge `f4fac048`，文档 parity 再以 `613cc772` 合并；最终
 `main == origin/main` 上完成二次零 Provider 验收；
 main parity 记录见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。P1 L2 已完成
-源码/证据合并、远程推送与合并后二次 zero-provider 回归；不得把它称为仍待完成的 Live。当前已从最新 `main` 新开普通
-分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr0`，执行独立
-`phase-6.9.8-retriever-final-response-schema-recovery-v1` 的 SR0 zero-provider 设计冻结。SR0 只形成
-`zero_provider_retriever_final_response_schema_recovery_design / qualityAuthority=none`，不读取 `.env`、不调用 Provider、
-不创建正式 marker/journal/report/artifact/recovery claim，不启动产品 Docker/API/browser。设计、计划和验收分别见
+源码/证据合并、远程推送与合并后二次 zero-provider 回归；不得把它称为仍待完成的 Live。其后 SR0 已作为历史设计
+checkpoint 合并，当前实现状态以本文件顶部 SR1 回执和 SR1 acceptance 为准；SR0 设计、计划和验收分别见
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`、
 `docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md`、
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`。下一步只解锁
-SR1 strict parser/projection TDD；未来任何 controlled-Live 都必须重新接受当次 DeepSeek/Qwen 数据边界并给出新 exact
-authorization。Docker 容器、镜像、卷、数据库、Redis、MinIO 保持原状，不使用 worktree。
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`。Docker 容器、镜像、
+卷、数据库、Redis、MinIO 保持原状，不使用 worktree。
 
 ## 历史 checkpoint：Phase 6.9.8 P1 L2 admission contract（2026-08-08）
 

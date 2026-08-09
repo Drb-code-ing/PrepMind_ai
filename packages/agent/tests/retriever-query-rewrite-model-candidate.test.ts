@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 
 import { createModelAgentRuntime, type ModelAgentRequest, type ModelAgentRuntime } from '@repo/ai';
+import { createTrustedModelAgentStructuredOutputFailureSignal } from '../../ai/src/model-agent-provider-failure.ts';
+import { parseModelAgentJsonContentWithPolicy } from '../../ai/src/model-agent-structured-output-policy.ts';
 
 import {
   createAgentAuthReceiptV1,
@@ -357,16 +359,19 @@ describe('Retriever query rewrite model candidate', () => {
         originalQuery: 'Does it still hold when n=0?',
         context: 'The induction step assumes n is positive.',
         rewrittenQuery: 'Does the induction argument still hold?',
+        diagnosticReason: 'protected_terms_drift',
       },
       {
         originalQuery: '它和动量定理有什么区别？',
         context: '上一条解释了冲量的定义。',
         rewrittenQuery: '冲量是什么？',
+        diagnosticReason: 'protected_terms_drift',
       },
       {
         originalQuery: '这里的它指什么？',
         context: '光合作用把光能转化为化学能。',
         rewrittenQuery: '这里的它指什么？',
+        diagnosticReason: 'rewrite_unchanged',
       },
     ];
 
@@ -389,6 +394,12 @@ describe('Retriever query rewrite model candidate', () => {
         disposition: 'candidate_rejected',
         reasonCode: 'rewrite_rejected',
       });
+      expect(outcome.schemaRecoveryDiagnostic).toMatchObject({
+        stage: 'local_authority',
+        reasonCode: item.diagnosticReason,
+        rawDataRetained: false,
+      });
+      expect(outcome.observation).not.toHaveProperty('schemaRecoveryDiagnostic');
     }
   });
 
@@ -481,6 +492,12 @@ describe('Retriever query rewrite model candidate', () => {
       reasonCode: 'rewrite_failed_fallback_original',
     });
     expect(outcome.observation.provenance).toBe('deepseek_network');
+    expect(outcome.schemaRecoveryDiagnostic).toMatchObject({
+      stage: 'projected_schema',
+      reasonCode: 'unknown',
+      rawDataRetained: false,
+    });
+    expect(outcome.observation).not.toHaveProperty('schemaRecoveryDiagnostic');
     expect(JSON.stringify(outcome.observation)).not.toMatch(/provider abort|owner_abort/iu);
 
     const throwingContext = authenticatedContext('owner_runtime_throw');
@@ -513,7 +530,92 @@ describe('Retriever query rewrite model candidate', () => {
       attempted: true,
       traceUnavailable: true,
     });
+    expect(thrown.schemaRecoveryDiagnostic).toMatchObject({
+      stage: 'projected_schema',
+      reasonCode: 'unknown',
+      rawDataRetained: false,
+    });
+    expect(thrown.observation).not.toHaveProperty('schemaRecoveryDiagnostic');
     expect(JSON.stringify(thrown)).not.toContain('raw provider throw');
+  });
+
+  test('fails untrusted usage and trace accounting closed to a bounded unknown sidecar', async () => {
+    const context = authenticatedContext('owner_usage_mismatch');
+    const delegate = mockRuntime({
+      rewrittenQuery: 'Why does convergence follow from the sequence being monotone and bounded?',
+    });
+    let invokes = 0;
+    const outcome = await runRetrieverQueryRewriteModelCandidateV1({
+      request: requestFor(context, {
+        originalQuery: 'Why does that follow?',
+        recentTurns: [{ role: 'assistant', content: 'The sequence is monotone and bounded.' }],
+      }),
+      context,
+      config: REVIEWED_MOCK_CONFIG,
+      now: () => NOW,
+      createRuntime: () => ({
+        async invokeStructured(request) {
+          invokes += 1;
+          const result = await delegate.invokeStructured(request);
+          return {
+            ...result,
+            usage: { inputTokens: 0, outputTokens: RETRIEVER_QUERY_REWRITE_MAX_OUTPUT_TOKENS + 1 },
+          };
+        },
+      }),
+    });
+
+    expect(invokes).toBe(1);
+    expect(outcome.rewrite.disposition).toBe('failed_fallback_original');
+    expect(outcome.observation).toMatchObject({
+      provenance: 'runtime_untrusted',
+      attempted: true,
+      traceUnavailable: true,
+      usage: { inputTokens: 0, outputTokens: 0 },
+    });
+    expect(outcome.schemaRecoveryDiagnostic).toMatchObject({
+      stage: 'projected_schema',
+      reasonCode: 'unknown',
+      rawDataRetained: false,
+    });
+    expect(outcome.observation).not.toHaveProperty('schemaRecoveryDiagnostic');
+    expect(JSON.stringify(outcome)).not.toContain('owner_usage_mismatch');
+  });
+
+  test('does not retain an extension diagnostic after a terminal trace mismatch', async () => {
+    const context = authenticatedContext('owner_trace_mismatch');
+    const outcome = await runRetrieverQueryRewriteModelCandidateV1({
+      request: requestFor(context, {
+        originalQuery: 'Why does that follow?',
+        recentTurns: [{ role: 'assistant', content: 'The sequence is monotone and bounded.' }],
+      }),
+      context,
+      config: REVIEWED_MOCK_CONFIG,
+      now: () => NOW,
+      createRuntime: () => ({
+        async invokeStructured(request) {
+          const delegate = createRawContentRuntime(
+            '{"rewrittenQuery":"Why does convergence follow from the sequence being monotone and bounded?","extension-key-that-was-discarded":"raw-secret"}',
+            () => undefined,
+          );
+          const result = await delegate.invokeStructured(request);
+          return {
+            ...result,
+            trace: { ...result.trace, model: 'unexpected-model' },
+          };
+        },
+      }),
+    });
+
+    expect(outcome.rewrite.disposition).toBe('failed_fallback_original');
+    expect(outcome.observation.provenance).toBe('runtime_untrusted');
+    expect(outcome.schemaRecoveryDiagnostic).toMatchObject({
+      stage: 'projected_schema',
+      reasonCode: 'unknown',
+      rawDataRetained: false,
+    });
+    expect(outcome.schemaRecoveryDiagnostic?.reasonCode).not.toBe('extension_fields_discarded');
+    expect(JSON.stringify(outcome)).not.toContain('raw-secret');
   });
 
   test('rejects cross-context correlation and hostile config/factory data without invoking runtime', async () => {
@@ -597,6 +699,74 @@ describe('Retriever query rewrite model candidate', () => {
     expect(JSON.stringify(outcome)).not.toContain('credential unavailable');
   });
 
+  test('threads the SR1 raw-content parser diagnostic through one candidate dispatch without retry', async () => {
+    const liveConfig: RetrieverQueryRewriteCandidateConfigV1 = {
+      ...REVIEWED_MOCK_CONFIG,
+      runtimeAuthority: 'production_live',
+      mode: 'live',
+      provider: 'deepseek',
+      globalLiveCallsEnabled: true,
+    };
+    const appliedContext = authenticatedContext('owner_sr1_applied');
+    let appliedInvokes = 0;
+    const applied = await runRetrieverQueryRewriteModelCandidateV1({
+      request: requestFor(appliedContext, {
+        originalQuery: 'Why does that follow?',
+        recentTurns: [{ role: 'assistant', content: 'The sequence is monotone and bounded.' }],
+      }),
+      context: appliedContext,
+      config: liveConfig,
+      now: () => NOW,
+      createRuntime: () =>
+        createRawContentRuntime(
+          '{"rewrittenQuery":"Why does convergence follow from the sequence being monotone and bounded?","extension-key-that-was-discarded":"raw-secret"}',
+          () => {
+            appliedInvokes += 1;
+          },
+        ),
+    });
+
+    expect(appliedInvokes).toBe(1);
+    expect(applied.rewrite.disposition).toBe('candidate_applied');
+    expect(applied.schemaRecoveryDiagnostic).toMatchObject({
+      stage: 'applied',
+      reasonCode: 'extension_fields_discarded',
+      projectionDisposition: 'extensions_discarded',
+      rawDataRetained: false,
+    });
+    expect(Object.isFrozen(applied)).toBe(true);
+    expect(Object.isFrozen(applied.schemaRecoveryDiagnostic)).toBe(true);
+    expect(applied.observation).not.toHaveProperty('schemaRecoveryDiagnostic');
+    expect(JSON.stringify(applied)).not.toMatch(/extension-key-that-was-discarded|raw-secret/u);
+
+    const rejectedContext = authenticatedContext('owner_sr1_rejected');
+    let rejectedInvokes = 0;
+    const rejected = await runRetrieverQueryRewriteModelCandidateV1({
+      request: requestFor(rejectedContext, {
+        originalQuery: 'Why does that follow?',
+        recentTurns: [{ role: 'assistant', content: 'The sequence is monotone and bounded.' }],
+      }),
+      context: rejectedContext,
+      config: liveConfig,
+      now: () => NOW,
+      createRuntime: () =>
+        createRawContentRuntime('```json\n{"rewrittenQuery":"raw-secret"}\n```', () => {
+          rejectedInvokes += 1;
+        }),
+    });
+
+    expect(rejectedInvokes).toBe(1);
+    expect(rejected.rewrite.disposition).toBe('failed_fallback_original');
+    expect(rejected.schemaRecoveryDiagnostic).toMatchObject({
+      stage: 'json_syntax',
+      reasonCode: 'malformed_json',
+      projectionDisposition: 'rejected',
+      rawDataRetained: false,
+    });
+    expect(rejected.observation).not.toHaveProperty('schemaRecoveryDiagnostic');
+    expect(JSON.stringify(rejected)).not.toContain('raw-secret');
+  });
+
   test('freezes the exact model, endpoint, timeout, and hard budget constants', () => {
     expect(RETRIEVER_QUERY_REWRITE_MODEL).toBe('deepseek-v4-pro');
     expect(RETRIEVER_QUERY_REWRITE_BASE_URL).toBe('https://api.deepseek.com/v1');
@@ -614,6 +784,30 @@ function mockRuntime(output: unknown): ModelAgentRuntime {
     liveCallsEnabled: false,
     timeoutMs: RETRIEVER_QUERY_REWRITE_TIMEOUT_MS,
     mockResponder: () => output,
+  });
+}
+
+function createRawContentRuntime(content: string, onInvoke: () => void): ModelAgentRuntime {
+  return createModelAgentRuntime({
+    mode: 'live',
+    provider: 'deepseek',
+    model: RETRIEVER_QUERY_REWRITE_MODEL,
+    liveCallsEnabled: true,
+    timeoutMs: RETRIEVER_QUERY_REWRITE_TIMEOUT_MS,
+    executor: async ({ schema, signal }) => {
+      onInvoke();
+      const policy = parseModelAgentJsonContentWithPolicy(schema, content);
+      if (!policy.handled || !policy.result.ok) {
+        throw createTrustedModelAgentStructuredOutputFailureSignal(
+          signal,
+          policy.handled ? policy.result.stage : 'provider_type_validation',
+        );
+      }
+      return {
+        object: policy.result.value,
+        usage: { inputTokens: 101, outputTokens: 12 },
+      };
+    },
   });
 }
 

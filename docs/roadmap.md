@@ -7,10 +7,13 @@
 > 后续 10 条 lane 未启动。Journal `41`、validator=`bundle_valid`、recovery claim=`null`。该结果不形成 P1 semantic、
 > 产品 Docker/API/browser、Trace、SLA 或 `main` 产品 authority，且不得重跑/追加探测。证据/文档已在 `1f3c0d9b` 提交，
 > 以 `--no-ff` 生成生产/证据 merge `f4fac048`，文档 parity 再以 `613cc772` 合并，最终完成 `main == origin/main` 的
-> zero-provider 回归。P1 L2 已收口，不能重跑或继续追加探测；下一功能任务为从该 `main` 新开的独立
-> `phase-6.9.8-retriever-final-response-schema-recovery-v1` SR0 schema-recovery/diagnostic 设计（zero-provider），
-> authority=`zero_provider_retriever_final_response_schema_recovery_design / qualityAuthority=none`。SR0 只解锁 SR1，
-> 不形成 Provider、产品或 main authority。验收见
+> zero-provider 回归。P1 L2 已收口，不能重跑或继续追加探测；当前功能任务已推进到从该 `main` 新开的独立
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1`，lineage=
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1`。SR1 已完成 zero-provider strict parser/projection TDD，
+> authority=`zero_provider_retriever_final_response_schema_recovery_tdd / qualityAuthority=none`；diagnostic 只在 candidate
+> outcome sidecar，Retriever node 边界丢弃。SR1 只解锁 SR2，不形成 Provider、产品或 main authority。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md` 与
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`。历史 P1 L2 验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 
@@ -642,6 +645,17 @@ Phase 5.6 已完成知识库页面体验打磨：
   `ok=true`、recovery claim=`null`。Gate 为 `task9_quality_gate_failed / qualityAuthority=none`；一次性名额已
   消费且禁止重跑、seal/recovery 或追加 Provider 探测，Task 10/11 继续阻断。（失败封存；证据见
   `docs/acceptance/phase-6-9-8-task-9c-controlled-live-quality-gate-failure.md`）
+- Phase 6.9.8 Schema Recovery SR0：复盘 P1 L2 `schema / runtime_untrusted` 的可证边界，冻结
+  content/envelope/canonical projection/local authority、bounded no-raw diagnostic、权限、并发与 durability 停止门；
+  全程 zero-provider，只解锁 SR1。（已完成，zero-provider；证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`）
+- Phase 6.9.8 Schema Recovery SR1：在 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1` 落地
+  module-owned bounded native JSON parser、duplicate-key scanner、canonical `{ rewrittenQuery }` projection、实际
+  query-rewrite candidate seam 与 no-raw diagnostic sidecar；Retriever node/API boundary 丢弃 diagnostic。focused
+  `35/35`（430 assertions）、Agent full `1450/1450`、AI full `345/345`，全程 provider/credential/formal evidence=`0`。
+  authority=`zero_provider_retriever_final_response_schema_recovery_tdd / qualityAuthority=none`，只解锁 SR2。（已完成，
+  zero-provider；证据见
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`）
 - Phase 6.9.8 Retriever/FinalResponse Architecture Recovery R0：以独立
   `phase-6.9.8-retriever-final-response-architecture-recovery-v1` lineage 冻结三类调用阶段机、
   `providerWire/runnerWire` 双层观察、strict bounded diagnostic、no-raw/no-hash、source admission、durability、

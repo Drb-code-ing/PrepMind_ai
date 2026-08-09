@@ -2,19 +2,19 @@
 
 日期：2026-08-09
 
-当前状态：SR0 已在独立普通分支完成 zero-provider 设计冻结；没有修改源码、读取凭据、调用 Provider、创建正式
-evidence 或启动产品。下一步只解锁 SR1 strict parser/projection TDD。
+当前状态：SR1 已在独立普通分支完成 zero-provider strict parser/projection TDD；没有读取凭据、调用 Provider、创建正式
+evidence 或启动产品。当前只解锁 SR2 zero-provider Provider-like robustness。
 
 设计来源：
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
 
-分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr0`
+分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1`
 
-基线：`main@6dbe96e2eb72382ba2c25522e86cbc7e17b2f610`
+基线：`main@e5d575214dce636c89db69a26c934019da06a013`
 
 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
 
-SR0 authority：`zero_provider_retriever_final_response_schema_recovery_design / qualityAuthority=none`
+SR1 authority：`zero_provider_retriever_final_response_schema_recovery_tdd / qualityAuthority=none`
 
 ## 1. 执行纪律
 
@@ -27,7 +27,7 @@ SR0 authority：`zero_provider_retriever_final_response_schema_recovery_design /
   namespace、source manifest、approval、validator 均独立。
 - 已完成的 sealed validator 只做只读复核；不反复重跑已完成的 Live、产品验收或全量回归。
 
-## 2. SR0：设计冻结（本阶段）
+## 2. SR0：设计冻结（已完成的历史 checkpoint）
 
 ### 2.1 交付
 
@@ -58,7 +58,10 @@ SR0 authority：`zero_provider_retriever_final_response_schema_recovery_design /
 
 ## 3. SR1：Strict parser、projection 与 TDD
 
-状态：待 SR0 合并后，从最新 `main` 新开 `...-sr1`。
+状态：已完成（从 SR0 合并后的最新 `main` 新开 `...-sr1`）。SR1 交付实际落在
+`packages/agent/src/model-candidates/retriever-schema-recovery-contract.ts`、
+`packages/agent/src/model-candidates/retriever-schema-recovery.ts`、query-rewrite candidate 与对应 tests；diagnostic
+只在 candidate outcome 顶层 sidecar，Retriever node 只保留 observation。
 
 ### 3.1 实现边界
 
@@ -66,7 +69,8 @@ SR0 authority：`zero_provider_retriever_final_response_schema_recovery_design /
 - 复用 `requireModelAgentBoundedJsonContentParser` 的 WeakMap capability，但不修改通用 trace 的公开字段；
 - 输出 canonical plain `{ rewrittenQuery }`，记录最多一个 bounded diagnostic；
 - 复用现有 local safety/authority/merger，不让 parser 接触 expected/oracle；
-- generic runtime/adapter failure 只映射到固定 stage/reason，不保存 raw runtime result。
+- generic runtime/adapter failure 只映射到固定 stage/reason，不保存 raw runtime result；usage/trace 不一致或无法细分的
+  sanitizer failure 统一为 bounded `projected_schema/unknown`。
 
 ### 3.2 RED/GREEN matrix
 
@@ -77,6 +81,10 @@ SR0 authority：`zero_provider_retriever_final_response_schema_recovery_design /
 - unchanged/protected-term/tool/write/credential safety；
 - runtime `provider_json_parse/provider_type_validation/provider_object_missing`、usage、timeout、transport、abort；
 - deep-freeze、no alias mutation、single dispatch/no retry、fallback 原 query。
+
+SR1 GREEN：contract `9/9`（153 assertions）、candidate `13/13`（171 assertions）、AI strict policy `4/4`（16 assertions）、
+Retriever node boundary `9/9`（90 assertions），合计 `35/35`（430 assertions）；Agent `1450/1450`、AI `345/345`、
+typecheck、lint、变更范围 Prettier 与 `git diff --check` 均已回放通过。
 
 ### 3.3 只解锁
 
@@ -132,7 +140,8 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
 
 - 设计：`docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`；
 - 计划：本文；
-- 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`；
+- 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`、
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`；
 - 入口：`AGENTS.md`、`README.md`、`DEVLOG.md`、`docs/roadmap.md`、`docs/data-flow.md`、`docs/dev-start.md`、
   `docs/acceptance-checklist.md`、`docs/ai-behavior-acceptance.md`；
 - 历史 P1 spec/plan 与 Agents 设计计划只更新“当前状态/下一步”指针，不改写已封存事实。

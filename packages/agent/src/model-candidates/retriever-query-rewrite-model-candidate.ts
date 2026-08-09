@@ -23,6 +23,10 @@ import {
   deepFreezeModelValue,
   scanCompleteModelField,
 } from './model-projection-safety.ts';
+import {
+  createRetrieverSchemaRecoveryDiagnosticCollector,
+  type RetrieverSchemaRecoveryBoundedDiagnostic,
+} from './retriever-schema-recovery-contract.ts';
 
 export const RETRIEVER_QUERY_REWRITE_CANDIDATE_VERSION =
   'retriever-query-rewrite-model-candidate-v1' as const;
@@ -37,6 +41,11 @@ export const RETRIEVER_QUERY_REWRITE_MAX_INPUT_TOKENS = 1_200 as const;
 export const RETRIEVER_QUERY_REWRITE_MAX_OUTPUT_TOKENS = 160 as const;
 export const RETRIEVER_QUERY_REWRITE_MAX_COST_CNY = 0.005 as const;
 
+/**
+ * Historical public compatibility export.  SR1 runtime dispatches must use a
+ * fresh module-owned collector schema so parser diagnostics cannot be shared
+ * across requests; callers must not register this identity for execution.
+ */
 export const RETRIEVER_QUERY_REWRITE_MODEL_SCHEMA = z
   .object({
     rewrittenQuery: z.string().min(1).max(2_000),
@@ -108,6 +117,11 @@ export type RetrieverQueryRewriteCandidateOutcomeV1 = Readonly<{
   executedQuery: string;
   rewrite: RetrieverResultV1['rewrite'];
   observation: RetrieverQueryRewriteObservationV1;
+  /**
+   * Internal bounded sidecar.  The Retriever node deliberately projects only
+   * `observation`, so parser diagnostics cannot cross into product Chat/Trace.
+   */
+  schemaRecoveryDiagnostic?: RetrieverSchemaRecoveryBoundedDiagnostic;
 }>;
 
 export type RunRetrieverQueryRewriteModelCandidateInputV1 = Readonly<{
@@ -222,6 +236,7 @@ export async function runRetrieverQueryRewriteModelCandidateV1(
     outputTokens: RETRIEVER_QUERY_REWRITE_MAX_OUTPUT_TOKENS,
   });
   if (!preview.ok) return localOutcome(request.originalQuery, rewriteGateOff(), budget);
+  const diagnosticCollector = createRetrieverSchemaRecoveryDiagnosticCollector();
 
   const provenance =
     config.runtimeAuthority === 'reviewed_mock' ? 'reviewed_mock' : 'deepseek_network';
@@ -238,7 +253,7 @@ export async function runRetrieverQueryRewriteModelCandidateV1(
     rawRuntimeResult = await runtime.invokeStructured({
       runId: request.runId,
       task: 'retriever_query_rewrite',
-      schema: RETRIEVER_QUERY_REWRITE_MODEL_SCHEMA,
+      schema: diagnosticCollector.schema,
       systemPrompt: SYSTEM_PROMPT,
       userPrompt,
       estimatedInputTokens,
@@ -247,29 +262,56 @@ export async function runRetrieverQueryRewriteModelCandidateV1(
       signal: context.signal,
     });
   } catch {
-    return attemptedFallback(request.originalQuery, preview.budget, provenance, true);
+    diagnosticCollector.recordUnknownFailure();
+    return attemptedFallback(
+      request.originalQuery,
+      preview.budget,
+      provenance,
+      true,
+      ZERO_USAGE,
+      undefined,
+      diagnosticCollector.read(),
+    );
   }
 
   const runtimeResult = sanitizeModelCandidateRuntimeResult({
     value: rawRuntimeResult,
-    dataSchema: RETRIEVER_QUERY_REWRITE_MODEL_SCHEMA,
+    dataSchema: diagnosticCollector.schema,
     task: 'retriever_query_rewrite',
     maxOutputTokens: RETRIEVER_QUERY_REWRITE_MAX_OUTPUT_TOKENS,
     callerBudget: budget,
     previewBudget: preview.budget,
   });
   if (runtimeResult === null) {
-    return attemptedFallback(request.originalQuery, preview.budget, 'runtime_untrusted', true);
+    // A post-adapter sanitizer/usage failure is not safely attributable to the
+    // parser, even when the parser previously observed discarded extensions.
+    // The collector preserves a true parser failure internally, but otherwise
+    // the terminal sidecar must be the bounded generic unknown diagnostic.
+    diagnosticCollector.recordUnknownFailure();
+    return attemptedFallback(
+      request.originalQuery,
+      preview.budget,
+      'runtime_untrusted',
+      true,
+      ZERO_USAGE,
+      undefined,
+      diagnosticCollector.read(),
+    );
   }
   if (!traceMatchesConfig(runtimeResult.trace, config)) {
+    diagnosticCollector.recordUnknownFailure();
     return attemptedFallback(
       request.originalQuery,
       runtimeResult.budget,
       'runtime_untrusted',
       true,
+      ZERO_USAGE,
+      undefined,
+      diagnosticCollector.read(),
     );
   }
   if (!runtimeResult.ok) {
+    classifyRuntimeFailureDiagnostic(runtimeResult.trace, diagnosticCollector);
     return attemptedFallback(
       request.originalQuery,
       runtimeResult.budget,
@@ -277,6 +319,7 @@ export async function runRetrieverQueryRewriteModelCandidateV1(
       false,
       runtimeResult.usage,
       runtimeResult.trace,
+      diagnosticCollector.read(),
     );
   }
 
@@ -285,20 +328,41 @@ export async function runRetrieverQueryRewriteModelCandidateV1(
     maxUtf16CodeUnits: 2_000,
     rejectToolOrWriteInstruction: true,
   });
-  if (
-    !scan.ok ||
-    !candidate ||
-    normalizeForComparison(candidate) === normalizeForComparison(request.originalQuery) ||
-    !preservesLocalAuthority(candidate, promptProjection)
-  ) {
+  if (!scan.ok || !candidate) {
+    diagnosticCollector.recordLocalSafetyFailure();
     return attemptedRejected(
       request.originalQuery,
       runtimeResult.budget,
       provenance,
       runtimeResult.usage,
       runtimeResult.trace,
+      diagnosticCollector.read(),
     );
   }
+  if (normalizeForComparison(candidate) === normalizeForComparison(request.originalQuery)) {
+    diagnosticCollector.recordRewriteUnchanged();
+    return attemptedRejected(
+      request.originalQuery,
+      runtimeResult.budget,
+      provenance,
+      runtimeResult.usage,
+      runtimeResult.trace,
+      diagnosticCollector.read(),
+    );
+  }
+  if (!preservesLocalAuthority(candidate, promptProjection)) {
+    diagnosticCollector.recordProtectedTermsDrift();
+    return attemptedRejected(
+      request.originalQuery,
+      runtimeResult.budget,
+      provenance,
+      runtimeResult.usage,
+      runtimeResult.trace,
+      diagnosticCollector.read(),
+    );
+  }
+
+  diagnosticCollector.recordApplied();
 
   return deepFreezeModelValue({
     ok: true,
@@ -319,6 +383,7 @@ export async function runRetrieverQueryRewriteModelCandidateV1(
       usage: runtimeResult.usage,
       trace: runtimeResult.trace,
     },
+    ...schemaRecoveryDiagnosticFields(diagnosticCollector.read()),
   });
 }
 
@@ -573,6 +638,7 @@ function attemptedFallback(
   traceUnavailable: boolean,
   usage: ModelAgentUsage = ZERO_USAGE,
   trace?: ModelAgentTrace,
+  schemaRecoveryDiagnostic: RetrieverSchemaRecoveryBoundedDiagnostic | null = null,
 ): RetrieverQueryRewriteCandidateOutcomeV1 {
   return deepFreezeModelValue({
     ok: true,
@@ -594,6 +660,7 @@ function attemptedFallback(
       ...(trace ? { trace } : {}),
       ...(traceUnavailable ? { traceUnavailable: true as const } : {}),
     },
+    ...schemaRecoveryDiagnosticFields(schemaRecoveryDiagnostic),
   });
 }
 
@@ -603,6 +670,7 @@ function attemptedRejected(
   provenance: RetrieverQueryRewriteObservationV1['provenance'],
   usage: ModelAgentUsage,
   trace: ModelAgentTrace,
+  schemaRecoveryDiagnostic: RetrieverSchemaRecoveryBoundedDiagnostic | null,
 ): RetrieverQueryRewriteCandidateOutcomeV1 {
   return deepFreezeModelValue({
     ok: true,
@@ -623,7 +691,34 @@ function attemptedRejected(
       usage: { ...usage },
       trace,
     },
+    ...schemaRecoveryDiagnosticFields(schemaRecoveryDiagnostic),
   });
+}
+
+function classifyRuntimeFailureDiagnostic(
+  trace: ModelAgentTrace,
+  collector: ReturnType<typeof createRetrieverSchemaRecoveryDiagnosticCollector>,
+) {
+  switch (trace.structuredOutputStage) {
+    case 'provider_json_parse':
+      collector.recordProviderJsonParseFailure();
+      return;
+    case 'provider_object_missing':
+      collector.recordProviderObjectMissingFailure();
+      return;
+    case 'provider_type_validation':
+      collector.recordProjectedSchemaFailure();
+      return;
+    case undefined:
+      collector.recordUnknownFailure();
+      return;
+  }
+}
+
+function schemaRecoveryDiagnosticFields(
+  diagnostic: RetrieverSchemaRecoveryBoundedDiagnostic | null,
+): Readonly<{ schemaRecoveryDiagnostic?: RetrieverSchemaRecoveryBoundedDiagnostic }> {
+  return diagnostic === null ? {} : { schemaRecoveryDiagnostic: diagnostic };
 }
 
 function rewriteNotEligible(): RetrieverResultV1['rewrite'] {
