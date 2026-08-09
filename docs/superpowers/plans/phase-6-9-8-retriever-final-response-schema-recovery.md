@@ -148,7 +148,7 @@ SR3 GREEN：focused `15/15`（49 assertions，5 files）；SR1+SR2+SR3+Task 9B �
 - [x] 固定结果 `8/8` guards、`12/12/12/12` wire、schema `4/2/0`、FinalResponse strict `6`、节点路径 `18/6/6/6/6`，
   gate=`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；
 - [x] 临时 evidence `1` 创建后精确清理为 `0`，正式 SR5 namespace/tag/marker/journal/artifact/claim 保持 `0`；
-- [x] 完成 Agent/AI/Types/Server/Web 与 historical validator/SHA parity 的最终回放；SR4 提交/推送、`main --no-ff` 合并、合并后二次 focused/static/typecheck 回放与 `origin/main` 推送已完成（main=`d5029f90`）。
+- [x] 完成 Agent/AI/Types/Server/Web 与 historical validator/SHA parity 的最终回放；SR4 提交/推送、`main --no-ff` 合并、合并后二次 focused/static/typecheck 回放与 `origin/main` 推送已完成（main=`589ac4da`，merge=`d5029f90`）。
 
 只解锁 fresh SR5 admission，不解锁 Provider。
 

@@ -3,7 +3,7 @@
 ## 当前原子阶段：Phase 6.9.8 Schema Recovery SR4 reviewed Mock/static（2026-08-09）
 
 SR4 已在普通分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 完成并以 `ed9e76f2` 推送；当前已切回
-`main` 完成 `--no-ff` 合并、合并后二次 zero-provider 回归与远程推送，当前 `main == origin/main == d5029f90`。独立 lineage 为
+`main` 完成 `--no-ff` 合并、合并后二次 zero-provider 回归与远程推送，当前 `main == origin/main == 589ac4da`（merge=`d5029f90`）。独立 lineage 为
 `phase-6.9.8-retriever-final-response-schema-recovery-v1`，authority=
 `zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock / qualityAuthority=none`，gate=
 `schema_recovery_mock_quality_not_evidence`。

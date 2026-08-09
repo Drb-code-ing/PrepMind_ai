@@ -29,7 +29,7 @@
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`。
 >
 > 随后已切回 `main`，以 `--no-ff` 合并 SR4；合并后二次 focused/组合/CLI/typecheck/lint 回放保持通过，并已推送
-> `origin/main`。最终 `main == origin/main == d5029f90eea473e22ec1c80b473b5649332acf6a`。
+> `origin/main`。最终 `main == origin/main == 589ac4da343147cd04d707272c5bb441df14a973`（merge commit=`d5029f90`）。
 
 > 2026-08-09 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR3 zero-provider runner/source admission/durability 已完成：
 >
