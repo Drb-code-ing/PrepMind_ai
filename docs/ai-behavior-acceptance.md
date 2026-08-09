@@ -2,7 +2,30 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 P1 L2 controlled-Live 失败封存（最新封存状态，2026-08-09）
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR3（当前，zero-provider）
+
+SR3 是 durability/通信边界验收，不是回答质量验收。当前分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3` 固定 `8` 条 zero-call guard、`6` 条 rewrite、`6` 条
+FinalResponse、最大并发 `1`、每 lane 单次 dispatch 与首错 breaker；reviewed Mock 只通过
+`synthetic_injected` transport，严格穿过 report schema、source capability、journal、validator 与 hard-link publication。
+
+```text
+authority       zero_provider_retriever_final_response_schema_recovery_runner_durability
+gate            schema_recovery_mock_quality_not_evidence
+qualityAuthority none
+providerCalls   0
+credentialReads 0
+formalEvidence  0
+```
+
+SR3 的 synthetic usage 只用于检查 wire/预算/不完整聚合，不能当 DeepSeek/Qwen 计量；它没有进入 `/api/chat`、RAG、Trace、
+BackgroundJob、Outbox、Docker/API/browser 或业务写入。SIGINT/SIGTERM 由 CLI 转为 AbortSignal，恢复只补 durable prefix，
+绝不重放 Provider call。focused `15/15`（49 assertions）、组合 `63/63`（635 assertions）、Agent full `1477/1477`、AI full
+`345/345` 已通过。下一步是
+SR4 reviewed Mock/static，之后才讨论新的 semantic canary；完整回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。
+
+## Phase 6.9.8 P1 L2 controlled-Live 失败封存（历史封存状态，2026-08-09）
 
 唯一 run `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag `fa502925...` 上由正常 runtime 路径
 durable seal。8/8 guard 继续 zero-call；真实行为只执行 `rewrite_01` 与 `rewrite_03` 两条 DeepSeek lane，前者 strict
@@ -18,7 +41,7 @@ recovery claim。`schema` 只代表未满足本地 strict contract，不能推�
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
 main parity 记录见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 
-## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR1（当前，zero-provider）
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR1（历史，zero-provider）
 
 P1 L2 已封存且不得重跑；SR0 设计已合并，当前从最新 `main` 新开普通分支
 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1`，继续使用独立
@@ -40,7 +63,7 @@ DeepSeek/Qwen、不启动 Docker/API/browser、不写 Trace/BackgroundJob/Outbox
 SR1 focused 为 `35/35`（430 assertions），Agent/AI full 为 `1450/1450` 与 `345/345`；usage/trace 不一致或无法细分的
 generic sanitizer failure 只记录 bounded `unknown` sidecar，不把它解释成具体 Provider 根因。
 
-## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR2（当前，zero-provider）
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR2（历史，zero-provider）
 
 SR2 在 SR1 strict parser/candidate seam 之上验证 Provider-like shape robustness、held-out prompt-derived responder、
 metamorphic 输入变换和 transport/HTTP/usage/trace/timeout/abort fault boundary。它使用独立 fixture SHA=

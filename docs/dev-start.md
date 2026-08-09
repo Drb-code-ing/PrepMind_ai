@@ -3,7 +3,30 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 Schema Recovery SR2 入口（zero-provider，2026-08-09）
+## 当前 Schema Recovery SR3 入口（zero-provider，2026-08-09）
+
+当前普通分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`，基线
+`main == origin/main == 849af1c84231a4c0fbe54426ddae02d0a1b28a30`。SR3 固定 `8 guards + 6 rewrite + 6 FinalResponse`
+与 `12` 次 candidate invocation，最大并发 `1`；已实现 source admission、strict runner、hash-chain durability、hard-link
+publication、validate 与 crash-only recover/seal CLI。authority=
+`zero_provider_retriever_final_response_schema_recovery_runner_durability / qualityAuthority=none`。
+
+安全回放（默认在临时目录，结束自动清理）：
+
+```powershell
+bun --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr3
+bun --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr3:validate
+bun --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr3:recover
+```
+
+`validate`/`recover` 针对当前仓库没有正式 SR3 bundle 时会 fail-closed；不要为了让它通过而创建或修改正式
+evidence。SR3 全程不读 root `.env`、不调用 DeepSeek/Qwen、不启动/清理 Docker、PostgreSQL、Redis、MinIO、API、browser，
+不写 Trace/BackgroundJob/Outbox/业务数据。合并前验收命令与证据见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。当前回归计数为 focused
+`15/15`（49 assertions）、SR1+SR2+SR3+Task 9B 组合 `63/63`（635 assertions，14 files）、Agent full `1477/1477`
+（24908 expect()，189 files）、AI full `345/345`（2662 expect()）。
+
+## 历史 Schema Recovery SR2 入口（zero-provider，2026-08-09）
 
 P1 L2 唯一 controlled-Live 已失败封存，SR0/SR1/SR2 已合并并推送；当前 `main == origin/main ==
 17ce07ba386f3a54eb4fdfffdf050b561c319754`，SR2 功能分支为

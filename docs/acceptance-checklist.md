@@ -5,7 +5,40 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0H. Phase 6.9.8 P1 L2 controlled-Live 失败封存（当前，2026-08-09）
+## 0K. Phase 6.9.8 Schema Recovery SR3（当前，zero-provider，2026-08-09）
+
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr3`；基线：
+`main == origin/main == 849af1c84231a4c0fbe54426ddae02d0a1b28a30`。
+
+SR3 固定 `8 guards + 6 rewrite + 6 FinalResponse`、`20` report entries、`12` candidate invocations、最大并发 `1`、
+首错 breaker、single dispatch、reservation-before-dispatch、fsynced hash-chain journal、hard-link artifact、strict
+validator 与 crash-only prefix recovery。authority=`zero_provider_retriever_final_response_schema_recovery_runner_durability`，
+gate=`schema_recovery_mock_quality_not_evidence`，`qualityAuthority=none`。
+
+先跑 focused，再跑组合与包回归：
+
+```powershell
+bun test packages/agent/tests/retriever-schema-recovery-sr3-contract.test.ts `
+  packages/agent/tests/retriever-schema-recovery-sr3-durability.test.ts `
+  packages/agent/tests/retriever-schema-recovery-sr3-runner.test.ts `
+  packages/agent/tests/retriever-schema-recovery-sr3-source-admission.test.ts `
+  packages/agent/tests/retriever-schema-recovery-sr3-cli.test.ts
+bun --cwd packages/agent test
+bun --cwd packages/ai test
+bun --cwd packages/agent typecheck
+bun --cwd packages/agent lint
+git diff --check
+```
+
+本次 focused 为 `15/15`、`49 assertions`；SR1+SR2+SR3+Task 9B 组合为 `63/63`、`635 assertions`（14 files），Agent/AI
+全量分别为 `1477/1477`（24908 expect()，189 files）与 `345/345`（2662 expect()，28 files）。当前零 Provider 事实必须保持
+`providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`。CLI 默认只在临时 root 执行 reviewed Mock；
+`validate`/`recover` 在没有正式 bundle 时应 fail-closed，不得通过创建伪证据“修复”。不启动或清理 Docker、数据库、Redis、
+MinIO，不进行真实模型或浏览器验收；SR3 不形成 semantic/product/main/P95/SLA authority。
+
+验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`。
+
+## 0H. Phase 6.9.8 P1 L2 controlled-Live 失败封存（历史，2026-08-09）
 
 唯一 run `ff035203-500f-4744-b33c-3c375ae4c785` 已在 approved source/tag `fa502925...` 上正常 durable seal。固定分母
 仍为 `8 guards + 6 DeepSeek rewrite + 6 DeepSeek FinalResponse`，Qwen embedding policy calls=`0`，最大并发 `1`、
@@ -35,7 +68,7 @@ recovery claim           null
 main parity 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 实现验收：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
 
-## 0I. Phase 6.9.8 Schema Recovery SR1 TDD（当前，zero-provider）
+## 0I. Phase 6.9.8 Schema Recovery SR1 TDD（历史，zero-provider）
 
 P1 L2 已失败封存、合并推送并完成 main 二次回归；不得把 SR1 当作 L2 retry/recovery。SR0 设计已合并，当前从最新
 `main` 新开普通分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1`，在独立
@@ -67,7 +100,7 @@ git parity；不重复历史 Live 或产品验收。SR1 只解锁 SR2 zero-provi
 当前 focused 回执：contract `9/9`（153 assertions）、candidate `13/13`（171 assertions）、AI policy `4/4`
 （16 assertions）、Retriever node boundary `9/9`（90 assertions），合计 `35/35`（430 assertions）。
 
-## 0J. Phase 6.9.8 Schema Recovery SR2 Provider-like robustness（当前，zero-provider）
+## 0J. Phase 6.9.8 Schema Recovery SR2 Provider-like robustness（历史，zero-provider）
 
 SR1 parser/candidate seam 已完成并保持只读；SR2 功能提交 `2df35873` 已通过 `17ce07ba` 合并并推送，当前
 `main == origin/main == 17ce07ba386f3a54eb4fdfffdf050b561c319754`。功能分支
@@ -100,7 +133,7 @@ bunx prettier --check <changed files>
 git diff --check
 ```
 
-当前回执：SR2 focused `12/12`（329 assertions）；SR1+SR2/node/query-rewrite 组合 `43/43`（743 assertions）；Agent full
+历史回执：SR2 focused `12/12`（329 assertions）；SR1+SR2/node/query-rewrite 组合 `43/43`（743 assertions）；Agent full
 `1462/1462`（24841 expect() calls，184 files）；AI full `345/345`（2662 expect() calls）。typecheck/lint 与
 `git diff --check` 通过；SR2-owned TS/JSON 使用 `--end-of-line=crlf` 的 Prettier 回放通过，历史 Markdown 保持仓库既有
 CRLF 换行风格。全程
