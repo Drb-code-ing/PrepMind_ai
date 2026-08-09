@@ -5,9 +5,10 @@
 > 当前状态：P1 设计、G1 zero-provider contract/baseline/scorer、G2 one-shot runner/durability、S2 reviewed Mock/static 与
 > L2 zero-provider admission contract 均已完成；唯一 L2 controlled-Live 已在 fresh authorization 后执行并以
 > `p1_l2_quality_gate_failed / qualityAuthority=none` durable seal。证据已以 `f4fac048` 合并，文档 parity 再以 `613cc772`
-> 合并推送到 `main`；最终 `main == origin/main` 的 zero-provider 回归已完成；不得重跑本 run。下一功能任务只能从最新 `main`
-> 新开独立 schema
-> recovery/diagnostic lineage。
+> 合并推送到 `main`；最终 `main == origin/main` 的 zero-provider 回归已完成；不得重跑本 run。该 P1 计划已成为历史冻结
+> 记录。下一功能任务已具体化为从最新 `main` 新开的
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1` SR0 zero-provider schema-recovery/diagnostic design，
+> 不属于本 P1 L2 retry/recovery。
 > 分支：`drb/phase-6-9-8-p1-semantic-gate-design`
 > 基线：`main` merge `3fdb9908`
 > Lineage：`phase-6.9.8-retriever-final-response-p1-v1`

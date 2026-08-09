@@ -3,7 +3,23 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 Transport Evidence Recovery 入口（T3 已失败封存）
+## 当前 Schema Recovery SR0 入口（zero-provider，2026-08-09）
+
+P1 L2 唯一 controlled-Live 已失败封存，当前只允许从最新 `main` 推进独立
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr0` 的 SR0 文档设计。SR0 不提供运行时脚本，不读取根
+`.env`/credential，不调用 Provider，不启动 Docker/API/browser，也不执行任何 `live`、`controlled`、`seal`、`recover`、
+`replay` 或 `backfill` 命令。设计、计划、验收见：
+
+```text
+docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md
+docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md
+docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md
+```
+
+SR0 文档阶段只允许执行已封存 P1 L2 validator 的只读回放、Markdown Prettier、`git diff --check`、精确新 namespace
+扫描和 git parity；不要把历史 `.tmp` 文件计入新 lineage，也不要为了文档阶段清理 Docker、数据库、Redis 或 MinIO。
+
+## 历史 Transport Evidence Recovery 入口（T3 已失败封存）
 
 T3-A 的 zero-provider admission/runner 已完成；唯一 T3 controlled canary
 `075e2d5f-682b-426d-847e-f5a6ce5b97c6` 已在 late-bound credential gate 以

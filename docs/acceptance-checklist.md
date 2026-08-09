@@ -35,6 +35,30 @@ recovery claim           null
 main parity 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 实现验收：`docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-implementation-zero-provider.md`。
 
+## 0I. Phase 6.9.8 Schema Recovery SR0 设计（当前，zero-provider）
+
+P1 L2 已失败封存、合并推送并完成 main 二次回归；不得把 SR0 当作 L2 retry/recovery。当前从最新 `main` 新开普通分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr0`，只冻结独立
+`phase-6.9.8-retriever-final-response-schema-recovery-v1` 的 schema、diagnostic、权限、并发和 durability 停止门。
+
+固定设计入口：
+
+- `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
+- `docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`
+
+SR0 的 `providerCalls / credentialReads / formal marker+journal+report+artifact+recovery claim` 必须为 `0/0/0`；不读
+根 `.env`，不调用 Provider，不启动/清理 Docker、数据库、Redis、MinIO，不进入 API/browser/Trace/BackgroundJob/Outbox。
+已封存 P1 L2 validator 只允许只读复核：
+
+```powershell
+bun run --cwd packages/agent eval:phase-6-9-8:p1:l2:validate
+```
+
+SR0 文档阶段只跑 Markdown Prettier、`git diff --check`、精确新 namespace 文件扫描和 git parity；不重复 Agent full、
+历史 Live 或产品验收。SR0 只解锁 SR1 strict parser/projection TDD；未来任何 controlled-Live 必须新的数据边界接受和
+exact authorization。
+
 ## 0G. Phase 6.9.8 P1/G1/G2/S2/L2 admission zero-provider gate（历史 checkpoint）
 
 V2 L1 已以 `transport_reentry_v2_l1_controlled_canary_passed` durable seal，但它只有 transport diagnostic authority，

@@ -4,12 +4,15 @@
 > [Phase 6.9.8 RetrieverAgent / FinalResponseAgent 正式化设计](../specs/phase-6-9-8-retriever-final-response-agents-design.md)
 > 当前状态（历史计划）：Task 9C 与 Architecture Recovery R5 均已失败封存；Transport Evidence Recovery T0/T1/T2/T3-A 已完成，T3-B
 > controlled canary 已按一次性授权执行并以配置失败 durable seal，T3-C configuration guard 与 Transport Re-entry V2
-> D0/C1/C2/S1 zero-provider contract/reviewed Mock 已完成；唯一 V2 L1 已随后 durable seal。当前语义路线转入独立
-> P1 zero-provider semantic-gate，G1 尚未开始；产品/main 与后续阶段仍受语义门约束。
+> D0/C1/C2/S1 zero-provider contract/reviewed Mock、P1/G1/G2/S2、L2 admission 与唯一 L2 controlled-Live 均已完成；L2
+> 已以 `p1_l2_quality_gate_failed` durable seal。当前语义路线从最新 `main` 转入独立
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1` 的 SR0 zero-provider schema-recovery/diagnostic 设计；
+> 产品/main 与后续阶段仍受语义门约束。
 > 历史实现分支：`drb/phase-6-9-8-retriever-final-response-contract`
 
-> 当前入口：`docs/superpowers/specs/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate-design.md`、
-> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-p1-zero-provider-semantic-gate.md` 与对应 acceptance。
+> 当前入口：`docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`、
+> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md` 与 SR0 acceptance；P1 入口保留为历史
+> 冻结记录。
 
 ## 执行原则
 

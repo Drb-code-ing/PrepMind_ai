@@ -1,5 +1,28 @@
 # PrepMind AI 开发日志
 
+> 2026-08-09 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR0 zero-provider 设计冻结：
+>
+> P1 L2 唯一 controlled-Live 已在此前提交中失败封存、合并到 `main` 并完成远程 parity 与二次 zero-provider 回归；本次
+> 从 `main@6dbe96e2eb72382ba2c25522e86cbc7e17b2f610` 新建普通分支
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr0`，不使用 worktree。新 lineage 为
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1`，authority=
+> `zero_provider_retriever_final_response_schema_recovery_design / qualityAuthority=none`。
+>
+> SR0 只读复盘 P1 L2 的 bounded `rewrite_03 / schema / runtime_untrusted`，明确不能恢复 Provider 原文或具体字段，
+> 也不归因网络、账号、余额、权限或服务端。冻结 Retriever 的 Provider content → envelope → canonical rewrite
+> projection → local safety/authority 四步合同；extension 只在有界审计后丢弃并计数，alias/duplicate/wrapper/limit/
+> unsafe/unchanged/protected-term drift 均 fail-closed。Diagnostic 只允许固定 stage/reason/type/bucket/enum hash，
+> `rawDataRetained=false`；FinalResponse stream、owner、evidence projector、Qwen policy、Router、Trace 与产品写入权限不变。
+>
+> SR0 同时冻结独立 future SR3 marker/journal/report/recovery claim/artifact namespace，以及 PID reuse、SIGINT/SIGTERM、
+> claim/event 单边崩溃、publication/artifact conflict、foreign temp、hard-link inode、二次 recovery 幂等和
+> provider/credential zero-call 停止门。文档设计/计划/验收分别见
+> `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`、
+> `docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md`、
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`。
+> 本阶段没有源码、credential、Provider、Docker/API/browser、Trace、BackgroundJob、Outbox 或业务数据变化；下一步只
+> 解锁 SR1 strict parser/projection TDD。
+
 > 2026-08-09 — Phase 6.9.8 P1 L2 唯一 controlled-Live 已质量门失败并 durable seal：
 >
 > 唯一 run `ff035203-500f-4744-b33c-3c375ae4c785` 在 branch
