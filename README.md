@@ -1,8 +1,8 @@
 # PrepMind AI 智能备考助手
 
 > 当前状态（2026-08-09）：Phase 6.9.8 P1 L2 唯一 controlled-Live 已正常 durable seal，但质量门失败；main parity 与
-> 合并后二次 zero-provider 回归均已完成。Schema Recovery SR1 zero-provider TDD 也已完成，下一原子任务仅为 SR2
-> zero-provider Provider-like robustness。
+> 合并后二次 zero-provider 回归均已完成。Schema Recovery SR1 与 SR2 zero-provider 已完成，当前只解锁 SR3
+> 独立 runner/source admission/durability。
 > run `ff035203-500f-4744-b33c-3c375ae4c785` 在 approved source/tag `fa502925...` 上完成 8/8 zero-call guards；
 > `rewrite_01` strict 成功，`rewrite_03` 在第二次真实 DeepSeek 调用后以 bounded `schema` failure 打开 breaker，剩余
 > 10 条 lane 未启动。最终 `p1_l2_quality_gate_failed / qualityAuthority=none / semanticGate=none`，Provider/credential/
@@ -15,19 +15,22 @@
 > recovery/seal、curl、单 case 或追加 Provider 探测。证据与文档已在 `1f3c0d9b` 提交，并以 `--no-ff` 合并到
 > 生产/证据 merge `f4fac048` 后，文档 parity 以 `613cc772` 合并；最终 `main == origin/main` 的零 Provider 二次回归已通过。main parity 记录见
 > [`P1 L2 main parity 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md)。
-> 已从 SR0 合并后的 `main == origin/main == e5d57521` 创建普通分支
-> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1`，独立 lineage 为
-> `phase-6.9.8-retriever-final-response-schema-recovery-v1`，SR1 authority 为
-> `zero_provider_retriever_final_response_schema_recovery_tdd / qualityAuthority=none`。SR1 已落地 bounded native
-> parser、canonical projection、actual query-rewrite candidate seam 与 no-raw diagnostic collector；diagnostic 只在
-> candidate outcome sidecar，Retriever node 会在产品边界丢弃，不进入 Chat/FinalResponse/账单/Trace。不读 `.env`、不调用
-> Provider、不创建正式 evidence、不启动产品。focused `35/35`（430 assertions）、Agent `1450/1450`、AI
-> `345/345`、typecheck/lint/Prettier/diff check 均通过。详见
+> 已从 SR1 合并后的 `main == origin/main == 629acec49d9693f24ccded051d8d90cad77167cc` 创建普通分支
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`，独立 lineage 为
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1`，SR2 authority 为
+> `zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`。SR2 冻结
+> `5` 个 held-out、`24` 个 Provider-like shape（5 accepted/19 rejected）、`7` 个 fault、`4` 个 metamorphic case，
+> fixture SHA=`sha256:59010e16fd665df6d497517276dbeacb3f5973036a07e8cf00010569da171505`；合成 runtime 为
+> `reviewed_mock/mock/mock`，仍真实穿过 SR1 raw-content parser/canonical projection/local authority/sanitizer，但不调用
+> Provider。focused `12/12`（329 assertions）、组合 `43/43`（743 assertions）、AI `345/345`、typecheck/lint/
+> 变更范围 Prettier/diff check 均通过。diagnostic 只在 candidate sidecar，Retriever node 会在产品边界丢弃，不进入
+> Chat/FinalResponse/账单/Trace。详见
 > [`Schema Recovery SR0 设计`](docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md)、
 > [`SR1 实施计划`](docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md)、
 > [`SR0 zero-provider 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md) 与
-> [`SR1 zero-provider TDD 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md)。
-> SR1 只解锁 SR2 zero-provider robustness；不使用 worktree，不清理 Docker 容器/镜像/卷/数据库/Redis/MinIO。
+> [`SR1 zero-provider TDD 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md) 与
+> [`SR2 zero-provider robustness 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md)。
+> SR2 只解锁 SR3；全程不读 `.env`、不启动/清理 Docker 容器/镜像/卷/数据库/Redis/MinIO，不形成真实模型、产品或 main authority。
 
 > 历史回执（2026-08-08）：Transport Re-entry V2 L1 唯一 controlled-Live 已完成并 durable seal。run
 > `ce0c3257-a5d9-4389-90ec-814d5e9cde34` 在 source `ee3dbf91c863a3a5cd95c810a9c0cec0b26f64c6` 上按

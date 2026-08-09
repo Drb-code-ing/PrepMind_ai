@@ -67,6 +67,49 @@ git parity；不重复历史 Live 或产品验收。SR1 只解锁 SR2 zero-provi
 当前 focused 回执：contract `9/9`（153 assertions）、candidate `13/13`（171 assertions）、AI policy `4/4`
 （16 assertions）、Retriever node boundary `9/9`（90 assertions），合计 `35/35`（430 assertions）。
 
+## 0J. Phase 6.9.8 Schema Recovery SR2 Provider-like robustness（当前，zero-provider）
+
+SR1 parser/candidate seam 已完成并保持只读；当前从最新已推送 `main == origin/main == 629acec4` 新开普通分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`。SR2 使用独立 fixture/responder 与
+`reviewed_mock/mock/mock` synthetic runtime，fixture SHA=
+`sha256:59010e16fd665df6d497517276dbeacb3f5973036a07e8cf00010569da171505`，覆盖 `5` held-out、`24` Provider-like
+shape（5 accepted/19 rejected）、`7` fault、`4` metamorphic case。
+
+固定 authority：`zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`。每个 eligible
+dispatch 最多一次、无 retry；extension/Unicode/NFC/NFD 只形成 bounded enum/bucket，raw content、raw hash、字段名、
+prompt、credential 与用户正文均不保留；hostile context、pre-abort、expired deadline 在 dispatch 前保持 zero-call。
+
+固定检查：
+
+```powershell
+bun --filter @repo/agent eval:phase-6-9-8:schema-recovery:sr2
+bun test packages/agent/tests/retriever-schema-recovery-contract.test.ts `
+  packages/agent/tests/retriever-schema-recovery-sr2-provider-robustness.test.ts `
+  packages/agent/tests/retriever-schema-recovery-sr2-runtime-metamorphic.test.ts `
+  packages/agent/tests/retriever-schema-recovery-sr2-fault-runner.test.ts `
+  packages/agent/tests/retriever-query-rewrite-model-candidate.test.ts `
+  packages/agent/tests/retriever-node.test.ts
+bun --filter @repo/agent test
+bun --filter @repo/ai test
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/agent lint
+bun --filter @repo/ai typecheck
+bun --filter @repo/ai lint
+bunx prettier --check <changed files>
+git diff --check
+```
+
+当前回执：SR2 focused `12/12`（329 assertions）；SR1+SR2/node/query-rewrite 组合 `43/43`（743 assertions）；Agent full
+`1462/1462`（24841 expect() calls，184 files）；AI full `345/345`（2662 expect() calls）。变更范围
+typecheck/lint/Prettier/diff check 通过。全程
+`providerCalls=0 / credentialReads=0 / formalEvidence=0`，不读根 `.env`、不调用 DeepSeek/Qwen、不启动或清理 Docker、
+数据库、Redis、MinIO、API/browser，不写 Trace/BackgroundJob/Outbox/业务数据。
+
+SR2 只解锁 SR3 独立 runner/source admission/durability，不形成 Provider/semantic、产品、`main`、P95/SLA 或博客
+authority。不要执行 `live`、`controlled`、`seal`、`recover`、`replay`、`backfill`，不要重跑历史 P1 L2/T3/R5/SR5 evidence。
+
+验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`。
+
 ## 0G. Phase 6.9.8 P1/G1/G2/S2/L2 admission zero-provider gate（历史 checkpoint）
 
 V2 L1 已以 `transport_reentry_v2_l1_controlled_canary_passed` durable seal，但它只有 transport diagnostic authority，

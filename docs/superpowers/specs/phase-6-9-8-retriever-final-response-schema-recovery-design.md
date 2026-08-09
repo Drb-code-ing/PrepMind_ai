@@ -2,11 +2,11 @@
 
 日期：2026-08-09
 
-状态：SR0 zero-provider 设计冻结（本提交只改文档，不改运行时代码）
+状态：SR2 zero-provider robustness 已完成；本文件保留 SR0 设计与 SR1/SR2 handoff
 
-分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr0`
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`
 
-基线：`main@6dbe96e2eb72382ba2c25522e86cbc7e17b2f610`，创建分支时
+当前基线：`main@629acec49d9693f24ccded051d8d90cad77167cc`，创建 SR2 分支时
 `main == origin/main`，工作树 clean
 
 独立 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
@@ -25,6 +25,18 @@ bounded native parser、canonical projection、actual query-rewrite candidate se
 账单或 Trace。SR1 focused `35/35`（430 assertions）及 full/typecheck/lint 结果记录在
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`。
 本段不改写下文 SR0 的设计事实，只说明后续实现已完成；下一步仅解锁 SR2 zero-provider robustness。
+
+## SR2 handoff（2026-08-09，robustness checkpoint）
+
+SR2 已在 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2` 完成 zero-provider Provider-like robustness。
+独立 fixture/responder 覆盖 `5` held-out、`24` shape（5 accepted/19 rejected）、`7` fault、`4` metamorphic case，fixture
+SHA=`sha256:59010e16fd665df6d497517276dbeacb3f5973036a07e8cf00010569da171505`。合成 runtime 固定
+`reviewed_mock/mock/mock`，真实穿过 SR1 raw-content parser、canonical projection、local authority 与 sanitizer；不构造
+第一方 adapter、不读取 `.env`、不调用 Provider。SR2 focused `12/12`（329 assertions），组合 `43/43`（743 assertions），
+authority=`zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`。
+
+SR2 只解锁 SR3 独立 runner/source admission/durability；不提高 P1 分母、预算或 timeout，不形成 semantic/product/main
+authority。完整回执见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`。
 
 ## 1. 决策摘要
 
@@ -283,7 +295,7 @@ credential reader 为 0，不把该结果写成未来 Provider health。最小�
 | ---- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
 | SR0  | 只读复盘、schema/diagnostic/durability 设计、文档同步                          | `zero_provider_retriever_final_response_schema_recovery_design`；只解锁 SR1 |
 | SR1  | strict parser、canonical projection、diagnostic TDD、candidate seam            | zero-provider TDD；只解锁 SR2                                               |
-| SR2  | Provider-like、held-out、fault、Unicode/结构限制、anti-oracle                  | zero-provider robustness；只解锁 SR3                                        |
+| SR2  | 已完成 Provider-like/held-out/fault/Unicode/结构限制/anti-oracle；focused `12/12`、组合 `43/43` | `zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`；只解锁 SR3 |
 | SR3  | 独立 runner/source admission/journal/artifact/validator/recovery               | zero-provider durability；只解锁 SR4                                        |
 | SR4  | reviewed Mock/static，全量 parity 与 no-leak                                   | `schema_recovery_mock_quality_not_evidence`；只解锁 fresh SR5 admission     |
 | SR5  | 新 source/tag、fresh data boundary、exact authorization 后唯一 controlled-Live | 仅完整 gate pass 才有分支 semantic authority；一次性、不可重跑              |

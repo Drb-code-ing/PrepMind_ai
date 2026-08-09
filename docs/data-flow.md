@@ -15,17 +15,20 @@
 > 已在 `1f3c0d9b` 提交并以 `f4fac048` 合并源码/证据，文档 parity 再以 `613cc772` 合并、推送到 `main`；二次零 Provider parity 见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 
-> 当前功能流（SR1，zero-provider）：SR0 设计已合并；从最新 `main@e5d57521` 的普通分支
-> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1` 继续使用独立
+> 当前功能流（SR2，zero-provider）：SR1 parser/candidate seam 已合并；从最新 `main@629acec4` 的普通分支
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2` 继续使用独立
 > `phase-6.9.8-retriever-final-response-schema-recovery-v1`。本阶段数据只经过
-> `sealed P1 L2 read-only facts -> module-owned bounded native parser -> canonical rewrittenQuery projection ->
-> local safety/authority -> candidate outcome sidecar -> Retriever node observation projection -> document acceptance`；
-> 不读取 `.env`/credential，不创建 marker/journal/report/artifact/recovery claim，不调用 DeepSeek/Qwen，不进入
-> Docker/API/browser、Trace、BackgroundJob、Outbox 或产品写入。SR1 authority=
-> `zero_provider_retriever_final_response_schema_recovery_tdd / qualityAuthority=none`，diagnostic 在 node 边界丢弃，
-> focused `35/35`（430 assertions）、Agent full `1450/1450`、AI full `345/345`，只解锁下一阶段 SR2 zero-provider
-> robustness；该实现不改变已封存 P1 L2 flow。验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`。
+> `held-out/provider-like fixture -> bounded prompt-derived responder -> module-owned raw-content parser -> canonical
+> rewrittenQuery projection -> local safety/authority -> candidate outcome sidecar -> Retriever node observation projection`；
+> 合成 runtime 固定 `reviewed_mock/mock/mock`，每个 eligible dispatch 只允许一次且禁止 retry；recent-turn/context
+> metamorphic、fault category、pre-abort/expired deadline 与 no-raw 约束均在内存验证。不读取 `.env`/credential，不创建
+> marker/journal/report/artifact/recovery claim，不调用 DeepSeek/Qwen，不进入 Docker/API/browser、Trace、BackgroundJob、
+> Outbox 或产品写入。SR2 authority=`zero_provider_retriever_final_response_schema_recovery_robustness /
+> qualityAuthority=none`，diagnostic 在 node 边界丢弃；focused `12/12`（329 assertions），SR1+SR2/node/query-rewrite
+> 组合 `43/43`（743 assertions），Agent full `1462/1462`（24841 expect()，184 files）、AI full `345/345`，只解锁下一阶段
+> SR3 runner/durability；该实现不改变已封存
+> P1 L2 flow。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`。
 
 > 当前 L1 controlled-Live sealed（2026-08-08）：V2 已从 S1 reviewed Mock/static 收口到唯一可受控执行的
 > production-shaped launcher。固定入口顺序为 `exact argv -> source/remote parity -> loopback proxy preflight ->
