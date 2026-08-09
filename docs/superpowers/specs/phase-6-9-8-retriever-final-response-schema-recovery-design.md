@@ -15,6 +15,17 @@ SR0 authority：`zero_provider_retriever_final_response_schema_recovery_design`
 
 qualityAuthority：`none`
 
+## SR1 handoff（2026-08-09，独立实现 checkpoint）
+
+SR1 已在从 `main@e5d575214dce636c89db69a26c934019da06a013` 新开的
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1` 上完成 zero-provider strict parser/projection TDD，
+authority=`zero_provider_retriever_final_response_schema_recovery_tdd / qualityAuthority=none`。它新增 module-owned
+bounded native parser、canonical projection、actual query-rewrite candidate seam 与 no-raw diagnostic collector；diagnostic
+只存在于 candidate outcome 顶层 sidecar，Retriever node 只保留 observation，因而不进入产品 Chat、FinalResponse prompt、
+账单或 Trace。SR1 focused `35/35`（430 assertions）及 full/typecheck/lint 结果记录在
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`。
+本段不改写下文 SR0 的设计事实，只说明后续实现已完成；下一步仅解锁 SR2 zero-provider robustness。
+
 ## 1. 决策摘要
 
 Phase 6.9.8 P1 L2 的唯一 controlled-Live 已经封存为

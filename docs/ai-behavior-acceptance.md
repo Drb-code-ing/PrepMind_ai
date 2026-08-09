@@ -18,22 +18,27 @@ recovery claim。`schema` 只代表未满足本地 strict contract，不能推�
 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-controlled-live-quality-gate-failure.md`。
 main parity 记录见 `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md`。
 
-## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR0（当前，zero-provider）
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR1（当前，zero-provider）
 
-P1 L2 已封存且不得重跑；当前从最新 `main` 新开普通分支
-`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr0`，冻结独立
-`phase-6.9.8-retriever-final-response-schema-recovery-v1`。SR0 只读复盘 `schema / runtime_untrusted` 的可证边界，
-不猜测 `rewrite_03` 原文或具体字段；设计 Provider content → envelope → canonical rewrite projection → local
-safety/authority 四步合同，并固定 bounded enum/bucket diagnostic 与 `rawDataRetained=false`。
+P1 L2 已封存且不得重跑；SR0 设计已合并，当前从最新 `main` 新开普通分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1`，继续使用独立
+`phase-6.9.8-retriever-final-response-schema-recovery-v1`。SR1 已实现 Provider content → envelope → canonical rewrite
+projection → local safety/authority 四步合同的 strict parser/projection TDD：bounded native parser、duplicate-key
+scanner、canonical projection、actual candidate seam 与 bounded no-raw diagnostic collector。
 
-SR0 authority=`zero_provider_retriever_final_response_schema_recovery_design / qualityAuthority=none`。本阶段
-`providerCalls=0 / credentialReads=0 / formalEvidence=0`，不读 `.env`、不调用 DeepSeek/Qwen、不启动 Docker/API/browser、
-不写 Trace/BackgroundJob/Outbox/业务数据。它只解锁 SR1 strict parser/projection TDD，不形成真实模型质量、Qwen 检索、
-P95/SLA、产品或 `main` authority。设计、计划与验收见：
+diagnostic 只存在于 candidate outcome 顶层 sidecar；Retriever node 只投影 observation，因此不会进入产品 Chat、
+FinalResponse prompt、账单或 Trace。SR1 authority=`zero_provider_retriever_final_response_schema_recovery_tdd /
+qualityAuthority=none`。本阶段 `providerCalls=0 / credentialReads=0 / formalEvidence=0`，不读 `.env`、不调用
+DeepSeek/Qwen、不启动 Docker/API/browser、不写 Trace/BackgroundJob/Outbox/业务数据。它只解锁 SR2 zero-provider robustness，
+不形成真实模型质量、Qwen 检索、P95/SLA、产品或 `main` authority。设计、计划与验收见：
 
 - `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
 - `docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md`
 - `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md`
+- `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`
+
+SR1 focused 为 `35/35`（430 assertions），Agent/AI full 为 `1450/1450` 与 `345/345`；usage/trace 不一致或无法细分的
+generic sanitizer failure 只记录 bounded `unknown` sidecar，不把它解释成具体 Provider 根因。
 
 ## Phase 6.9.8 Transport Re-entry V2 L1 controlled-Live sealed（2026-08-08）
 

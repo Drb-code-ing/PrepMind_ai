@@ -27,6 +27,7 @@
     "./review": "./src/nodes/review.ts",
     "./realtime-chat": "./src/contracts/realtime-chat.ts",
     "./retriever-query-rewrite": "./src/model-candidates/retriever-query-rewrite-model-candidate.ts",
+    "./retriever-schema-recovery": "./src/model-candidates/retriever-schema-recovery.ts",
     "./phase-6-9-8-p1-g2": "./src/evals/phase-6-9-8-retriever-final-response-p1-g2-runner.ts",
     "./phase-6-9-8-p1-g2-durability": "./src/evals/phase-6-9-8-retriever-final-response-p1-g2-durability.ts",
     "./phase-6-9-8-p1-l2-admission": "./src/evals/phase-6-9-8-retriever-final-response-p1-l2-admission.ts",

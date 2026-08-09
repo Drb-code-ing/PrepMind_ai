@@ -1,5 +1,25 @@
 # PrepMind AI 开发日志
 
+> 2026-08-09 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR1 zero-provider strict parser/projection TDD 已完成：
+>
+> 从已合并并推送的 `main == origin/main == e5d575214dce636c89db69a26c934019da06a013` 新建普通分支
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1`，沿用独立 lineage
+> `phase-6.9.8-retriever-final-response-schema-recovery-v1`，authority=
+> `zero_provider_retriever_final_response_schema_recovery_tdd / qualityAuthority=none`。新增 module-owned exact schema、
+> bounded native JSON parser、duplicate-key scanner、canonical `{ rewrittenQuery }` projection、实际 candidate collector
+> seam 与 usage/trace unknown fail-closed 诊断；diagnostic 只在 candidate outcome 顶层 sidecar，Retriever node/API boundary
+> 丢弃，不进入产品 Chat、FinalResponse prompt、账单或 Trace。
+>
+> focused：contract `9/9`（153 assertions）、candidate `13/13`（171 assertions）、AI policy `4/4`（16 assertions）、
+> Retriever node boundary `9/9`（90 assertions），合计 `35/35`（430 assertions）。Agent full `1450/1450`（24512 expect()，
+> 181 files）、AI full `345/345`（2662 expect()，28 files）、typecheck/lint/Prettier/`git diff --check` 全部通过。
+> 全程 `providerCalls=0`、`credentialReads=0`、formal marker/journal/report/artifact/recovery claim=`0`，不读取根 `.env`、
+> 不调用 DeepSeek/Qwen、不启动或清理 Docker/API/browser、Trace、BackgroundJob、Outbox 或业务数据。
+>
+> SR1 acceptance：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`。
+> 本阶段只解锁 SR2 zero-provider Provider-like robustness；下一阶段必须从最新已推送 `main` 新开分支，未来任何
+> controlled-Live 都需重新接受当次 DeepSeek/Qwen 数据边界并给出绑定新 source 的 exact authorization。
+
 > 2026-08-09 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR0 zero-provider 设计冻结：
 >
 > P1 L2 唯一 controlled-Live 已在此前提交中失败封存、合并到 `main` 并完成远程 parity 与二次 zero-provider 回归；本次

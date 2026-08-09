@@ -3,21 +3,37 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 Schema Recovery SR0 入口（zero-provider，2026-08-09）
+## 当前 Schema Recovery SR1 入口（zero-provider，2026-08-09）
 
-P1 L2 唯一 controlled-Live 已失败封存，当前只允许从最新 `main` 推进独立
-`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr0` 的 SR0 文档设计。SR0 不提供运行时脚本，不读取根
+P1 L2 唯一 controlled-Live 已失败封存，SR0 设计已合并；当前在从最新 `main` 派生的普通分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr1` 完成 SR1 strict parser/projection TDD。SR1 不读取根
 `.env`/credential，不调用 Provider，不启动 Docker/API/browser，也不执行任何 `live`、`controlled`、`seal`、`recover`、
-`replay` 或 `backfill` 命令。设计、计划、验收见：
+`replay` 或 `backfill` 命令。实现、计划、验收见：
 
 ```text
 docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md
 docs/superpowers/plans/phase-6-9-8-retriever-final-response-schema-recovery.md
 docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr0-zero-provider-design.md
+docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md
 ```
 
-SR0 文档阶段只允许执行已封存 P1 L2 validator 的只读回放、Markdown Prettier、`git diff --check`、精确新 namespace
-扫描和 git parity；不要把历史 `.tmp` 文件计入新 lineage，也不要为了文档阶段清理 Docker、数据库、Redis 或 MinIO。
+SR1 只允许执行 focused/全量 zero-provider tests、typecheck/lint/Prettier、`git diff --check`、精确新 namespace 扫描和
+git parity；不得读取真实 credential 或执行网络。SR1 的 bounded diagnostic 只存在于 candidate outcome sidecar，Retriever
+node 会在产品边界丢弃；不要把历史 `.tmp` 文件计入新 lineage，也不要为了验收清理 Docker、数据库、Redis 或 MinIO。
+
+```powershell
+bun test packages/ai/tests/model-agent-strict-json-content-policy.test.ts `
+  packages/agent/tests/retriever-schema-recovery-contract.test.ts `
+  packages/agent/tests/retriever-query-rewrite-model-candidate.test.ts `
+  packages/agent/tests/retriever-node.test.ts
+bun --filter @repo/agent test
+bun --filter @repo/ai test
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/agent lint
+```
+
+当前 SR1 focused 回执为 `35/35`（430 assertions）；full Agent/AI 为 `1450/1450` 与 `345/345`。这些命令均使用 synthetic
+runtime，不读取 `.env`、不调用 Provider，也不产生正式 evidence。
 
 ## 历史 Transport Evidence Recovery 入口（T3 已失败封存）
 
