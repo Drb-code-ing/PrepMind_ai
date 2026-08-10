@@ -94,13 +94,15 @@ rejection、run/reservation/bound capability single-use，以及“当前没有 
 
 ## 5. 下一停止门
 
-1. 完成本阶段代码/文档提交并推送；从最新 `main` 合并后做一次合并后二次 zero-provider 回归并推送 `origin/main`。
-2. 在**新的、已推送 source/tag** 上重新接受当次 DeepSeek/Qwen 数据保留/训练边界，并给出绑定该 source commit/bundle 的
-   exact authorization。
-3. 先做独立 SR5 runner/durability admission；通过后才允许唯一一次 controlled-Live。任何成功、schema、transport、
-   usage、timeout、abort 或 I/O 终态都必须 durable seal，且不得 retry/resume/replay/backfill/recovery 或追加单 case
-   Provider 探测。
-4. SR5 即使 semantic gate 通过，也只形成分支 semantic authority；后续仍需独立 SR6 Docker/API/可见浏览器/Trace 验收。
+1. 本 admission 已提交、推送并通过 `main@42abbbbd` 合并后二次回归；后续独立 SR5 runner/durability checkpoint 也已
+   zero-provider 完成，见
+   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
+2. 先完成 runner/durability 功能分支提交、推送、从最新 main 合并、合并后二次 zero-provider 回归与 `origin/main` 推送。
+3. 在**新的、已推送 source/tag** 上重新接受当次 DeepSeek/Qwen 数据保留/训练边界，并给出绑定该 source commit/bundle 的
+   exact authorization，之后才允许规划唯一一次 controlled-Live。
+4. controlled-Live 的任何成功、schema、transport、usage、timeout、abort 或 I/O 终态都必须 durable seal，且不得
+   retry/resume/replay/backfill/recovery 或追加单 case Provider 探测。即使 semantic gate 通过，也只形成分支 semantic
+   authority；后续仍需独立 SR6 Docker/API/可见浏览器/Trace 验收。
 
 禁止清理 Docker、数据库、Redis、MinIO；禁止修改历史 P1 L2/T3/R5/L3/Phase 6.9.7 SR5 sealed evidence。
 

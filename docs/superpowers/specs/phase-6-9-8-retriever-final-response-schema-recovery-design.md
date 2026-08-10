@@ -2,13 +2,13 @@
 
 日期：2026-08-09
 
-状态：SR4 zero-provider reviewed Mock/static 与 SR5 zero-provider admission contract 已完成；本文件保留 SR0 设计与
-SR1--SR4 handoff，并记录 SR5 到唯一 controlled-Live 的停止门
+状态：SR4 zero-provider reviewed Mock/static、SR5 admission contract 与 SR5 runner/durability zero-provider checkpoint
+已完成；本文件保留 SR0 设计与 SR1--SR4 handoff，并记录 SR5 到唯一 controlled-Live 的停止门
 
-当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`（从已推送 `main@82936a95` 新开普通 git branch）
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`（从已推送 `main@42abbbbd` 新开普通 git branch）
 
-SR4 已在历史分支完成并以 `--no-ff` 合并；当前最新 `main == origin/main ==
-82936a955670a647756940fb398119647064d095`。SR4 merge `d5029f90` 是历史合并事实，不是当前 HEAD。
+SR5 admission 已在历史分支完成并以 `--no-ff` 合并；当前基线 `main == origin/main == 42abbbbd`。SR4 merge `d5029f90`
+与 SR5 admission merge `42abbbbd` 是已封存的上游事实；runner 分支尚未合并回 main。
 
 SR5 独立 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；SR3/SR4 lineage
 `phase-6.9.8-retriever-final-response-schema-recovery-v1` 仅作为上游 identity 保留。
@@ -52,6 +52,29 @@ boundary/authorization SHA。
 CLI help smoke 通过；providerCalls/credentialReads/formalEvidence/businessWrites 均为 `0`。本 checkpoint 不读取 `.env`、
 不调用 Provider、不创建正式 evidence，也不构成 controlled-Live 或 semantic/product/main authority。验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
+
+## SR5 runner/durability checkpoint（2026-08-10，zero-provider）
+
+runner 已将 admission 的 opaque reservation capability 接入固定 reviewed-Mock 执行器：`8` zero-call guards、`6` rewrite
+与 `6` FinalResponse lanes，`20` report entries、`12` candidate invocations、最大并发 `1`、pair serial、single dispatch，
+预算 `37,600/8,800/0.176 CNY`。首个 guard/lane 错误打开 breaker，后缀只写 `not_started_*`，不重试、不复制 sibling 结果。
+
+durability 层新增独立 SR5-runner marker/journal/report/recovery/artifact namespace；marker 独占创建并绑定 runner
+manifest/policy SHA，reservation 和每个阶段先 fsync，再写 hash-chain journal。report/artifact 以 hard link 发布，validator
+重算 source、report、wire、预算、journal 与 inode；CRLF、foreign file、tamper、publication prefix、二次 seal 与 PID
+reuse 均 fail-closed。crash-only recovery 只补可证明 prefix，不创建 executor、不重放 Provider call。
+
+runner manifest SHA=`d50e27729d873833fc857efe648ba8a56fda19a4d70212a22aa01dbe02b53ea3`，policy SHA=
+`ff05b647a4c00a3943c18c70d02650aad3d4b880209ac35f04e60d1d9e31f803`。focused `25/25`（82 assertions）、typecheck/lint、
+CLI help/run smoke 通过；runtime `12/12/12/12` wire、`12/0/0` succeeded/failed/notStarted，
+`providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`。authority=
+`zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability`、gate=
+`schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`。CLI 只开放 synthetic reviewed Mock、validate 与
+crash-only recover，不开放 live/credential/replay/backfill；临时 evidence 创建后精确清理为 `0`。完整回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
+
+runner 已完成但尚未形成真实 semantic/product/main authority。下一步是提交、推送、从最新 main 合并后二次 zero-provider
+回归并推送；之后仍需重新接受当次 DeepSeek/Qwen 数据边界与绑定新 source 的 exact authorization，才能规划唯一 controlled-Live。
 
 ## SR1 handoff（2026-08-09，独立实现 checkpoint）
 

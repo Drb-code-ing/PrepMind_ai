@@ -1,27 +1,26 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前状态：Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 admission（2026-08-10）
+## 当前状态：Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 runner/durability（2026-08-10）
 
-SR5 admission 分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5` 从已推送
-`main@82936a955670a647756940fb398119647064d095` 新开，使用普通 git branch，不使用 worktree。工作范围是
-zero-provider source/tag/data-boundary/exact-authorization contract；不读取根 `.env`/credential，不调用 Provider，不清理
-Docker、数据库、Redis 或 MinIO。
+当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`，从已推送
+`main@42abbbbd` 新开；不使用 worktree。SR5 admission contract 已合并到该基线，本 checkpoint 又完成了
+zero-provider reviewed-Mock runner、严格 source-bound reservation、hash-chain journal、hard-link artifact、strict
+validator 与 crash-only recovery。不读取根 `.env`/credential，不调用 Provider，不清理 Docker、数据库、Redis 或 MinIO。
 
-SR5 approved tag 尚未创建，真实 source gate 保持关闭；当前没有 controlled-Live authorization。完成本分支后仍须按
-“提交→推送→从最新 main 合并→合并后二次验收→推送 origin/main”推进。
+runner authority=
+`zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability`、gate=
+`schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`；固定 `8 guards + 6 rewrite + 6 FinalResponse`、
+`20` report entries、`12` candidate invocations、最大并发 `1`、预算 `37,600/8,800/0.176 CNY`。CLI 只开放
+`synthetic_test` reviewed Mock、validate 与 crash-only recover；不开放 live、credential、replay 或 backfill 参数。
 
-SR5 admission authority=
-`zero_provider_retriever_final_response_schema_recovery_sr5_admission`、gate=`sr5_admission_zero_provider`、
-`qualityAuthority=none`；验收见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
+当前 focused `25/25`（82 assertions）、typecheck/lint、CLI help/run smoke 已通过；CLI runtime 为
+`12/12/12/12` reservations/dispatches/responses/verifiedUsage、`12/0/0` succeeded/failed/notStarted，
+`providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`。完整验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
 
-固定 branch/annotated tag、SR3/SR4 identity、预算、最大并发 `1`、single dispatch、retry/resume/replay/backfill=false 与
-opaque single-use bound admission/reservation capability 均由 strict contract 校验；synthetic tuple seam 只允许
-`synthetic_test`，admission record 只保存边界/授权 SHA，不保存确认原文。
-
-本阶段 focused `12/12`（50 assertions）、Agent full `1500/1500`（25077 expect()）、typecheck/lint 与 CLI help smoke 已通过；
-providerCalls、credentialReads、
-formalEvidence、产品/Trace/BackgroundJob/Outbox 写入均为 `0`。
+SR5 approved annotated tag 尚未创建，真实 `git_verified` source gate 与 controlled-Live 仍关闭；本阶段不形成真实模型
+质量、产品/API/browser、Trace、P95/SLA、`main` 或博客 authority。完成本分支后仍须按“提交→推送→从最新 main 合并→
+合并后二次验收→推送 origin/main”推进，之后才可重新接受当次 DeepSeek/Qwen 数据边界并取得绑定新 source 的 exact authorization。
 
 ### 历史 SR4 reviewed Mock checkpoint（已完成）
 

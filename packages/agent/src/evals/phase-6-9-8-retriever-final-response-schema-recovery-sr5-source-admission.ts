@@ -25,8 +25,10 @@ import { PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR4_FROZEN_FACTORY_SHA256 } from 
 const GIT_TIMEOUT_MS = 10_000;
 const GIT_MAX_BUFFER_BYTES = 32 * 1024 * 1024;
 const ZERO_COMMIT = '0'.repeat(40);
-const FORMAL_PATH =
-  /^\.tmp\/phase-6-9-8-retriever-final-response-schema-recovery-sr5(?:\.marker|-[0-9a-f-]{36}\.(?:journal\.jsonl|report\.json|recovery\.claim|artifact\.tmp))$|^phase-6-9-8-retriever-final-response-schema-recovery-sr5-[0-9a-f-]{36}\.json$/u;
+const CURRENT_FORMAL_PATH =
+  /^(?:\.tmp\/)?phase-6-9-8-retriever-final-response-schema-recovery-sr5(?:-runner)?(?:\.marker|-[0-9a-f-]{36}\.(?:journal\.jsonl|report\.json|recovery\.claim|artifact\.tmp|json))$/u;
+const OLD_LINEAGE_PATH =
+  /^(?:\.tmp\/)?(?:phase-6-9-7-[A-Za-z0-9_-]+|phase-6-9-8-retriever-final-response-(?:schema-recovery-v1|p1-[A-Za-z0-9_-]+|task9[A-Za-z0-9_-]*|architecture-recovery[A-Za-z0-9_-]*|transport-[A-Za-z0-9_-]+))(?:-[0-9a-f-]{36})?\.(?:marker|journal\.jsonl|report\.json|recovery\.claim|artifact\.tmp|json)$/u;
 
 export type Phase698RetrieverSchemaRecoverySr5RepositoryObservation = Readonly<{
   root: string;
@@ -407,8 +409,8 @@ function inspectRepository(
   }
   const bundle = computePhase698RetrieverSchemaRecoverySr5GitSourceBundleSha256(root, head);
   if (!bundle.ok) return null;
-  const formalEvidencePaths = scanFormalPaths(root);
-  if (formalEvidencePaths === null) return null;
+  const paths = scanFormalPaths(root);
+  if (paths === null) return null;
   return Object.freeze({
     root,
     branch,
@@ -422,8 +424,8 @@ function inspectRepository(
       objectKind: 'tag' as const,
     },
     clean: status.length === 0,
-    formalEvidencePaths,
-    oldLineagePaths: [],
+    formalEvidencePaths: paths.formal,
+    oldLineagePaths: paths.old,
     sourceBundleSha256: bundle.sha256,
   });
 }
@@ -540,24 +542,29 @@ function assertSourceStillMatches(
   }
 }
 
-function scanFormalPaths(root: string): string[] | null {
-  const paths: string[] = [];
+function scanFormalPaths(
+  root: string,
+): Readonly<{ formal: readonly string[]; old: readonly string[] }> | null {
+  const formal: string[] = [];
+  const old: string[] = [];
   try {
     for (const entry of readdirSync(resolve(root, '.tmp'), { withFileTypes: true })) {
       const relative = `.tmp/${entry.name}`;
-      if (FORMAL_PATH.test(relative)) paths.push(relative);
+      if (CURRENT_FORMAL_PATH.test(relative)) formal.push(relative);
+      else if (OLD_LINEAGE_PATH.test(relative)) old.push(relative);
     }
   } catch (error) {
     if (!isErrorCode(error, 'ENOENT')) return null;
   }
   try {
     for (const entry of readdirSync(root, { withFileTypes: true })) {
-      if (FORMAL_PATH.test(entry.name)) paths.push(entry.name);
+      if (CURRENT_FORMAL_PATH.test(entry.name)) formal.push(entry.name);
+      else if (OLD_LINEAGE_PATH.test(entry.name)) old.push(entry.name);
     }
   } catch {
     return null;
   }
-  return paths.sort();
+  return Object.freeze({ formal: formal.sort(), old: old.sort() });
 }
 
 function resolveTrustedGitRoot(repositoryRoot: string): string | null {

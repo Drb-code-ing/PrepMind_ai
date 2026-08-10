@@ -1,26 +1,27 @@
 # PrepMind AI 智能备考助手
 
-## 当前工作回执：Schema Recovery SR5 admission contract（2026-08-10）
+## 当前工作回执：Schema Recovery SR5 runner/durability（2026-08-10）
 
-当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，从已推送的
-`main@82936a955670a647756940fb398119647064d095` 新开；不使用 worktree，不清理 Docker、数据库、Redis 或 MinIO。
-本阶段完成了 SR4 到未来唯一 controlled-Live 的 zero-provider 准入合同：Git source/tag/bundle parity、DeepSeek/Qwen
-data-boundary receipt、source-bound exact authorization、固定预算、最大并发 1、no retry/replay/resume/backfill 与
-opaque single-use bound capability。approved annotated tag 尚未创建，真实 source gate 保持关闭。
+当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`，从已推送的
+`main@42abbbbd` 新开；不使用 worktree，不清理 Docker、数据库、Redis 或 MinIO。SR5 admission contract 已在该基线
+完成，本 checkpoint 将它接入 zero-provider reviewed-Mock runner，并落地严格 journal、artifact、validator 与 crash-only
+recovery。approved annotated tag 尚未创建，真实 `git_verified` source gate 与 controlled-Live 保持关闭。
 
 ```text
-authority       zero_provider_retriever_final_response_schema_recovery_sr5_admission
+authority       zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability
 qualityAuthority none
-gate            sr5_admission_zero_provider (contract passed)
-mode            zero_provider_admission
-approved tag    not created; source gate closed
-focused         12/12 tests, 50 assertions; Agent full 1500/1500, 25077 expect()
-provider/env    0 / 0; formal evidence 0
-dispatch        disabled; no credential/provider ports
+gate            schema_recovery_mock_quality_not_evidence
+mode            zero_provider_reviewed_mock_only
+fixed           8 guards + 6 rewrite + 6 FinalResponse; 20 entries / 12 invocations
+focused         25/25 tests, 82 assertions
+runtime         12/12/12/12 wire; 12 succeeded, 0 failed, 0 notStarted
+provider/env    0 / 0; formal evidence 0; business writes 0
+dispatch        synthetic only; no credential/provider ports
 ```
 
-本回执只证明 SR5 admission 工程边界，不证明真实 DeepSeek/Qwen 质量、RAG 召回、产品 `/api/chat`、Docker/API/browser、
-Trace、P95/SLA 或 `main` 产品可用性。SR5 admission 验收、SR4 checkpoint、设计和计划见：
+本回执只证明 SR5 runner/durability 工程边界，不证明真实 DeepSeek/Qwen 质量、RAG 召回、产品 `/api/chat`、Docker/API/browser、
+Trace、P95/SLA 或 `main` 产品可用性。runner/durability、SR5 admission、SR4 checkpoint、设计和计划见：
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`、

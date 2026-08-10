@@ -1,9 +1,9 @@
 # PrepMind AI 数据流
 
-## 当前 SR5 admission flow（2026-08-10）
+## 当前 SR5 runner/durability flow（2026-08-10）
 
-当前工作分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5` 从
-`main@82936a955670a647756940fb398119647064d095` 新开。SR5 admission 的数据流仍不进入产品 Chat，也不触发 Provider：
+当前工作分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 从
+`main@42abbbbd` 新开。SR5 admission 已作为上游 source-bound capability，当前 runner 仍不进入产品 Chat，也不触发 Provider：
 
 ```text
 Git HEAD/upstream/origin/approved tag
@@ -14,21 +14,28 @@ Git HEAD/upstream/origin/approved tag
   -> fixed budget/concurrency/no-retry policy
   -> source-bound API 组合 boundary/auth/budget
   -> opaque single-use bound admission + reservation capability
-  -> (provider dispatch disabled at this checkpoint)
+  -> 8 zero-call guards
+  -> 6 pair-serial rewrite + 6 FinalResponse synthetic lanes
+  -> reservation/fsync -> dispatch -> response -> verified usage
+  -> first-error breaker / suffix not-started accounting
+  -> fsynced hash-chain journal -> hard-link report/artifact
+  -> strict validator / crash-only recovery
 ```
 
-SR5 独立 lineage=`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；admission 只接受精确
+SR5 独立 lineage=`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；runner 固定
+`8 guards + 6 rewrite + 6 FinalResponse = 20 entries / 12 invocations`、最大并发 `1`、预算 `37,600/8,800/0.176 CNY`，
+并将 retry/resume/replay/backfill/BackgroundJob/Outbox 全部固定为 `false`。admission 只接受精确
 source/boundary/authorization/budget 字段，所有输入先做 own-data-property/strict schema 检查；source
 bundle 从 approved commit 的 Git blob 重算，reservation 时再次检查 source drift。confirmation 原文只用于内存校验，admission
-record 只保存 SHA；run/reservation capability 由 module-owned WeakMap/WeakSet 单次消费。当前不创建正式 marker/journal/
-report/artifact/recovery claim。
+record 只保存 SHA；run/reservation capability 由 module-owned WeakMap/WeakSet 单次消费。CLI 只创建 synthetic reviewed Mock
+bundle，测试结束后精确清理；正式 runner namespace 在当前回放中仍为 `0`。
 
 本阶段固定 `providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`，不读取 root `.env`、不调用
 DeepSeek/Qwen、不启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser，不写 Trace/BackgroundJob/Outbox。authority=
-`zero_provider_retriever_final_response_schema_recovery_sr5_admission`、gate=`sr5_admission_zero_provider`、
-`qualityAuthority=none`；focused `12/12`（50 assertions）、typecheck/lint/CLI help smoke 已通过。因此不形成
+`zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability`、gate=`schema_recovery_mock_quality_not_evidence`、
+`qualityAuthority=none`；focused `25/25`（82 assertions）、typecheck/lint/CLI help/run smoke 已通过。因此不形成
 semantic/product/main/P95/SLA authority。验收见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
 
 ## 历史 SR4 reviewed Mock/static flow
 
