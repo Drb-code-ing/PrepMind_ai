@@ -5,9 +5,30 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0K. Phase 6.9.8 Schema Recovery SR4 reviewed Mock/static（当前，zero-provider，2026-08-09）
+## 0K. Phase 6.9.8 Schema Recovery SR5 admission（当前，zero-provider，2026-08-10）
 
-当前分支：`main`（SR4 功能分支已以 `--no-ff` 合并并推送远程）；SR4 功能提交为 `ed9e76f2`，main merge=`d5029f90`。
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，基线
+`main@82936a955670a647756940fb398119647064d095`。本 checkpoint 只做 source/annotated-tag/bundle、DeepSeek/Qwen
+data-boundary、source-bound exact authorization、budget 与 single-use bound capability contract；approved tag 尚未创建，
+provider dispatch=false。
+
+```powershell
+bun --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:admission -- --help
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.test.ts `
+  packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-source-admission.test.ts
+bun --filter @repo/agent typecheck
+bun --filter @repo/agent lint
+git diff --check
+```
+
+预期 `12/12`、50 assertions、CLI help 通过；providerCalls/credentialReads/formalEvidence/businessWrites=`0`。当前 source
+gate 因缺少 approved tag 预期 fail-closed；不读取 `.env`、不调用 Provider、不启动/清理 Docker/数据库/Redis/MinIO/API/browser，
+不写 Trace/BackgroundJob/Outbox。完整回执：
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
+
+## 0K-H. Phase 6.9.8 Schema Recovery SR4 reviewed Mock/static（历史，zero-provider，2026-08-09）
+
+历史分支：`main`（SR4 功能分支已以 `--no-ff` 合并并推送远程）；SR4 功能提交为 `ed9e76f2`，历史 main merge=`d5029f90`。
 
 SR4 固定 `8 guards + 6 rewrite + 6 FinalResponse`、`20` report entries、`12` candidate invocations、最大并发 `1`、
 single dispatch、首错 breaker，并真实穿过 Retriever original/query-rewrite、bounded raw-content parser、synthetic Qwen

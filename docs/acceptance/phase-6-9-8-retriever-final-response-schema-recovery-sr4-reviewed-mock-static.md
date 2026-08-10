@@ -2,12 +2,13 @@
 
 日期：2026-08-09
 分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4`
-基线：`main == origin/main == 421015dbf472e008fad32200fa8a89e240818fcf`（实现前）
+基线：`main == origin/main == 421015dbf472e008fad32200fa8a89e240818fcf`（SR4 实现前历史基线）
+最终 main parity：`82936a955670a647756940fb398119647064d095`
 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
 
 ## 结论
 
-SR4 的 reviewed Mock/static 已完成。它修复了“Mock 直接把 object 交给 strict schema，导致 extension 被错误判为 schema
+SR4 的 reviewed Mock/static 已完成，当前作为历史 checkpoint 保留。它修复了“Mock 直接把 object 交给 strict schema，导致 extension 被错误判为 schema
 failure”的测试链路，并把 SR3 固定 runner 接到了实际 Retriever/FinalResponse production-shaped 节点。默认回放完整通过：
 
 ```text

@@ -1,30 +1,30 @@
 # PrepMind AI 学习与开发路线图
 
-## 当前原子阶段：Phase 6.9.8 Schema Recovery SR4 reviewed Mock/static（2026-08-09）
+## 当前原子阶段：Phase 6.9.8 Schema Recovery SR5 zero-provider admission（2026-08-10）
 
-SR4 已在普通分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 完成并以 `ed9e76f2` 推送；当前已切回
-`main` 完成 `--no-ff` 合并、合并后二次 zero-provider 回归与远程推送，当前 `main == origin/main`（merge=`d5029f90`）。独立 lineage 为
-`phase-6.9.8-retriever-final-response-schema-recovery-v1`，authority=
-`zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock / qualityAuthority=none`，gate=
-`schema_recovery_mock_quality_not_evidence`。
+从已推送 `main == origin/main == 82936a955670a647756940fb398119647064d095` 新开普通分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`。本阶段已完成 strict source/tag/bundle parity、SR3/SR4
+identity、DeepSeek/Qwen data-boundary receipt、source-bound exact authorization、固定预算与 opaque single-use bound
+capability；approved annotated tag 尚未创建，真实 source gate 保持关闭。SR5 独立 lineage=
+`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`。
 
-SR4 真实穿过 `Retriever original -> query-rewrite candidate -> bounded raw-content parser -> synthetic Qwen search port
--> evidence projector -> FinalResponse stream -> local merger -> SR3 runner`。固定 `8 guards + 6 rewrite + 6 FinalResponse`
-（20 report entries / 12 candidate invocations），最大并发 `1`，每 lane 单次 dispatch、首错 breaker；factory SHA=
-`sha256:7bc32c8ed68c3c8d76c9c983b40e771f24c0181cda7976cbc97ab1fb4c26d157`。
+authority=`zero_provider_retriever_final_response_schema_recovery_sr5_admission`、gate=`sr5_admission_zero_provider`、
+`qualityAuthority=none`；focused `12/12`（50 assertions）、typecheck/lint/CLI help smoke 通过；providerCalls、credentialReads、
+formalEvidence、businessWrites 均为 `0`。不读根 `.env`，不调用 Provider，不启动/清理 Docker/API/browser，不写
+Trace/BackgroundJob/Outbox。验收记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
 
-默认回放结果为 guards `8/8`、runtime reservations/dispatches/responses/verifiedUsage=`12/12/12/12`、succeeded/failed/
-notStarted=`12/0/0`，schema=`4 canonical + 2 extension discarded + 0 rejected`，FinalResponse strict=`6`，节点计数
-Retriever original/candidate/projector/FinalResponse/local merger=`18/6/6/6/6`，synthetic Qwen port=`18`。SR4 focused
-`11/11`（99 assertions）已通过；组合 `74/74`（734 assertions，15 files）、Agent full `1488/1488`（25020 expect()，190 files）、
-AI full `345/345`、Types `42/42 + tsc`、Web `487/487`、Server build 与 Agent/AI typecheck/lint 均通过；全程
-`providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`，不读
-根 `.env`、不调用 DeepSeek/Qwen、不启动/清理 Docker/API/browser、不写 Trace/BackgroundJob/Outbox 或业务数据。
+SR5 admission 不等于 controlled-Live，不形成真实模型语义、产品、`main`、P95/SLA 或博客 authority。完成本分支 parity 后
+必须按一阶段一提交推送、从最新 `main` 合并、合并后二次 zero-provider 回归并推送远程；之后仍需新的数据边界接受与 exact
+authorization 才能进入唯一 controlled-Live。
 
-SR4 只解锁 fresh SR5 admission，不形成真实模型语义、产品、`main`、P95/SLA 或博客 authority。完成本分支文档/代码 parity
-后，按一阶段一提交推送，`main --no-ff` 合并，合并后再跑 focused/static/typecheck 回归并推送远程。任何
-controlled-Live 都必须重新接受当次 DeepSeek/Qwen 数据边界并给出绑定新 source 的 exact authorization。验收记录见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`。
+### 历史 SR4 reviewed Mock/static checkpoint（已完成）
+
+SR4 已在普通分支完成并以 `--no-ff` 合并；merge=`d5029f90` 是历史合并事实，当前 HEAD 以本节上方的 `82936a95` 为准。
+其 authority=`zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock / qualityAuthority=none`，
+gate=`schema_recovery_mock_quality_not_evidence`，factory SHA=
+`sha256:7bc32c8ed68c3c8d76c9c983b40e771f24c0181cda7976cbc97ab1fb4c26d157`。完整生产形状路径与 8/6/6/12/20 固定分母见
+SR4 acceptance。
 
 ## SR3 历史 checkpoint（已完成）
 
@@ -40,7 +40,7 @@ SR3 的 runner/source admission/durability 已合并到上述基线，旧 author
 > 产品 Docker/API/browser、Trace、SLA 或 `main` 产品 authority，且不得重跑/追加探测。证据/文档已在 `1f3c0d9b` 提交，
 > 以 `--no-ff` 生成生产/证据 merge `f4fac048`，文档 parity 再以 `613cc772` 合并，最终完成 `main == origin/main` 的
 > zero-provider 回归。P1 L2 已收口，不能重跑或继续追加探测；SR2 功能提交 `2df35873` 已通过合并提交 `17ce07ba`
-> 进入并推送到当前 `main == origin/main == 17ce07ba386f3a54eb4fdfffdf050b561c319754`。功能分支
+> 进入并推送到当时的 `main == origin/main == 17ce07ba386f3a54eb4fdfffdf050b561c319754`；当前 HEAD 已继续推进。功能分支
 > `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2` 的 lineage=
 > `phase-6.9.8-retriever-final-response-schema-recovery-v1`。SR1 与 SR2 已完成 zero-provider parser/projection 与
 > Provider-like robustness；SR2 authority=`zero_provider_retriever_final_response_schema_recovery_robustness /
@@ -130,6 +130,8 @@ SR3 的 runner/source admission/durability 已合并到上述基线，旧 author
 > `docs/superpowers/plans/phase-6-9-8-retriever-final-response-transport-evidence-recovery.md`。
 
 > 当前状态：Phase 7 核心工程化里程碑已推进至 7.23.8；Phase 7.8.5 RAG runtime parity 补强已完成真实 Docker 验收。Phase 6.9.7 V1--V9 controlled-Live 均已以 `quality_gate_failed` 封存且不得重跑。唯一 V9 R5 run `c530ca02-3ece-4f11-898c-5695c8252bd5` 为 `24/24` guard；pair 0 两条 lane 各 dispatch 一次但均无 Provider response，Tutor 为 `provider_runtime / transport`，Organizer sibling 为 `post_dispatch_abort`，最终 wire `2/2/0/0`、strict `0/48`，正式 semantic/P95/token/CNY 全 `null`。Marker/journal/evidence 已 seal，validator `ok=true/filesChecked=1`，无 recovery claim；V9 当时的 R6/R7/main 与后续阶段被阻断，后续另行进入 Architecture/Schema Recovery 路线。完成 Phase 6.9 全部 Agent 架构后再进入 Phase 6.10 分层记忆，随后依次进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系。
+>
+> 以下 `63f8a76b...` 记录属于 Phase 6.9.7 Full-gate Schema Recovery SR5 历史 lineage，不是当前 Phase 6.9.8 Retriever/FinalResponse SR5 admission，也不能作为当前 controlled-Live 授权或质量证据。
 >
 > 用户已作出独立路线决策：停止继续复制 V10/V11 runner/lineage，先执行 Phase 6.9.7 Architecture Recovery。Recovery R1/R2/R3、proxy preflight、Provider Canary V2 D0/C1/C2/S1/L1、P1/G1/G2/S2、唯一 L2 与 P2/F1/F2/S3 均已按独立边界完成。唯一 Full-gate L3 run `2b0ac3a0-631f-4c7f-9781-ce0cda94149a` 继续以 `full_gate_quality_gate_failed / qualityAuthority=none` 不可变封存。Full-gate Schema Recovery SR0--SR4 随后完成 zero-provider 设计、TDD、robustness、独立 runner/durability 与 reviewed Mock/static；SR4 仍只有 Mock authority。唯一 SR5 controlled-Live run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已得到 guards `24/24`、strict/wire/usage `48/48/48/48`、semantic `0.9736111111/0.9515968407/0.9626039759`、paired P95 `2240ms`、费用 `0.067632 CNY`，并以 `schema_recovery_quality_gate_passed / schema_recovery_full_gate_semantic_gate` durable seal；journal `628`、validator `ok=true`、recovery claim=0。SR6 随后在 `providerCalls=0` 边界完成 Tutor/Organizer Docker/API/可见浏览器/Trace/forced-failure/权限隔离与精确清理；`sr5_sealed_replay` 只绑定 SR5 artifact SHA 并从当前 bounded prompt 生成 deterministic Mock，不重放 Provider response。SR7 又完成 main 合并、远程发布与 default-off Docker/API/可见浏览器/Trace/精确清理；精确 step-check 路由修复后为 `tutor/step_check`，candidate zero-call/0-token/`LIVE_CALLS_DISABLED`。SR5/L3/SR4 authority 均保持不可变。Phase 6.9.7 已完成。Phase 6.9.8 Task 0--8 已依次完成设计、shared strict contracts、canonical principal / Chat access、Retriever original-query baseline、exact-context evidence projector、default-off query rewrite candidate、FinalResponse stream contract、`/api/chat` composition/terminal Trace 与 48-case reviewed Mock/static。Task 8 authority 为 `zero_provider_retriever_final_response_reviewed_mock_static / qualityAuthority=none`，guard/rewrite/FinalResponse 均 `16/16`，rewrite nDCG@5 从专项 original `0.56923614767` 提升至 `1`，FinalResponse grounded/citation/critical notice 均为 `1`；Provider/credential/Qwen 与正式 evidence=0。Task 9A 又以 `zero_provider_qwen_embedding_transport_price_contract` 冻结 Qwen 北京区官方 price/endpoint/usage、1536 维 strict direct transport 与 `262144 tokens / 0.131072 CNY` cap，仍未读取 credential 或调用 Provider。Task 9B 又以 `zero_provider_retriever_final_response_runner_durability` 完成 16 guard + 64-call runner、双 Provider accounting、source admission、durability/validator/CLI；Reviewed Mock 仍为 `task9b_mock_quality_not_evidence / qualityAuthority=none`，Provider/credential/approved tag/正式 evidence=0。唯一 Task 9C run `28b5f92f...` 已以 `task9_quality_gate_failed / qualityAuthority=none` 正常封存：guard `16/16`、Provider `5/64`，第二条 DeepSeek rewrite `schema_invalid / 1/1/0/0` 后其余 59 次 not-started；journal `134`、validator `ok=true`。一次性名额已消费且不得重跑，Task 10/11、产品/main、Phase 6.9.9/6.9.10/6.10 与后续阶段仍阻断。
 

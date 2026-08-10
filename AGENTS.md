@@ -1,10 +1,29 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前状态：Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR4 reviewed Mock/static（2026-08-09）
+## 当前状态：Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 admission（2026-08-10）
 
-SR4 功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 已提交为 `ed9e76f2` 并推送；当前普通 git
-分支为 `main`，已完成 `--no-ff` 合并、合并后二次回归与远程推送，当前 `main == origin/main`。不使用 worktree，
-不清理 Docker、数据库、Redis 或 MinIO。
+SR5 admission 分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5` 从已推送
+`main@82936a955670a647756940fb398119647064d095` 新开，使用普通 git branch，不使用 worktree。工作范围是
+zero-provider source/tag/data-boundary/exact-authorization contract；不读取根 `.env`/credential，不调用 Provider，不清理
+Docker、数据库、Redis 或 MinIO。
+
+SR5 approved tag 尚未创建，真实 source gate 保持关闭；当前没有 controlled-Live authorization。完成本分支后仍须按
+“提交→推送→从最新 main 合并→合并后二次验收→推送 origin/main”推进。
+
+SR5 admission authority=
+`zero_provider_retriever_final_response_schema_recovery_sr5_admission`、gate=`sr5_admission_zero_provider`、
+`qualityAuthority=none`；验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
+
+固定 branch/annotated tag、SR3/SR4 identity、预算、最大并发 `1`、single dispatch、retry/resume/replay/backfill=false 与
+opaque single-use bound admission/reservation capability 均由 strict contract 校验；synthetic tuple seam 只允许
+`synthetic_test`，admission record 只保存边界/授权 SHA，不保存确认原文。
+
+本阶段 focused `12/12`（50 assertions）、Agent full `1500/1500`（25077 expect()）、typecheck/lint 与 CLI help smoke 已通过；
+providerCalls、credentialReads、
+formalEvidence、产品/Trace/BackgroundJob/Outbox 写入均为 `0`。
+
+### 历史 SR4 reviewed Mock checkpoint（已完成）
 
 独立 lineage 仍为 `phase-6.9.8-retriever-final-response-schema-recovery-v1`；SR4 authority=
 `zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock`、gate=
@@ -287,7 +306,8 @@ credential、调用 Provider、执行正式 Mock/Live/Docker/API/browser、创�
 `72/24/48/24/32`，runtime `48/48/0/0`、wire `48/48/48/48`、schema `42 canonical + 6 extension
 discarded`、semantic `1/0.996875/0.9984375`、L2 anchor `1`、usage `17732/654` 与 `0.05712 CNY`。Gate
 固定 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；global fetch、credential、Provider、
-正式 SR5 files/tag 与业务写入当时均为 0。其后唯一 SR5 controlled-Live run
+正式 SR5 files/tag 与业务写入当时均为 0。以下 SR5 controlled-Live 记录属于 Phase 6.9.7 Full-gate Schema Recovery 历史 lineage，不是当前 Phase 6.9.8 Retriever/FinalResponse SR5 admission。
+其后唯一 SR5 controlled-Live run
 `63f8a76b-1c2a-403d-b774-0235caae04cb` 已在 approved source/tag `67661f5f...d4441` 上 durable seal：guards
 `24/24` zero-call，runtime `48/48/0/0`，wire/strict/usage `48/48/48/48`，schema canonical `48/48`，
 Tutor/Organizer/Combined semantic `0.9736111111/0.9515968407/0.9626039759`，paired P95 `2240ms`，usage

@@ -1,32 +1,27 @@
 # PrepMind AI 智能备考助手
 
-## 当前工作回执：Schema Recovery SR4 reviewed Mock/static（2026-08-09）
+## 当前工作回执：Schema Recovery SR5 admission contract（2026-08-10）
 
-SR4 功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 已以 `ed9e76f2` 提交并推送；当前普通 git
-分支为 `main`，`--no-ff` 合并、合并后二次 zero-provider 回归与远程推送已通过，当前 `main == origin/main`。SR4 已
-完成 zero-provider reviewed Mock/static：实际
-穿过 Retriever original/query-rewrite、bounded raw-content policy parser、synthetic Qwen search port、verified-evidence
-projector、FinalResponse stream、local merger 与 SR3 fixed-denominator runner；固定 `8 guards + 6 rewrite + 6
-FinalResponse`、12 次候选调用、最大并发 1、每 lane single dispatch、首错 breaker。
+当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，从已推送的
+`main@82936a955670a647756940fb398119647064d095` 新开；不使用 worktree，不清理 Docker、数据库、Redis 或 MinIO。
+本阶段完成了 SR4 到未来唯一 controlled-Live 的 zero-provider 准入合同：Git source/tag/bundle parity、DeepSeek/Qwen
+data-boundary receipt、source-bound exact authorization、固定预算、最大并发 1、no retry/replay/resume/backfill 与
+opaque single-use bound capability。approved annotated tag 尚未创建，真实 source gate 保持关闭。
 
 ```text
-authority       zero_provider_retriever_final_response_schema_recovery_sr4_reviewed_mock
+authority       zero_provider_retriever_final_response_schema_recovery_sr5_admission
 qualityAuthority none
-gate            schema_recovery_mock_quality_not_evidence (passed=true)
-factorySha      7bc32c8ed68c3c8d76c9c983b40e771f24c0181cda7976cbc97ab1fb4c26d157
-upstreamSha     d14c0845...da1bede / 6c1f1b03...1cebf8 / 73f06485...951ef8
-focused         11/11 tests, 99 assertions
-runtime         12/12/12/12 reservations/dispatches/responses/verifiedUsage
-schema          4 canonical + 2 extension discarded + 0 rejected
-nodePath        18/6/6/6/6 original/candidate/projector/final/merger
-combo           74/74 tests, 734 assertions (15 files)
-agent full      1488/1488 tests, 25020 expect() (190 files)
-ai/types/web    345/345; 42/42 + tsc; 487/487
+gate            sr5_admission_zero_provider (contract passed)
+mode            zero_provider_admission
+approved tag    not created; source gate closed
+focused         12/12 tests, 50 assertions; Agent full 1500/1500, 25077 expect()
 provider/env    0 / 0; formal evidence 0
+dispatch        disabled; no credential/provider ports
 ```
 
-本回执只证明工程化边界和 zero-provider reviewed Mock，不证明真实 DeepSeek/Qwen 质量、RAG 召回、产品 `/api/chat`、
-Docker/API/browser、Trace、P95/SLA 或 `main` 产品可用性。SR4 acceptance、设计和计划见：
+本回执只证明 SR5 admission 工程边界，不证明真实 DeepSeek/Qwen 质量、RAG 召回、产品 `/api/chat`、Docker/API/browser、
+Trace、P95/SLA 或 `main` 产品可用性。SR5 admission 验收、SR4 checkpoint、设计和计划见：
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`、
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`、
@@ -47,8 +42,8 @@ Docker/API/browser、Trace、P95/SLA 或 `main` 产品可用性。SR4 acceptance
 > recovery/seal、curl、单 case 或追加 Provider 探测。证据与文档已在 `1f3c0d9b` 提交，并以 `--no-ff` 合并到
 > 生产/证据 merge `f4fac048` 后，文档 parity 以 `613cc772` 合并；最终 `main == origin/main` 的零 Provider 二次回归已通过。main parity 记录见
 > [`P1 L2 main parity 验收`](docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-main-parity-zero-provider.md)。
-> SR2 功能提交 `2df35873` 已通过合并提交 `17ce07ba` 进入并推送到 `main`；当前
-> `main == origin/main == 17ce07ba386f3a54eb4fdfffdf050b561c319754`。功能分支为
+> 历史 SR2 checkpoint：功能提交 `2df35873` 曾通过合并提交 `17ce07ba` 进入并推送到 `main`；当前 main 已继续推进，
+> 不应把该历史 SHA 当作当前 HEAD。功能分支为
 > `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`，独立 lineage 为
 > `phase-6.9.8-retriever-final-response-schema-recovery-v1`，SR2 authority 为
 > `zero_provider_retriever_final_response_schema_recovery_robustness / qualityAuthority=none`。SR2 冻结
