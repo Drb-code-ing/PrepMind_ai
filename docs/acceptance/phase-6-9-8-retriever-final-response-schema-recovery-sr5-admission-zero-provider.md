@@ -3,7 +3,11 @@
 日期：2026-08-10
 分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`
 基线：`main@82936a955670a647756940fb398119647064d095`
-状态：**zero-provider admission contract 已完成；controlled-Live 尚未授权、尚未执行**
+状态：**历史 zero-provider admission contract 已完成并封存；controlled-Live 尚未授权、尚未执行**
+
+> 本文的旧 approved tag 与 historical manifest 保持不可变。当前 Live 若需执行，使用独立的
+> `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved` source contract；详见
+> `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
 
 ## 1. 这一步完成了什么
 

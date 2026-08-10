@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rename, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -24,6 +24,7 @@ import {
 import {
   reservePhase698RetrieverSchemaRecoverySr5LiveAttempt,
   sealPhase698RetrieverSchemaRecoverySr5LiveInterruptedAttemptForTest,
+  artifactRelativePath,
   journalRelativePath,
   validatePhase698RetrieverSchemaRecoverySr5LiveBundle,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-durability.ts';
@@ -31,12 +32,22 @@ import {
   executePhase698RetrieverSchemaRecoverySr5LiveCliCore,
   readPhase698RetrieverSchemaRecoverySr5RootCredentialEnv,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-cli-core.ts';
-import { snapshotPhase698RetrieverSchemaRecoverySr5LiveProxyEnv } from '../scripts/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-cli.ts';
-import { PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.ts';
 import {
+  snapshotPhase698RetrieverSchemaRecoverySr5LiveAuthorizationEnv,
+  snapshotPhase698RetrieverSchemaRecoverySr5LiveProxyEnv,
+} from '../scripts/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-cli.ts';
+import {
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_TAG,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_SOURCE_REF,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG,
+} from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.ts';
+import {
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST_SHA256,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_OBJECTS,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-manifest.ts';
+import { createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixture } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-schema.ts';
 
 const roots: string[] = [];
 
@@ -70,6 +81,30 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST_SHA256).not.toBe(
       PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
     );
+    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_TAG).toBe(
+      'phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved',
+    );
+    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG).toBe(
+      'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved',
+    );
+    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG).not.toBe(
+      PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_TAG,
+    );
+    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST).toMatchObject({
+      approvedSourceRef: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_SOURCE_REF,
+      historicalAdmissionManifestSha256:
+        PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
+    });
+    expect(createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixture()).toMatchObject({
+      approvedTag: {
+        name: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG,
+        ref: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_SOURCE_REF,
+      },
+      admissionManifestSha256:
+        PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST_SHA256,
+      historicalAdmissionManifestSha256:
+        PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
+    });
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_OBJECTS).toEqual(
       expect.arrayContaining([
         { path: 'packages/agent', objectKind: 'tree' },
@@ -239,6 +274,84 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     });
   });
 
+  it('ignores inherited proxy values and rejects an own getter that throws', async () => {
+    const inherited = Object.create({ HTTP_PROXY: 'http://127.0.0.1:7897' }) as Record<
+      string,
+      unknown
+    >;
+    const inheritedSnapshot = snapshotPhase698RetrieverSchemaRecoverySr5LiveProxyEnv(inherited);
+    expect(Object.hasOwn(inheritedSnapshot, 'HTTP_PROXY')).toBe(false);
+    expect(
+      await runPhase697ArchitectureRecoveryProxyPreflight(
+        { env: inheritedSnapshot, signal: new AbortController().signal },
+        { probeLoopbackListener: async () => true },
+      ),
+    ).toMatchObject({
+      ok: true,
+      code: 'direct_ready',
+      configuredProxyVariables: 0,
+      providerCalls: 0,
+    });
+
+    const hostile = Object.create(null) as Record<string, unknown>;
+    Object.defineProperty(hostile, 'HTTP_PROXY', {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        throw new Error('hostile getter');
+      },
+    });
+    const hostileSnapshot = snapshotPhase698RetrieverSchemaRecoverySr5LiveProxyEnv(hostile);
+    expect(Object.getOwnPropertyDescriptor(hostileSnapshot, 'HTTP_PROXY')).toMatchObject({
+      value: undefined,
+      writable: false,
+      configurable: false,
+    });
+    expect(
+      await runPhase697ArchitectureRecoveryProxyPreflight(
+        { env: hostileSnapshot, signal: new AbortController().signal },
+        { probeLoopbackListener: async () => true },
+      ),
+    ).toMatchObject({ ok: false, code: 'proxy_environment_invalid', providerCalls: 0 });
+  });
+
+  it('materializes Bun-style accessor authorization variables before admission', () => {
+    const env = Object.create(null) as Record<string, unknown>;
+    Object.defineProperty(
+      env,
+      'PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED',
+      {
+        configurable: true,
+        enumerable: true,
+        get: () =>
+          'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+      },
+    );
+    Object.defineProperty(
+      env,
+      'PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED',
+      {
+        configurable: true,
+        enumerable: true,
+        get: () =>
+          'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_CONTROLLED_LIVE_ONCE',
+      },
+    );
+    const snapshot = snapshotPhase698RetrieverSchemaRecoverySr5LiveAuthorizationEnv(env);
+    expect(snapshot).toMatchObject({
+      PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
+        'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+      PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
+        'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_CONTROLLED_LIVE_ONCE',
+    });
+    expect(
+      Object.getOwnPropertyDescriptor(
+        snapshot,
+        'PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED',
+      ),
+    ).toMatchObject({ writable: false, configurable: false });
+  });
+
   it('rejects current-lineage temp leftovers before creating a marker', async () => {
     const root = await mkdtemp(join(tmpdir(), 'prepmind-sr5-live-temp-fence-'));
     roots.push(root);
@@ -263,6 +376,27 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         reservationCapability: bound.reservationCapability,
       }),
     ).rejects.toThrow();
+  });
+
+  it('fails closed if the trusted temp directory is replaced after reservation', async () => {
+    const { root, runId, reservation, bound } = await createReservation();
+    const report = await runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest({
+      runId,
+      repositoryRoot: root,
+      admissionAuthority: 'synthetic_test_live',
+      admissionCapability: bound.capability,
+      harness: createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest(),
+      lifecycle: reservation.lifecycle,
+      signal: new AbortController().signal,
+    });
+    const trustedTmp = join(root, '.tmp');
+    const displacedTmp = join(root, '.tmp-original');
+    await rename(trustedTmp, displacedTmp);
+    await symlink(displacedTmp, trustedTmp, process.platform === 'win32' ? 'junction' : 'dir');
+
+    await expect(reservation.publishArtifact(report)).rejects.toThrow();
+    const artifactName = artifactRelativePath(runId).split('/').at(-1)!;
+    expect((await readdir(displacedTmp)).includes(artifactName)).toBe(false);
   });
 
   it('fails closed on journal tamper and seals an interrupted prefix once', async () => {

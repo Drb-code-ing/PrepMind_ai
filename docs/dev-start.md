@@ -3,16 +3,17 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 Schema Recovery SR5 Live 入口与 proxy 修复（zero-provider，2026-08-10）
+## 当前 Schema Recovery SR5 Live tag compatibility（zero-provider，2026-08-10）
 
 SR5 Live 首次入口在 proxy 前门以 `proxy_preflight_not_ready` fail-closed，未读取 credential、未调用 Provider、未创建正式 evidence。
-修复提交 `b531adef` 已以 merge=`671188bb` 合并并推送 main；修复后的 focused 回归为 `11/11`（39 assertions），功能分支在新 Live admission
-前仍需快进到该最终 main。
+proxy 修复已完成；当前 Live source admission 改为只接受新 annotated tag
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved`。历史
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved` 保持不可变，不得移动或覆盖。
 本节只验证生产形状入口与前门，不执行真实模型。Live 固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek
 `12` + Qwen `12`（共 `24` slots）、最大并发 `1`、pair-serial、预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。
 
 安全的 help/validate/recover 路径不会加载 `.env` 或 credential；package script 显式使用 `bun --no-env-file`。唯一 RUN
-参数必须同时满足最终 source/tag parity、正式 evidence namespace=0、loopback/direct proxy preflight、当次数据边界和 exact
+参数必须同时满足最终 source/新 tag parity、正式 evidence namespace=0、loopback/direct proxy preflight、当次数据边界和 exact
 authorization；只有这些前门通过后才会 selective-read 根 `.env` 的三个 SR5 credential。不要在 source/main parity 收口前运行
 RUN，也不要把本轮旧授权复用到新 source。
 
@@ -20,18 +21,21 @@ RUN，也不要把本轮旧授权复用到新 source。
 bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live -- --help
 bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:validate
 bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:recover
-bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-source-admission.test.ts
 ```
 
-当前预期是 help 成功、validate/recover 在无正式 bundle 时 fail-closed，focused Live `11/11`（39 assertions）。这些命令
+当前预期是 help 成功、validate/recover 在无正式 bundle 时 fail-closed，SR5 contract/source/Live focused
+`26/26`（102 assertions）；Agent full `1527/1527`（25213 expect()，196 files）。这些命令
 `providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`，不创建正式 marker/journal/report/artifact，
 不启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。完整实现回执见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`；proxy accessor 修复回执见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`；tag 分离回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
 
 ### 历史 Schema Recovery SR5 runner/durability 入口（zero-provider，2026-08-10）
 
-当前普通分支为 `main`。功能分支
+以下是历史 runner checkpoint；当前 Live compatibility 工作分支为
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`。功能分支
 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已以 `--no-ff` 合并为 `b2b5b9c9`，合并后二次
 zero-provider 回放通过。本入口运行固定 `8/6/6` reviewed-Mock runner，并验证 source-bound reservation、hash-chain journal、
 hard-link artifact、strict validator 与 crash-only recovery。approved tag 尚未创建，真实 source gate 与 provider dispatch
@@ -61,7 +65,8 @@ bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:admission -- -
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-source-admission.test.ts
 ```
 
-旧 approved tag 只绑定修复前 source，当前修复 source 的 tag parity 预期 fail-closed；该命令不读取 `.env`、不调用 Provider、不创建正式
+历史 admission CLI 仍只验证旧 approved tag 与旧 source manifest；Live 不复用该 tag，而由上方独立 Live source schema 验证新 tag。
+这两个合同不能互换。该命令不读取 `.env`、不调用 Provider、不创建正式
 marker/journal/report/artifact/recovery claim，也不授权 controlled-Live。回执见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
 

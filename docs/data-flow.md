@@ -1,16 +1,18 @@
 # PrepMind AI 数据流
 
-## 当前 SR5 Live flow 与 proxy 修复（zero-provider，2026-08-10）
+## 当前 SR5 Live flow 与 tag compatibility（zero-provider，2026-08-10）
 
 首次 controlled-Live 在 `proxy_preflight_not_ready` 处停止，`providerCalls=0 / credentialReads=0 / formalEvidence=0`；没有进入
 credential、reservation 或 Provider。修复提交 `b531adef` 将 Bun/Windows accessor-backed proxy 环境先物化为 immutable data-properties，新增
-回归后 focused `11/11`（39 assertions）通过。下面仍是唯一 controlled-Live 的生产形状顺序，当前没有正式 run accounting：
+回归后 proxy 前门已恢复。当前进一步把历史 SR5 tag 与 Live tag 拆分：旧 tag 只服务历史 admission，新 tag
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved` 绑定最终 Live source tree bundle。下面仍是唯一
+controlled-Live 的生产形状顺序，当前没有正式 run accounting：
 
 ```text
 exact argv
   -> DeepSeek/Qwen data-boundary receipt + exact authorization
   -> historical namespace coexistence / current formal namespace = 0
-  -> source HEAD/upstream/origin/approved-tag + Live Git-object bundle parity
+  -> source HEAD/upstream/origin/new Live annotated-tag + Live Git-object bundle parity
   -> proxy preflight (direct or loopback listener only; providerCalls = 0)
   -> selective root .env projection (three SR5 credentials; bun --no-env-file)
   -> opaque single-use admission/reservation capability
@@ -24,15 +26,20 @@ exact argv
 Live lineage=`phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`，authority（仅运行时）=
 `controlled_live_retriever_final_response_schema_recovery_sr5`，完整质量门通过时才可产生
 `schema_recovery_sr5_branch_semantic_gate`。实现验收固定 `providerCalls=0 / credentialReads=0 / formalEvidence=0 /
-businessWrites=0`；不读取真实 `.env`、不调用 DeepSeek/Qwen、不写产品 Trace/BackgroundJob/Outbox，也不启动或清理
+businessWrites=0`；当前 SR5 contract/source/Live focused `26/26`（102 assertions），Agent full `1527/1527`
+（25213 expect()，196 files）。不读取真实 `.env`、不调用
+DeepSeek/Qwen、不写产品 Trace/BackgroundJob/Outbox，也不启动或清理
 Docker/PostgreSQL/Redis/MinIO/API/browser。实现完成不等于语义、产品或 `main` authority；验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md` 与
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
 
 ## 历史 SR5 runner/durability flow（2026-08-10）
 
-当前工作分支为 `main`。功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已以
-`--no-ff` 合并为 `b2b5b9c9`，合并后二次 zero-provider 回放通过。SR5 admission 已作为上游 source-bound capability，
+当前段落描述历史 runner checkpoint；本次工作分支为
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，尚未合并本轮 Live compatibility 修复。功能分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已以 `--no-ff` 合并为 `b2b5b9c9`，合并后二次
+zero-provider 回放通过。SR5 admission 已作为上游 source-bound capability，
 当前 runner 仍不进入产品 Chat，也不触发 Provider：
 
 ```text

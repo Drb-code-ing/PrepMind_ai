@@ -2,12 +2,14 @@
 
 日期：2026-08-09
 
-状态：SR4 zero-provider reviewed Mock/static、SR5 admission/runner/durability、Live implementation 与 proxy snapshot fix 均已完成；
+状态：SR4 zero-provider reviewed Mock/static、SR5 admission/runner/durability、Live implementation、proxy snapshot fix 与
+Live tag compatibility recovery 均已完成；
 唯一 controlled-Live 首次尝试在 proxy 前门 fail-closed，未读取 credential/调用 Provider。本文件保留 SR0 设计与历史 handoff，并区分
 实现态、诊断失败与真实质量 authority。
 
-修复提交 `b531adef` 已以 merge=`671188bb` 合并并推送 main，合并后二次 zero-provider 回归通过；功能分支需在 Live admission 前快进到该最终提交。
-旧 approved tag 仍绑定修复前 `ca9a9eb0`，不可移动或复用；功能分支同步到最终 main、新 source tag 与新授权是下一停止门。
+旧 approved tag 仍绑定修复前 `ca9a9eb0`，不可移动或复用；Live 使用独立
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved` tag/ref/source schema。功能分支同步到最终
+main、新 Live tag 与新授权是下一停止门。
 
 SR5 zero-provider lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；Live implementation lineage：
 `phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`；SR3/SR4 lineage
@@ -79,9 +81,10 @@ runner 已完成但尚未形成真实 semantic/product/main authority。下一�
 ## SR5 Live implementation checkpoint（2026-08-10，zero-provider）
 
 Live implementation 在独立普通分支完成，未改写历史 admission manifest。它新增独立 Git-object source bundle（根
-`package.json`、`bun.lock`、`packages/agent`、`packages/ai`、`packages/types`），source bundle SHA=
-`sha256:4aa3c6e8b6f66ad0c74dcaab932cbfa9bb04202f3219e38005a2571ae60853ef`；Live manifest SHA=
-`2eb786e19e3e6de2f26bcc9d4b4e1b1898ee1ee3eb87976090275f4468696608`，policy SHA=
+`package.json`、`bun.lock`、`packages/agent`、`packages/ai`、`packages/types`）。tag compatibility recovery 后的
+source-manifest SHA=`sha256:d1129b3caf414c5561df425f1a2ffdfcde7d29468a568845d1c110908559ccdd`；最终 source
+bundle 在最终 parity commit 重算。Live manifest SHA=
+`bc7e191529735cd0fab2746e995130a9a74da9fb232f754678b539dbc0434d80`，policy SHA=
 `e979f30c6979e1e4ff17a439f77820ff4ded5882189d58ba753fa02b9e6f74b1`。
 
 固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`；DeepSeek `12`、Qwen embedding `12`，总 `24` slots，最大并发 `1`、
@@ -89,9 +92,10 @@ pair-serial、single dispatch，预算 `37,600/8,800/0.176 CNY`，无 retry/resu
 `exact argv -> data-boundary/exact authorization -> namespace/source/tag -> proxy preflight -> selective root .env projection ->
 single-use reservation -> marker/journal -> runtime -> validator`；入口显式 `bun --no-env-file`，credential 只在前门后读取。
 
-原实现 focused Live `10/10`（36 assertions）；proxy snapshot 修复后 focused `11/11`（39 assertions），SR5 + Task 9B boundary 组合
-`48/48`（164 assertions）、Agent typecheck/lint/Prettier 与 diff check 通过；`providerCalls=0 / credentialReads=0 / formalEvidence=0 /
-businessWrites=0`。当前是 zero-provider implementation checkpoint
+原实现 focused Live `10/10`（36 assertions）；proxy snapshot 修复后 focused `11/11`（39 assertions）；当前再补 own-descriptor
+accessor 与 `.tmp` symlink/junction/replacement fence 后，contract/source/Live focused 为 `26/26`（102 assertions）。Agent
+full 为 `1527/1527`（25213 expect()，196 files），typecheck/lint、源文件 Prettier 与 diff check 通过；`providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`。
+当前是 zero-provider implementation checkpoint
 （runtime authority 尚未产生，`qualityAuthority=none`），不是
 controlled-Live 或 semantic/product/main authority。完整 implementation 验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
@@ -104,10 +108,19 @@ controlled-Live 或 semantic/product/main authority。完整 implementation 验�
 Live `11/11`（39 assertions）、typecheck/lint/Prettier/diff check 与 accessor-backed preflight 回归均通过。该诊断不形成 Provider、语义或
 产品 authority。
 
+### Live tag compatibility recovery（2026-08-10，zero-provider）
+
+历史 tag `phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved` 与其 admission manifest 继续保持不可变。
+Live 新增独立 tag/ref、strict source schema、Git observation/admission、source-manifest binding 与 synthetic fixture；report、
+CLI、durability 只接受 Live source 类型。focused SR5 contract/source/Live `26/26`（102 assertions）、Agent full
+`1527/1527`（25213 expect()，196 files）、typecheck/lint/Prettier/diff check 通过；Provider/credential/formal evidence/business writes 均为 `0`。验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
+
 ### 唯一 controlled-Live 停止门（等待新 source 授权）
 
-修复合并并完成 main/source parity 后，重新接受绑定最终 source 的 DeepSeek/Qwen 数据边界并取得新的两行 exact authorization，
-再创建并推送新的 annotated tag，才可执行一次 RUN。旧授权与旧 tag 不得复用。成功才可能产生
+修复合并并完成 main/source parity 后，先在最终 commit 创建并推送新的 annotated tag
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved`，核对 tag object/peeled commit，再重新接受绑定该 source 的
+DeepSeek/Qwen 数据边界并取得新的两行 exact authorization，才可执行一次 RUN。旧授权与旧 tag 不得复用。成功才可能产生
 `schema_recovery_sr5_branch_semantic_gate`；失败、schema、transport、usage、timeout、abort 或 I/O 都必须 durable seal，
 且禁止 retry/replay/curl/单 case/追加 Provider 探测。无论结果均不自动解锁产品、Docker/API/browser、Trace、SLA 或博客。
 

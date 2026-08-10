@@ -2,16 +2,19 @@
 
 日期：2026-08-09
 
-当前状态：SR4 reviewed Mock/static、SR5 zero-provider admission/runner/durability、Live implementation 与 proxy snapshot fix 已完成。
+当前状态：SR4 reviewed Mock/static、SR5 zero-provider admission/runner/durability、Live implementation、proxy snapshot fix 与
+Live tag compatibility recovery 已完成。
 首次 controlled-Live 在 proxy 前门 fail-closed（Provider/credential/formal evidence/business writes 均为 `0`）；修复提交 `b531adef` 与文档
-提交 `c0155ca1` 已以 merge=`671188bb` 合并回 main 并推送，合并后二次 zero-provider 回归通过；新 source 尚未创建 approved tag/授权。
+提交 `c0155ca1` 已以 merge=`671188bb` 合并回 main 并推送，合并后二次 zero-provider 回归通过；当前 tag compatibility
+源码/文档尚待提交、合并和最终 source 授权。
 
 设计来源：
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
 
 当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`
 
-当前基线：`main@671188bb`（修复提交 `b531adef`；文档提交 `c0155ca1`）；功能分支需在 Live admission 前快进到该最终基线。
+当前基线：功能分支、`main` 与 `origin/main` 在本任务开始时均为 `034ec363`；tag compatibility 变更必须先完成提交、
+main 合并、远程推送与合并后二次 zero-provider 回归。
 
 SR5 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；Live implementation lineage：
 `phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`（SR3/SR4 lineage 仍作为上游 identity 保留）
@@ -192,7 +195,7 @@ authority=`zero_provider_retriever_final_response_schema_recovery_sr5_runner_dur
 ### 7.3 Live implementation（已完成，zero-provider）
 
 - [x] 新增独立 Live Git-object source manifest，绑定根 `package.json`、`bun.lock` 与 `packages/agent`、`packages/ai`、
-  `packages/types`；source bundle SHA=`sha256:4aa3c6e8b6f66ad0c74dcaab932cbfa9bb04202f3219e38005a2571ae60853ef`；
+  `packages/types`；最终 source bundle 在 parity commit 上重算，不沿用 proxy 修复前的 SHA；
   历史 admission manifest 保持 `sha256:f71bdee19cf4509395566d8bf54d85ad1f37cf867ca2cbf37211b1daef8fa38b` 不变；
 - [x] 新增 production-shaped Live CLI/core，显式 `bun --no-env-file`，执行 exact argv/data-boundary/authorization/formal
   namespace/source/tag/proxy 前门，credential 只在前门通过后 selective-read；
@@ -213,16 +216,45 @@ controlled-Live、semantic/product/main/P95/SLA authority。验收见
 - [x] 复现 Bun/Windows accessor-backed proxy environment 与 SR5 `proxy_preflight_not_ready` 前门停止；确认未读取 credential、未创建 marker、
   未调用 Provider；
 - [x] 将固定 proxy allowlist 通过 `Reflect.get` 物化为不可变 data-properties，getter 异常写入 `null` 并保持 shared preflight fail-closed；
-- [x] 新增 accessor-backed regression，修复后 focused Live `11/11`（39 assertions），typecheck/lint/Prettier/diff check 通过；
+- [x] 新增 accessor-backed regression，proxy 修复后 focused Live `11/11`（39 assertions），typecheck/lint/Prettier/diff check 通过；
 - [x] 新增零 Provider 故障与修复 acceptance；旧 approved tag/source 不改写。
 
 修复只恢复 proxy 前门的生产兼容性，不形成 Provider/semantic/product/main authority。回执见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
 
+### 7.3.2 Live tag compatibility recovery（已完成，zero-provider）
+
+- [x] 保留历史 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved` tag 与 historical admission
+  manifest，不移动、不覆盖、不复用；
+- [x] 新增 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved` tag/ref 合同与 strict Live
+  source schema；
+- [x] Live Git observation/admission 重算独立 tree bundle，绑定 source-manifest SHA
+  `sha256:d1129b3caf414c5561df425f1a2ffdfcde7d29468a568845d1c110908559ccdd`；
+- [x] report、CLI、durability、synthetic reviewed Mock 均消费 Live source 类型；历史 source-admission 行为不改写；
+- [x] SR5 contract/source/Live focused `26/26`（102 assertions）、Agent full `1527/1527`（25213 expect()，196 files）、Agent typecheck/lint/Prettier/diff check 通过；
+  Provider/credential/formal evidence/business writes=`0`。
+
+验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
+
+### 7.3.3 Environment and namespace fence hardening（已完成，zero-provider）
+
+- [x] 生产 CLI 将 Bun/Windows accessor-backed authorization entries 物化为不可变 data-properties；getter 异常生成 invalid
+  sentinel 并 fail-closed，不执行二次读取。
+- [x] Live source admission 对 root 与 `.tmp` 做 `lstat`/canonical-path 校验，symlink/junction、非目录与读取错误统一
+  fail-closed，避免 formal namespace fence 跟随链接到仓库外。
+- [x] 增加 own-descriptor proxy/authorization regression、`.tmp` replacement durability fence；SR5 contract/source/Live focused
+  `26/26`（102 assertions），Agent full `1527/1527`（25213 expect()，196 files），typecheck/lint/Prettier/diff check 通过；
+  Provider/credential/formal evidence/business writes=`0`。
+
+本小步仍不创建 approved tag、不读取真实 `.env`、不调用 Provider；只在最终 main parity 后进入唯一 controlled-Live 停止门。
+
 ### 7.4 唯一 controlled-Live（等待修复后的新 source 授权）
 
-功能分支先快进到 `main@671188bb` 并推送，完成 source/upstream/origin parity；随后重新接受当次 DeepSeek/Qwen 数据边界并取得绑定修复 source
-的新两行 exact authorization，再创建新的 approved annotated tag。SR5 使用新 tag/credential mapping/marker/journal/artifact，最多一次；无论成功、schema、
+功能分支先提交并推送、合并并推送最终 `main`，完成 source/upstream/origin parity 与二次 zero-provider 回归；随后在最终 commit
+创建并推送 approved annotated tag
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved`，核对 tag object/peeled commit，再重新接受该 tag/source
+的 DeepSeek/Qwen 数据边界并取得新两行 exact authorization。SR5 使用新 tag/credential mapping/marker/journal/artifact，最多一次；无论成功、schema、
 transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 retry/resume/replay/backfill/recovery 或单 case
 补证。即使完整 gate pass，也只形成新分支 semantic authority，不自动解锁产品或 main。
 
@@ -244,7 +276,8 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`、
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`、
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`、
-  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`；
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`、
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`；
 - 入口：`AGENTS.md`、`README.md`、`DEVLOG.md`、`docs/roadmap.md`、`docs/data-flow.md`、`docs/dev-start.md`、
   `docs/acceptance-checklist.md`、`docs/ai-behavior-acceptance.md`；
 - [x] SR2 fixture/responder SHA、shape/fault/metamorphic matrix 与 zero-provider authority 已记录；

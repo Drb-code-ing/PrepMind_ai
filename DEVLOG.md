@@ -1,13 +1,47 @@
 # PrepMind AI 开发日志
 
+> 2026-08-10 — Phase 6.9.8 SR5 Live boundary hardening（当前功能分支，zero-provider）：
+>
+> 在 tag compatibility recovery 之后补齐两个宿主边界：生产 CLI 通过 own descriptor + `Reflect.get` 将 Bun/Windows
+> accessor-backed authorization entries 物化为不可变 data-properties；Live source admission 对 root 与 `.tmp` 使用
+> `lstat`/canonical-path fence，symlink/junction、非目录和读取错误统一 fail-closed，避免 namespace 扫描跟随链接。
+>
+> SR5 contract/source/Live focused `26/26`（102 assertions），Agent full `1527/1527`（25213 expect()，196 files），
+> typecheck/lint、源文件 Prettier 与 diff check 全部通过。全程 `providerCalls=0 / credentialReads=0 / formalEvidence=0 /
+> businessWrites=0`，未读取真实 `.env`、未调用 DeepSeek/Qwen、未创建正式 evidence、未启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。
+>
+> 当前仍在 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5` 功能分支，尚未消费本轮授权；下一步是提交/推送、合并并推送
+> `main`、合并后二次 zero-provider 回归，再在最终 parity commit 创建并推送独立 Live annotated tag，随后重新接受绑定该 tag/source
+> 的 DeepSeek/Qwen 数据边界并提供 fresh exact authorization。controlled-Live 仍只允许一次，旧 tag/授权不可复用，Docker 数据不清理。
+>
+> 2026-08-10 — Phase 6.9.8 SR5 Live tag compatibility recovery（zero-provider）：
+>
+> 发现历史 annotated tag `phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved` 仍固定指向修复前
+> `ca9a9eb0`；直接移动或覆盖会破坏历史 admission/source manifest 的可复现性。新增独立 Live tag/ref
+> `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved`、strict Live source schema、Live Git-tree
+> observation/admission 与 source-manifest binding；Live report/CLI/synthetic fixture 全部改为消费新 schema，历史 contract、
+> tag 与 admission manifest SHA 保持不变。
+>
+> zero-provider 回归为 SR5 contract/source/Live `26/26`（102 assertions），Agent full `1527/1527`（25213 expect()，196 files），
+> Agent typecheck/lint/Prettier/diff check 通过。
+> Live source-manifest SHA=`sha256:d1129b3c...9ccdd`，Live manifest SHA=`bc7e1915...34d80`，policy SHA=
+> `e979f30c...e6f74b1`。本阶段没有读取根 `.env`/credential、没有调用 DeepSeek/Qwen、没有创建正式
+> marker/journal/report/artifact/recovery claim、没有业务写入，也没有启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。
+>
+> 下一步必须提交并推送功能分支、合并并推送 `main`、完成合并后二次 zero-provider 回归，再在最终 parity commit 创建并推送
+> 新 annotated tag；随后针对该 tag/source 重新接受 DeepSeek/Qwen 数据边界并发送新的两行 exact authorization，最后执行唯一一次
+> controlled-Live。当前源码变更前的授权未消费且不可复用。详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
+>
 > 2026-08-10 — SR5 proxy snapshot fix main parity 收口：
 >
 > 修复提交 `b531adef` 与文档提交 `c0155ca1` 已以 `--no-ff` 合并到 `main`，merge=`671188bb`，并已推送 `origin/main`。合并后只做
 > zero-provider 二次回归：SR5 Live + Task 9B `24/24`（85 assertions）、Agent typecheck/lint、CLI help/validate/recover 与
 > `git diff --check` 通过；无正式 bundle 的 validate/recover 仍按预期 fail-closed。`main == origin/main`，formal namespace=0。
 >
-> 旧 approved tag 仍指向修复前 `ca9a9eb0`，不可移动或复用。下一步只在当前 `main`/功能分支 parity 完整后重新接受 DeepSeek/Qwen 数据边界并提供
-> 新的 exact authorization，再创建新 approved tag；在此之前不读 credential、不调用 Provider、不重试。Docker/PostgreSQL/Redis/MinIO 均保持原状。
+> 旧 approved tag 仍指向修复前 `ca9a9eb0`，不可移动或复用。下一步只在当前 `main`/功能分支 parity 完整后创建并核验新 annotated
+> tag，再重新接受最终 source 的 DeepSeek/Qwen 数据边界并提供新的 exact authorization；在此之前不读 credential、不调用 Provider、不重试。
+> Docker/PostgreSQL/Redis/MinIO 均保持原状。该顺序随后在 tag compatibility 入口中固定为权威流程。
 
 > 2026-08-10 — Phase 6.9.8 SR5 controlled-Live proxy 前门诊断与修复：
 >
@@ -21,8 +55,8 @@
 > `null` 后由 preflight fail-closed；新增 accessor-backed regression。修复后 focused Live zero-provider `11/11`（39 assertions），
 > typecheck/lint/Prettier/diff check 通过，独立 preflight 为 `loopback_proxy_ready / configuredProxyVariables=4 / listenerProbeCalls=1 / providerCalls=0`。
 >
-> 修复已推送功能分支，尚未在新 source 上创建/移动 approved tag，也未重试 Live。下一步必须合并并推送 main、重新接受当前 source 的
-> DeepSeek/Qwen 数据边界并提供新的 exact authorization，再创建新 tag 后执行唯一一次；旧授权不得复用。详见
+> 修复已推送功能分支，尚未在新 source 上创建/移动 approved tag，也未重试 Live。下一步必须合并并推送 main，在最终 parity commit
+> 创建并核验新 annotated tag，再重新接受该 source 的 DeepSeek/Qwen 数据边界并提供新的 exact authorization，之后执行唯一一次；旧授权不得复用。详见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
 
 > 2026-08-10 — Phase 6.9.8 SR5 Live implementation main parity 已完成（修复前历史 checkpoint）：

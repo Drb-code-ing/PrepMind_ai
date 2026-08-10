@@ -34,7 +34,7 @@ if (import.meta.main) {
     args: process.argv.slice(2),
     root: repositoryRoot,
     proxyEnv: snapshotPhase698RetrieverSchemaRecoverySr5LiveProxyEnv(process.env),
-    authorizationEnv: snapshotAuthorizationEnv(process.env),
+    authorizationEnv: snapshotPhase698RetrieverSchemaRecoverySr5LiveAuthorizationEnv(process.env),
     signal: new AbortController().signal,
   });
 }
@@ -50,7 +50,14 @@ export function snapshotPhase698RetrieverSchemaRecoverySr5LiveProxyEnv(
   const result = Object.create(null) as Record<string, unknown>;
   for (const key of PHASE_6_9_7_ARCHITECTURE_RECOVERY_PROXY_PREFLIGHT_ENV_KEYS) {
     try {
-      const value = Reflect.get(env, key);
+      const descriptor = Reflect.getOwnPropertyDescriptor(env, key);
+      if (!descriptor) continue;
+      const value =
+        'value' in descriptor
+          ? descriptor.value
+          : typeof descriptor.get === 'function'
+            ? Reflect.apply(descriptor.get, env, [])
+            : undefined;
       if (value === undefined) continue;
       Object.defineProperty(result, key, {
         configurable: false,
@@ -59,10 +66,12 @@ export function snapshotPhase698RetrieverSchemaRecoverySr5LiveProxyEnv(
         writable: false,
       });
     } catch {
+      // Keep a present-but-invalid own entry so the shared preflight rejects
+      // the snapshot instead of silently treating a getter failure as absent.
       Object.defineProperty(result, key, {
         configurable: false,
         enumerable: true,
-        value: null,
+        value: undefined,
         writable: false,
       });
     }
@@ -70,15 +79,26 @@ export function snapshotPhase698RetrieverSchemaRecoverySr5LiveProxyEnv(
   return Object.freeze(result);
 }
 
-function snapshotAuthorizationEnv(env: Readonly<Record<string, unknown>>) {
+export function snapshotPhase698RetrieverSchemaRecoverySr5LiveAuthorizationEnv(
+  env: Readonly<Record<string, unknown>>,
+) {
   const result = Object.create(null) as Record<string, string | undefined>;
   for (const key of [
     'PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED',
     'PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED',
   ]) {
-    const descriptor = Reflect.getOwnPropertyDescriptor(env, key);
-    if (descriptor && 'value' in descriptor && typeof descriptor.value === 'string') {
-      result[key] = descriptor.value;
+    try {
+      const descriptor = Reflect.getOwnPropertyDescriptor(env, key);
+      if (!descriptor) continue;
+      const value =
+        'value' in descriptor
+          ? descriptor.value
+          : typeof descriptor.get === 'function'
+            ? Reflect.apply(descriptor.get, env, [])
+            : undefined;
+      if (typeof value === 'string') result[key] = value;
+    } catch {
+      // A hostile/accessor-backed environment entry is absent, never executed twice.
     }
   }
   return Object.freeze(result);

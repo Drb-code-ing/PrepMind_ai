@@ -5,10 +5,11 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0K-Live. Phase 6.9.8 Schema Recovery SR5 Live proxy fix（当前，zero-provider）
+## 0K-Live. Phase 6.9.8 Schema Recovery SR5 Live tag compatibility（当前，zero-provider）
 
 首次 controlled-Live 在 `proxy_preflight_not_ready` 处 fail-closed，Provider/credential/formal evidence/business writes 均为 `0`。
-修复提交 `b531adef` 已以 merge=`671188bb` 合并并推送 main，新增 Bun/Windows accessor-backed proxy 快照回归；修复后 focused `11/11`（39 assertions）。
+proxy accessor 修复已合并并推送；当前 source admission 进一步使用独立 Live tag
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved`，不移动或复用历史 tag。
 实现固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek `12` + Qwen embedding `12`、最大并发 `1`、pair-serial、
 single dispatch、预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。当前只做 zero-provider implementation
 验收，不能宣称真实模型质量或产品可用。
@@ -19,22 +20,25 @@ single dispatch、预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/b
 bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live -- --help
 bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:validate
 bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:recover
-bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-source-admission.test.ts
 bun run --cwd packages/agent typecheck
 bun run --cwd packages/agent lint
 git diff --check
 ```
 
-预期 focused Live `11/11`（39 assertions），validate/recover 在正式 bundle=0 时 fail-closed，且始终
+预期 focused SR5 contract/source/Live `26/26`（102 assertions），Agent full `1527/1527`（25213 expect()，196 files）；validate/recover 在正式 bundle=0 时 fail-closed，且始终
 `providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`。不读取真实 `.env`、不调用 DeepSeek/Qwen、不
-启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。只有完成文档/main parity、确认最终 source parity、重新接受当次
-数据边界并给出两行 exact authorization、再创建并推送 approved annotated tag 后，才可执行唯一一次 controlled-Live；成功也只给分支 semantic authority。
+启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。只有完成文档/main parity、确认最终 source parity、在最终 parity commit
+创建并推送上述新 annotated tag并核对 tag object/peeled commit，再由用户重新接受该 source 的数据边界并给出两行 exact
+authorization 后，才可执行唯一一次 controlled-Live；成功也只给分支 semantic authority。
 实现回执：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`；
 proxy 修复与失败边界回执：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
+tag 分离回执：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
 
 ## 0K. Phase 6.9.8 Schema Recovery SR5 runner/durability（历史，zero-provider，2026-08-10）
 
-当前分支：`main`。功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已以 `--no-ff` 合并为
+以下是历史 runner checkpoint；当前 Live compatibility 工作分支为
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`。功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已以 `--no-ff` 合并为
 `b2b5b9c9`，合并后二次 zero-provider 回放通过。上游 admission contract 与本 checkpoint 的 runner、durability、validator
 和 crash-only recovery 均已完成。approved tag 尚未创建，真实 `git_verified` source gate 与 Provider dispatch 仍关闭；CLI
 仅 synthetic reviewed Mock。

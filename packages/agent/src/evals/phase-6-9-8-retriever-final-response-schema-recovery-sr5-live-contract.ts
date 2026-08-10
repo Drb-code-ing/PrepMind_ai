@@ -4,11 +4,9 @@ import { z } from 'zod';
 
 import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH,
-  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_SOURCE_REF,
-  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_TAG,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_SOURCE_REF,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET,
-  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_SOURCE_SCHEMA,
-  type Phase698RetrieverSchemaRecoverySr5Source,
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.ts';
 import {
   PHASE_6_9_8_TASK8_FROZEN_MANIFEST_SHA256,
@@ -33,9 +31,14 @@ import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_BINDING_SCHEMA,
   type Phase698RetrieverSchemaRecoverySr5LiveSourceBinding,
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-manifest.ts';
+import {
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA as LIVE_SOURCE_SCHEMA,
+  type Phase698RetrieverSchemaRecoverySr5LiveSource,
+} from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-schema.ts';
 
-export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE =
-  'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1' as const;
+export { PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE };
+
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_REPORT_VERSION =
   'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-report-v1' as const;
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_POLICY_VERSION =
@@ -74,9 +77,7 @@ const SAFE_CODE = z.string().regex(/^[a-z0-9_]{1,96}$/u);
 
 const guardCases = Object.freeze(PHASE_6_9_8_TASK8_MANIFEST.guardCases.slice(0, 8));
 const rewriteCases = Object.freeze(PHASE_6_9_8_TASK8_MANIFEST.rewriteCases.slice(0, 6));
-const finalResponseCases = Object.freeze(
-  PHASE_6_9_8_TASK8_MANIFEST.finalResponseCases.slice(0, 6),
-);
+const finalResponseCases = Object.freeze(PHASE_6_9_8_TASK8_MANIFEST.finalResponseCases.slice(0, 6));
 const selectedCaseIds = new Set([
   ...rewriteCases.map((entry) => entry.caseId),
   ...finalResponseCases.map((entry) => entry.caseId),
@@ -89,8 +90,8 @@ export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MANIFEST = deepFreez
   lineage: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE,
   upstreamTask8ManifestSha256: PHASE_6_9_8_TASK8_FROZEN_MANIFEST_SHA256,
   approvedBranch: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH,
-  approvedTag: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_TAG,
-  approvedSourceRef: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_SOURCE_REF,
+  approvedTag: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG,
+  approvedSourceRef: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_SOURCE_REF,
   guardCases,
   rewriteCases,
   finalResponseCases,
@@ -117,8 +118,7 @@ export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_POLICY = deepFreeze(
   budget: {
     inputTokensMax: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET.maxInputTokens,
     outputTokensMax: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET.maxOutputTokens,
-    totalCostCnyMax:
-      PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET.maxCostMicrosCny / 1_000_000,
+    totalCostCnyMax: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET.maxCostMicrosCny / 1_000_000,
   },
   thresholds: {
     retrieverRecallAt5: PHASE_6_9_8_TASK9_EVAL_POLICY.thresholds.retrieverRecallAt5,
@@ -126,7 +126,8 @@ export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_POLICY = deepFreeze(
     eligibleSubsetNdcgUplift: PHASE_6_9_8_TASK9_EVAL_POLICY.thresholds.eligibleSubsetNdcgUplift,
     criticalTargetRecall: PHASE_6_9_8_TASK9_EVAL_POLICY.thresholds.criticalTargetRecall,
     rewriteIntentPreservation: PHASE_6_9_8_TASK9_EVAL_POLICY.thresholds.rewriteIntentPreservation,
-    finalResponseGroundedRubric: PHASE_6_9_8_TASK9_EVAL_POLICY.thresholds.finalResponseGroundedRubric,
+    finalResponseGroundedRubric:
+      PHASE_6_9_8_TASK9_EVAL_POLICY.thresholds.finalResponseGroundedRubric,
     citationPrecision: PHASE_6_9_8_TASK9_EVAL_POLICY.thresholds.citationPrecision,
     requiredCitationRecall: PHASE_6_9_8_TASK9_EVAL_POLICY.thresholds.requiredCitationRecall,
     criticalNoticeRecall: PHASE_6_9_8_TASK9_EVAL_POLICY.thresholds.criticalNoticeRecall,
@@ -203,11 +204,9 @@ export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_REPORT_SCHEMA = z
       PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_QUALITY_AUTHORITY,
     ]),
     completionMode: z.enum(['runtime', 'recovery']),
-    source: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_SOURCE_SCHEMA,
+    source: LIVE_SOURCE_SCHEMA,
     sourceBinding: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_BINDING_SCHEMA,
-    manifestSha256: z.literal(
-      PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MANIFEST_SHA256,
-    ),
+    manifestSha256: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MANIFEST_SHA256),
     policySha256: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_POLICY_SHA256),
     execution: z
       .object({
@@ -283,9 +282,7 @@ export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_REPORT_SCHEMA = z
         inputTokens: z.number().int().positive().nullable(),
         outputTokens: z.number().int().nonnegative().nullable(),
         verifiedCostCny: z.number().nonnegative().finite().nullable(),
-        inputTokensMax: z.literal(
-          PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET.maxInputTokens,
-        ),
+        inputTokensMax: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET.maxInputTokens),
         outputTokensMax: z.literal(
           PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET.maxOutputTokens,
         ),
@@ -310,8 +307,7 @@ export type Phase698RetrieverSchemaRecoverySr5LiveCallEntry = Phase698Task9CallE
 export type Phase698RetrieverSchemaRecoverySr5LiveGuardEntry = Phase698Task9GuardEntry;
 export type Phase698RetrieverSchemaRecoverySr5LiveRewriteEntry = Phase698Task9RewriteEntry;
 export type Phase698RetrieverSchemaRecoverySr5LiveFinalEntry = Phase698Task9FinalEntry;
-export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA =
-  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_SOURCE_SCHEMA;
+export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA = LIVE_SOURCE_SCHEMA;
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_GUARD_ENTRY_SCHEMA =
   PHASE_6_9_8_TASK9_GUARD_ENTRY_SCHEMA;
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_CALL_ENTRY_SCHEMA =
@@ -331,7 +327,7 @@ export type BuildPhase698RetrieverSchemaRecoverySr5LiveReportInput = Readonly<{
     | typeof PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_AUTHORITY
     | typeof PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SYNTHETIC_AUTHORITY;
   completionMode: 'runtime' | 'recovery';
-  source: Phase698RetrieverSchemaRecoverySr5Source;
+  source: Phase698RetrieverSchemaRecoverySr5LiveSource;
   sourceBinding: Phase698RetrieverSchemaRecoverySr5LiveSourceBinding;
   guardEntries: readonly Phase698Task9GuardEntry[];
   callEntries: readonly Phase698Task9CallEntry[];
@@ -342,15 +338,21 @@ export type BuildPhase698RetrieverSchemaRecoverySr5LiveReportInput = Readonly<{
 export function buildPhase698RetrieverSchemaRecoverySr5LiveReport(
   input: BuildPhase698RetrieverSchemaRecoverySr5LiveReportInput,
 ): Phase698RetrieverSchemaRecoverySr5LiveReport {
-  const source = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_SOURCE_SCHEMA.parse(input.source);
+  const source = LIVE_SOURCE_SCHEMA.parse(input.source);
   const sourceBinding = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_BINDING_SCHEMA.parse(
     input.sourceBinding,
   );
   if (sourceBinding.sourceCommit !== source.head) {
     throw new Error('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_BINDING_INVALID');
   }
-  const guardEntries = z.array(PHASE_6_9_8_TASK9_GUARD_ENTRY_SCHEMA).length(8).parse(input.guardEntries);
-  const callEntries = z.array(PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA).length(24).parse(input.callEntries);
+  const guardEntries = z
+    .array(PHASE_6_9_8_TASK9_GUARD_ENTRY_SCHEMA)
+    .length(8)
+    .parse(input.guardEntries);
+  const callEntries = z
+    .array(PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA)
+    .length(24)
+    .parse(input.callEntries);
   const rewriteEntries = z
     .array(PHASE_6_9_8_TASK9_REWRITE_ENTRY_SCHEMA)
     .length(6)
@@ -388,8 +390,7 @@ export function buildPhase698RetrieverSchemaRecoverySr5LiveReport(
       : null,
     inputTokensMax: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET.maxInputTokens,
     outputTokensMax: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET.maxOutputTokens,
-    totalCostCnyMax:
-      PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET.maxCostMicrosCny / 1_000_000,
+    totalCostCnyMax: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET.maxCostMicrosCny / 1_000_000,
   };
   const failures: string[] = [];
   if (input.completionMode !== 'runtime') failures.push('completion_mode');
@@ -431,10 +432,7 @@ export function buildPhase698RetrieverSchemaRecoverySr5LiveReport(
     failures.push('rewrite_safety');
   }
   if (finalResponse.strictCount !== 6) failures.push('final_response_strict');
-  if (
-    finalResponse.falseToolSuccessCount !== 0 ||
-    finalResponse.falseCitationCount !== 0
-  ) {
+  if (finalResponse.falseToolSuccessCount !== 0 || finalResponse.falseCitationCount !== 0) {
     failures.push('final_response_quality');
   }
   compareMinimum(
@@ -504,7 +502,9 @@ export function buildPhase698RetrieverSchemaRecoverySr5LiveReport(
         ),
         qwenEmbeddingCalls: sum(
           live
-            ? callEntries.filter((entry) => entry.provider === 'qwen').map((entry) => entry.wire.dispatches)
+            ? callEntries
+                .filter((entry) => entry.provider === 'qwen')
+                .map((entry) => entry.wire.dispatches)
             : [],
         ),
         maximumConcurrency: 1,
@@ -587,7 +587,8 @@ function aggregateProviders(entries: readonly Phase698Task9CallEntry[]) {
   const aggregate = (provider: 'deepseek' | 'qwen', expectedCalls: 12) => {
     const selected = entries.filter((entry) => entry.provider === provider);
     const complete =
-      selected.length === expectedCalls && selected.every((entry) => entry.disposition === 'succeeded');
+      selected.length === expectedCalls &&
+      selected.every((entry) => entry.disposition === 'succeeded');
     return {
       expectedCalls,
       attempts: sum(selected.map((entry) => entry.wire.attempts)),
@@ -617,7 +618,9 @@ function aggregateRewrite(entries: readonly Phase698Task9RewriteEntry[]) {
   const complete = entries.length === 6 && entries.every((entry) => entry.strict);
   const average = (values: readonly number[]) =>
     values.length === 0 ? null : Number((sum(values) / values.length).toFixed(12));
-  const originalRecallAt5 = complete ? average(entries.map((entry) => entry.originalRecallAt5!)) : null;
+  const originalRecallAt5 = complete
+    ? average(entries.map((entry) => entry.originalRecallAt5!))
+    : null;
   const originalNdcgAt5 = complete ? average(entries.map((entry) => entry.originalNdcgAt5!)) : null;
   const candidateRecallAt5 = complete
     ? average(entries.map((entry) => entry.candidateRecallAt5!))
@@ -676,9 +679,7 @@ function aggregateFinal(entries: readonly Phase698Task9FinalEntry[]) {
     citationPrecision: observed === 0 ? 1 : Number((truePositive / observed).toFixed(12)),
     requiredCitationRecall: required === 0 ? 1 : Number((truePositive / required).toFixed(12)),
     criticalNoticeRecall:
-      critical.length === 0
-        ? 1
-        : averageBoolean(critical.map((entry) => entry.noticeSatisfied!)),
+      critical.length === 0 ? 1 : averageBoolean(critical.map((entry) => entry.noticeSatisfied!)),
     noticeRecall: averageBoolean(entries.map((entry) => entry.noticeSatisfied!)),
     falseToolSuccessCount: entries.filter((entry) => entry.falseToolSuccess).length,
     falseCitationCount: entries.filter((entry) => entry.falseCitation).length,
@@ -713,21 +714,11 @@ function averageBoolean(values: readonly boolean[]) {
   return Number((values.filter(Boolean).length / values.length).toFixed(12));
 }
 
-function compareMinimum(
-  failures: string[],
-  reason: string,
-  value: number | null,
-  minimum: number,
-) {
+function compareMinimum(failures: string[], reason: string, value: number | null, minimum: number) {
   if (value === null || value < minimum) failures.push(reason);
 }
 
-function compareExact(
-  failures: string[],
-  reason: string,
-  value: number | null,
-  expected: number,
-) {
+function compareExact(failures: string[], reason: string, value: number | null, expected: number) {
   if (value === null || value !== expected) failures.push(reason);
 }
 
