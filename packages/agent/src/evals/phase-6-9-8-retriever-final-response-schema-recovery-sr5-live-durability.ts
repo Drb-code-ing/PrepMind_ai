@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { constants as fsConstants } from 'node:fs';
-import { link, lstat, mkdir, open, readdir, realpath, stat, unlink } from 'node:fs/promises';
+import { link, lstat, mkdir, open, readdir, realpath, unlink } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 
 import { z } from 'zod';
@@ -88,7 +88,9 @@ export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_SCHEMA = z
     }
   });
 
-export type Phase698RetrieverSchemaRecoverySr5LiveMarker = z.infer<typeof PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_SCHEMA>;
+export type Phase698RetrieverSchemaRecoverySr5LiveMarker = z.infer<
+  typeof PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_SCHEMA
+>;
 
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RECOVERY_CLAIM_SCHEMA = z
   .object({
@@ -189,7 +191,9 @@ const JOURNAL_RECORD_SCHEMA = z.discriminatedUnion('event', [
     .strict(),
 ]);
 
-export type Phase698RetrieverSchemaRecoverySr5LiveJournalRecord = z.infer<typeof JOURNAL_RECORD_SCHEMA>;
+export type Phase698RetrieverSchemaRecoverySr5LiveJournalRecord = z.infer<
+  typeof JOURNAL_RECORD_SCHEMA
+>;
 
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_ARTIFACT_SCHEMA = z
   .object({
@@ -247,7 +251,9 @@ export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_ARTIFACT_SCHEMA = z
     }
   });
 
-export type Phase698RetrieverSchemaRecoverySr5LiveArtifact = z.infer<typeof PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_ARTIFACT_SCHEMA>;
+export type Phase698RetrieverSchemaRecoverySr5LiveArtifact = z.infer<
+  typeof PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_ARTIFACT_SCHEMA
+>;
 
 type ActiveCall = {
   identity: Phase698RetrieverSchemaRecoverySr5LiveCallIdentity;
@@ -265,9 +271,18 @@ type MutableReplay = {
   finals: Phase698RetrieverSchemaRecoverySr5LiveFinalEntry[];
   activeCall: ActiveCall | null;
   recoveryClaimSha256: string | null;
-  terminal: Extract<Phase698RetrieverSchemaRecoverySr5LiveJournalRecord, { event: 'run_terminal' }> | null;
-  publicationStarted: Extract<Phase698RetrieverSchemaRecoverySr5LiveJournalRecord, { event: 'publication_started' }> | null;
-  published: Extract<Phase698RetrieverSchemaRecoverySr5LiveJournalRecord, { event: 'evidence_published' }> | null;
+  terminal: Extract<
+    Phase698RetrieverSchemaRecoverySr5LiveJournalRecord,
+    { event: 'run_terminal' }
+  > | null;
+  publicationStarted: Extract<
+    Phase698RetrieverSchemaRecoverySr5LiveJournalRecord,
+    { event: 'publication_started' }
+  > | null;
+  published: Extract<
+    Phase698RetrieverSchemaRecoverySr5LiveJournalRecord,
+    { event: 'evidence_published' }
+  > | null;
 };
 
 type ReservationState = MutableReplay & {
@@ -338,7 +353,10 @@ export async function reservePhase698RetrieverSchemaRecoverySr5LiveAttempt(input
   });
   await ensureTmp(root);
   if ((await formalFiles(root)).length !== 0) throw new Error(DURABILITY_ERROR);
-  const markerPath = resolveRelative(root, PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_RELATIVE_PATH);
+  const markerPath = resolveRelative(
+    root,
+    PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_RELATIVE_PATH,
+  );
   const markerBytes = `${JSON.stringify(marker)}\n`;
   await writeExclusive(markerPath, markerBytes);
   await syncDirectory(dirname(markerPath));
@@ -357,13 +375,17 @@ export async function reservePhase698RetrieverSchemaRecoverySr5LiveAttempt(input
   return reservationFromState(state, journalRelative);
 }
 
-export async function validatePhase698RetrieverSchemaRecoverySr5LiveBundle(input: { root: string }) {
+export async function validatePhase698RetrieverSchemaRecoverySr5LiveBundle(input: {
+  root: string;
+}) {
   try {
     const root = await requireRoot(input.root);
     const markerBytes = await readRegular(
       resolveRelative(root, PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_RELATIVE_PATH),
     );
-    const marker = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_SCHEMA.parse(JSON.parse(markerBytes));
+    const marker = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_SCHEMA.parse(
+      JSON.parse(markerBytes),
+    );
     if (markerBytes !== `${JSON.stringify(marker)}\n`) throw new Error(DURABILITY_ERROR);
     const markerSha256 = sha256(markerBytes);
     const journalPath = resolveRelative(root, journalRelativePath(marker.runId));
@@ -375,14 +397,20 @@ export async function validatePhase698RetrieverSchemaRecoverySr5LiveBundle(input
     const report = recomputeReport(replay, replay.terminal.completionMode);
     const artifactPath = resolveRelative(root, artifactRelativePath(marker.runId));
     const artifactBytes = await readRegular(artifactPath);
-    const artifact = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_ARTIFACT_SCHEMA.parse(JSON.parse(artifactBytes));
+    const artifact = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_ARTIFACT_SCHEMA.parse(
+      JSON.parse(artifactBytes),
+    );
     if (artifactBytes !== `${JSON.stringify(artifact)}\n`) throw new Error(DURABILITY_ERROR);
     const expected = buildArtifact(replay);
-    const reportSha = sha256Phase698RetrieverSchemaRecoverySr5Live(canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(report));
+    const reportSha = sha256Phase698RetrieverSchemaRecoverySr5Live(
+      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(report),
+    );
     const artifactSha = sha256(artifactBytes);
     if (
-      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(artifact) !== canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(expected) ||
-      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(artifact.report) !== canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(report) ||
+      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(artifact) !==
+        canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(expected) ||
+      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(artifact.report) !==
+        canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(report) ||
       artifact.reportLogicalSha256 !== reportSha ||
       replay.published.evidenceSha256 !== artifactSha
     ) {
@@ -437,8 +465,12 @@ async function sealInterrupted(
   let markerBytes: string;
   try {
     root = await requireRoot(rootInput);
-    markerBytes = await readRegular(resolveRelative(root, PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_RELATIVE_PATH));
-    marker = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_SCHEMA.parse(JSON.parse(markerBytes));
+    markerBytes = await readRegular(
+      resolveRelative(root, PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_RELATIVE_PATH),
+    );
+    marker = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_SCHEMA.parse(
+      JSON.parse(markerBytes),
+    );
     if (markerBytes !== `${JSON.stringify(marker)}\n`) throw new Error();
   } catch {
     return Object.freeze({ ok: false, code: 'marker_missing_or_invalid' });
@@ -518,14 +550,20 @@ function reservationFromState(
   });
 }
 
-async function appendGuard(state: ReservationState, entry: Phase698RetrieverSchemaRecoverySr5LiveGuardEntry) {
+async function appendGuard(
+  state: ReservationState,
+  entry: Phase698RetrieverSchemaRecoverySr5LiveGuardEntry,
+) {
   await appendRecord(state, {
     event: 'guard_terminal',
     entry: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_GUARD_ENTRY_SCHEMA.parse(entry),
   });
 }
 
-async function reserveCall(state: ReservationState, identity: Phase698RetrieverSchemaRecoverySr5LiveCallIdentity) {
+async function reserveCall(
+  state: ReservationState,
+  identity: Phase698RetrieverSchemaRecoverySr5LiveCallIdentity,
+) {
   await appendRecord(state, { event: 'call_reserved', identity });
 }
 
@@ -543,21 +581,30 @@ async function appendWire(
   });
 }
 
-async function appendCall(state: ReservationState, entry: Phase698RetrieverSchemaRecoverySr5LiveCallEntry) {
+async function appendCall(
+  state: ReservationState,
+  entry: Phase698RetrieverSchemaRecoverySr5LiveCallEntry,
+) {
   await appendRecord(state, {
     event: 'call_terminal',
     entry: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_CALL_ENTRY_SCHEMA.parse(entry),
   });
 }
 
-async function appendRewrite(state: ReservationState, entry: Phase698RetrieverSchemaRecoverySr5LiveRewriteEntry) {
+async function appendRewrite(
+  state: ReservationState,
+  entry: Phase698RetrieverSchemaRecoverySr5LiveRewriteEntry,
+) {
   await appendRecord(state, {
     event: 'rewrite_terminal',
     entry: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_REWRITE_ENTRY_SCHEMA.parse(entry),
   });
 }
 
-async function appendFinal(state: ReservationState, entry: Phase698RetrieverSchemaRecoverySr5LiveFinalEntry) {
+async function appendFinal(
+  state: ReservationState,
+  entry: Phase698RetrieverSchemaRecoverySr5LiveFinalEntry,
+) {
   await appendRecord(state, {
     event: 'final_terminal',
     entry: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_FINAL_ENTRY_SCHEMA.parse(entry),
@@ -571,21 +618,31 @@ async function appendRunTerminal(
 ) {
   const parsed = parsePhase698RetrieverSchemaRecoverySr5LiveReport(report);
   const expected = recomputeReport(state, completionMode);
-  if (!parsed || canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(parsed) !== canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(expected)) {
+  if (
+    !parsed ||
+    canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(parsed) !==
+      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(expected)
+  ) {
     throw new Error(DURABILITY_ERROR);
   }
   await appendRecord(state, {
     event: 'run_terminal',
     report: parsed,
-    reportLogicalSha256: sha256Phase698RetrieverSchemaRecoverySr5Live(canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(parsed)),
+    reportLogicalSha256: sha256Phase698RetrieverSchemaRecoverySr5Live(
+      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(parsed),
+    ),
     completionMode,
   });
 }
 
-async function publishArtifact(state: ReservationState, report: Phase698RetrieverSchemaRecoverySr5LiveReport) {
+async function publishArtifact(
+  state: ReservationState,
+  report: Phase698RetrieverSchemaRecoverySr5LiveReport,
+) {
   if (
     !state.terminal ||
-    canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(report) !== canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(state.terminal.report) ||
+    canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(report) !==
+      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(state.terminal.report) ||
     state.published
   ) {
     throw new Error(DURABILITY_ERROR);
@@ -601,12 +658,12 @@ async function publishArtifact(state: ReservationState, report: Phase698Retrieve
     const tempPath = `${finalPath}.tmp.${randomUUID()}`;
     try {
       await writeExclusive(tempPath, bytes);
-      await link(tempPath, finalPath);
+      await createTrustedHardLink(tempPath, finalPath);
       await assertHardLink(tempPath, finalPath);
       if ((await readRegular(finalPath)) !== bytes) throw new Error(DURABILITY_ERROR);
       await syncDirectory(dirname(finalPath));
     } finally {
-      await unlink(tempPath).catch(() => undefined);
+      await unlinkTrustedRegularIfPresent(tempPath);
     }
   }
   const evidenceSha256 = sha256(bytes);
@@ -817,16 +874,24 @@ function nextRecord(state: MutableReplay, event: Record<string, unknown>) {
   };
   return JOURNAL_RECORD_SCHEMA.parse({
     ...base,
-    recordHash: sha256Phase698RetrieverSchemaRecoverySr5Live(canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(base)),
+    recordHash: sha256Phase698RetrieverSchemaRecoverySr5Live(
+      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(base),
+    ),
   });
 }
 
-function applyRecordPreview(state: MutableReplay, record: Phase698RetrieverSchemaRecoverySr5LiveJournalRecord) {
+function applyRecordPreview(
+  state: MutableReplay,
+  record: Phase698RetrieverSchemaRecoverySr5LiveJournalRecord,
+) {
   const clone = cloneReplay(state);
   applyRecord(clone, record);
 }
 
-function applyRecord(state: MutableReplay, record: Phase698RetrieverSchemaRecoverySr5LiveJournalRecord) {
+function applyRecord(
+  state: MutableReplay,
+  record: Phase698RetrieverSchemaRecoverySr5LiveJournalRecord,
+) {
   const expectedSequence = state.records.length + 1;
   const previousHash = state.records.at(-1)?.recordHash ?? null;
   if (
@@ -858,10 +923,12 @@ function applyRecord(state: MutableReplay, record: Phase698RetrieverSchemaRecove
     }
     case 'call_reserved': {
       assertCanStartCall(state);
-      const expected = expectedPhase698RetrieverSchemaRecoverySr5LiveCallSchedule()[state.calls.length];
+      const expected =
+        expectedPhase698RetrieverSchemaRecoverySr5LiveCallSchedule()[state.calls.length];
       if (
         !expected ||
-        canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(expected) !== canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(record.identity)
+        canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(expected) !==
+          canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(record.identity)
       ) {
         throw new Error(DURABILITY_ERROR);
       }
@@ -870,7 +937,8 @@ function applyRecord(state: MutableReplay, record: Phase698RetrieverSchemaRecove
     }
     case 'wire_stage': {
       const active = state.activeCall;
-      const expectedStage = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_WIRE_STAGES[active?.stages.length ?? 99];
+      const expectedStage =
+        PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_WIRE_STAGES[active?.stages.length ?? 99];
       if (
         !active ||
         active.identity.callId !== record.identity.callId ||
@@ -888,13 +956,17 @@ function applyRecord(state: MutableReplay, record: Phase698RetrieverSchemaRecove
     }
     case 'call_terminal': {
       assertCanTerminateCall(state, record.entry);
-      const expected = expectedPhase698RetrieverSchemaRecoverySr5LiveCallSchedule()[state.calls.length];
+      const expected =
+        expectedPhase698RetrieverSchemaRecoverySr5LiveCallSchedule()[state.calls.length];
       if (!expected || expected.callId !== record.entry.callId) throw new Error(DURABILITY_ERROR);
       const active = state.activeCall;
       if (!record.entry.disposition.startsWith('not_started_')) {
         if (active?.identity.callId !== record.entry.callId) throw new Error(DURABILITY_ERROR);
         const wire = wireFromStages(active.stages);
-        if (canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(wire) !== canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(record.entry.wire)) {
+        if (
+          canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(wire) !==
+          canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(record.entry.wire)
+        ) {
           throw new Error(DURABILITY_ERROR);
         }
         if (
@@ -959,8 +1031,12 @@ function applyRecord(state: MutableReplay, record: Phase698RetrieverSchemaRecove
       }
       const recomputed = recomputeReport(state, record.completionMode);
       if (
-        canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(recomputed) !== canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(record.report) ||
-        record.reportLogicalSha256 !== sha256Phase698RetrieverSchemaRecoverySr5Live(canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(recomputed))
+        canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(recomputed) !==
+          canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(record.report) ||
+        record.reportLogicalSha256 !==
+          sha256Phase698RetrieverSchemaRecoverySr5Live(
+            canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(recomputed),
+          )
       ) {
         throw new Error(DURABILITY_ERROR);
       }
@@ -998,7 +1074,10 @@ function assertCanStartCall(state: MutableReplay) {
   if (state.activeCall) throw new Error(DURABILITY_ERROR);
 }
 
-function assertCanTerminateCall(state: MutableReplay, entry: Phase698RetrieverSchemaRecoverySr5LiveCallEntry) {
+function assertCanTerminateCall(
+  state: MutableReplay,
+  entry: Phase698RetrieverSchemaRecoverySr5LiveCallEntry,
+) {
   assertCallScheduleBoundary(state);
   const notStarted = entry.disposition.startsWith('not_started_');
   if ((notStarted && state.activeCall) || (!notStarted && !state.activeCall)) {
@@ -1015,7 +1094,11 @@ function wireFromStages(stages: readonly Phase698RetrieverSchemaRecoverySr5LiveW
   };
 }
 
-function parseJournal(bytes: string, marker: Phase698RetrieverSchemaRecoverySr5LiveMarker, markerSha256: string) {
+function parseJournal(
+  bytes: string,
+  marker: Phase698RetrieverSchemaRecoverySr5LiveMarker,
+  markerSha256: string,
+) {
   if (!bytes.endsWith('\n') || bytes.length > MAX_FILE_BYTES) throw new Error(DURABILITY_ERROR);
   const lines = bytes.slice(0, -1).split('\n');
   if (lines.length === 0 || lines.some((line) => line.length === 0))
@@ -1028,7 +1111,10 @@ function parseJournal(bytes: string, marker: Phase698RetrieverSchemaRecoverySr5L
       record.markerSha256 !== markerSha256 ||
       record.sequence !== index + 1 ||
       record.previousHash !== (index === 0 ? null : linesRecordHash(lines[index - 1])) ||
-      recordHash !== sha256Phase698RetrieverSchemaRecoverySr5Live(canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(base)) ||
+      recordHash !==
+        sha256Phase698RetrieverSchemaRecoverySr5Live(
+          canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(base),
+        ) ||
       line !== JSON.stringify(record)
     ) {
       throw new Error(DURABILITY_ERROR);
@@ -1051,7 +1137,10 @@ function replayRecords(
   return state;
 }
 
-function createReplay(marker: Phase698RetrieverSchemaRecoverySr5LiveMarker, markerSha256: string): MutableReplay {
+function createReplay(
+  marker: Phase698RetrieverSchemaRecoverySr5LiveMarker,
+  markerSha256: string,
+): MutableReplay {
   return {
     marker,
     markerSha256,
@@ -1143,7 +1232,9 @@ async function acquireRecoveryClaim(
     if (!isErrorCode(error, 'EEXIST')) return Object.freeze({ ok: false });
     try {
       bytes = await readRegular(claimPath);
-      const parsed = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RECOVERY_CLAIM_SCHEMA.parse(JSON.parse(bytes));
+      const parsed = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RECOVERY_CLAIM_SCHEMA.parse(
+        JSON.parse(bytes),
+      );
       if (
         bytes !== `${JSON.stringify(parsed)}\n` ||
         parsed.runId !== replay.marker.runId ||
@@ -1173,7 +1264,9 @@ async function validateClaim(root: string, replay: MutableReplay) {
     return;
   }
   const bytes = await readRegular(claimPath);
-  const claim = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RECOVERY_CLAIM_SCHEMA.parse(JSON.parse(bytes));
+  const claim = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RECOVERY_CLAIM_SCHEMA.parse(
+    JSON.parse(bytes),
+  );
   if (
     bytes !== `${JSON.stringify(claim)}\n` ||
     claim.runId !== replay.marker.runId ||
@@ -1202,10 +1295,18 @@ async function requireOnlyExpectedFiles(root: string, replay: MutableReplay) {
 
 async function formalFiles(root: string) {
   try {
-    const entries = await readdir(resolveRelative(root, '.tmp'), { withFileTypes: true });
-    // Any directory entry in the current namespace blocks admission. Symlinks,
-    // directories and device-like entries must not disappear from the fence.
-    return entries.filter((entry) => FORMAL_FILE.test(entry.name));
+    const tmp = resolveRelative(root, '.tmp');
+    const tmpHandle = await openTrustedDirectory(tmp);
+    try {
+      await assertTrustedDirectoryHandle(tmp, tmpHandle);
+      const entries = await readdir(tmp, { withFileTypes: true });
+      await assertTrustedDirectoryHandle(tmp, tmpHandle);
+      // Any directory entry in the current namespace blocks admission. Symlinks,
+      // directories and device-like entries must not disappear from the fence.
+      return entries.filter((entry) => FORMAL_FILE.test(entry.name));
+    } finally {
+      await tmpHandle.close();
+    }
   } catch (error) {
     if (isErrorCode(error, 'ENOENT')) return [];
     throw error;
@@ -1248,8 +1349,7 @@ async function requireRoot(rootInput: string) {
 async function ensureTmp(root: string) {
   const path = resolveRelative(root, '.tmp');
   await mkdir(path, { recursive: true, mode: 0o700 });
-  const metadata = await lstat(path);
-  if (!metadata.isDirectory() || metadata.isSymbolicLink()) throw new Error(DURABILITY_ERROR);
+  await assertTrustedDirectory(path);
 }
 
 function resolveRelative(root: string, relativePath: string) {
@@ -1269,41 +1369,59 @@ function resolveRelative(root: string, relativePath: string) {
 }
 
 async function writeExclusive(path: string, bytes: string) {
-  const handle = await open(path, 'wx', 0o600);
-  try {
-    await handle.writeFile(bytes, 'utf8');
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
+  return withTrustedParentDirectory(path, async (parent, parentHandle) => {
+    const handle = await open(
+      path,
+      guardedFileFlags(fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL),
+      0o600,
+    );
+    try {
+      await assertTrustedDirectoryHandle(parent, parentHandle);
+      await assertOpenedRegular(path, handle);
+      await handle.writeFile(bytes, 'utf8');
+      await handle.sync();
+      await assertTrustedDirectoryHandle(parent, parentHandle);
+    } finally {
+      await handle.close();
+    }
+  });
 }
 
 async function appendRegular(path: string, bytes: string) {
-  const handle = await open(path, fsConstants.O_WRONLY | fsConstants.O_APPEND);
-  try {
-    const metadata = await assertOpenedRegular(path, handle);
-    if (
-      metadata.size > MAX_FILE_BYTES ||
-      metadata.size + Buffer.byteLength(bytes) > MAX_FILE_BYTES
-    ) {
-      throw new Error(DURABILITY_ERROR);
+  return withTrustedParentDirectory(path, async (parent, parentHandle) => {
+    const handle = await open(path, guardedFileFlags(fsConstants.O_WRONLY | fsConstants.O_APPEND));
+    try {
+      await assertTrustedDirectoryHandle(parent, parentHandle);
+      const metadata = await assertOpenedRegular(path, handle);
+      if (
+        metadata.size > MAX_FILE_BYTES ||
+        metadata.size + Buffer.byteLength(bytes) > MAX_FILE_BYTES
+      ) {
+        throw new Error(DURABILITY_ERROR);
+      }
+      await handle.writeFile(bytes, 'utf8');
+      await handle.sync();
+      await assertTrustedDirectoryHandle(parent, parentHandle);
+    } finally {
+      await handle.close();
     }
-    await handle.writeFile(bytes, 'utf8');
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
+  });
 }
 
 async function readRegular(path: string) {
-  const handle = await open(path, fsConstants.O_RDONLY);
-  try {
-    const metadata = await assertOpenedRegular(path, handle);
-    if (metadata.size > MAX_FILE_BYTES) throw new Error(DURABILITY_ERROR);
-    return await handle.readFile('utf8');
-  } finally {
-    await handle.close();
-  }
+  return withTrustedParentDirectory(path, async (parent, parentHandle) => {
+    const handle = await open(path, guardedFileFlags(fsConstants.O_RDONLY));
+    try {
+      await assertTrustedDirectoryHandle(parent, parentHandle);
+      const metadata = await assertOpenedRegular(path, handle);
+      if (metadata.size > MAX_FILE_BYTES) throw new Error(DURABILITY_ERROR);
+      const bytes = await handle.readFile('utf8');
+      await assertTrustedDirectoryHandle(parent, parentHandle);
+      return bytes;
+    } finally {
+      await handle.close();
+    }
+  });
 }
 
 async function assertOpenedRegular(path: string, handle: Awaited<ReturnType<typeof open>>) {
@@ -1321,7 +1439,7 @@ async function assertOpenedRegular(path: string, handle: Awaited<ReturnType<type
 }
 
 async function syncDirectory(path: string) {
-  const handle = await open(path, 'r');
+  const handle = await openTrustedDirectory(path);
   try {
     try {
       await handle.sync();
@@ -1333,29 +1451,151 @@ async function syncDirectory(path: string) {
         throw error;
       }
     }
+    await assertTrustedDirectoryHandle(path, handle);
   } finally {
     await handle.close();
   }
 }
 
 async function assertHardLink(source: string, target: string) {
+  await assertTrustedParentDirectory(source);
+  await assertTrustedParentDirectory(target);
   const [left, right] = await Promise.all([
-    stat(source, { bigint: true }),
-    stat(target, { bigint: true }),
+    lstat(source, { bigint: true }),
+    lstat(target, { bigint: true }),
   ]);
-  if (!left.isFile() || !right.isFile() || left.dev !== right.dev || left.ino !== right.ino) {
+  if (
+    !left.isFile() ||
+    !right.isFile() ||
+    left.isSymbolicLink() ||
+    right.isSymbolicLink() ||
+    left.dev !== right.dev ||
+    left.ino !== right.ino
+  ) {
     throw new Error(DURABILITY_ERROR);
   }
 }
 
 async function pathExists(path: string) {
   try {
-    await lstat(path);
-    return true;
+    return await withTrustedParentDirectory(path, async (_parent, parentHandle) => {
+      await assertTrustedDirectoryHandle(_parent, parentHandle);
+      await lstat(path);
+      return true;
+    });
   } catch (error) {
     if (isErrorCode(error, 'ENOENT')) return false;
     throw error;
   }
+}
+
+async function createTrustedHardLink(source: string, target: string) {
+  const sourceParent = dirname(source);
+  const targetParent = dirname(target);
+  const sourceHandle = await openTrustedDirectory(sourceParent);
+  let targetHandle = sourceHandle;
+  try {
+    if (normalizePath(sourceParent) !== normalizePath(targetParent)) {
+      // Keep the source handle inside the enclosing finally while opening the
+      // second parent, so a failed target open cannot leak the first handle.
+      targetHandle = await openTrustedDirectory(targetParent);
+    }
+    await assertTrustedDirectoryHandle(sourceParent, sourceHandle);
+    await assertTrustedDirectoryHandle(targetParent, targetHandle);
+    await link(source, target);
+    await assertTrustedDirectoryHandle(sourceParent, sourceHandle);
+    await assertTrustedDirectoryHandle(targetParent, targetHandle);
+  } finally {
+    await sourceHandle.close();
+    if (targetHandle !== sourceHandle) await targetHandle.close();
+  }
+}
+
+async function unlinkTrustedRegularIfPresent(path: string) {
+  try {
+    await withTrustedParentDirectory(path, async (_parent, parentHandle) => {
+      await assertTrustedDirectoryHandle(_parent, parentHandle);
+      const metadata = await lstat(path);
+      if (!metadata.isFile() || metadata.isSymbolicLink()) return;
+      await unlink(path);
+      await assertTrustedDirectoryHandle(_parent, parentHandle);
+    });
+  } catch {
+    // Cleanup is best-effort, but never follows an untrusted parent or link.
+  }
+}
+
+async function assertTrustedParentDirectory(path: string) {
+  await assertTrustedDirectory(dirname(path));
+}
+
+async function withTrustedParentDirectory<T>(
+  path: string,
+  operation: (parent: string, parentHandle: Awaited<ReturnType<typeof open>>) => Promise<T>,
+) {
+  const parent = dirname(path);
+  const parentHandle = await openTrustedDirectory(parent);
+  try {
+    await assertTrustedDirectoryHandle(parent, parentHandle);
+    return await operation(parent, parentHandle);
+  } finally {
+    await parentHandle.close();
+  }
+}
+
+async function openTrustedDirectory(path: string) {
+  const lexical = resolve(path);
+  await assertTrustedDirectory(lexical);
+  const handle = await open(lexical, 'r');
+  try {
+    await assertTrustedDirectoryHandle(lexical, handle);
+    return handle;
+  } catch (error) {
+    await handle.close();
+    throw error;
+  }
+}
+
+async function assertTrustedDirectoryHandle(
+  path: string,
+  handle: Awaited<ReturnType<typeof open>>,
+) {
+  const lexical = resolve(path);
+  const [opened, current, canonical] = await Promise.all([
+    handle.stat(),
+    lstat(lexical),
+    realpath(lexical),
+  ]);
+  if (
+    !opened.isDirectory() ||
+    !current.isDirectory() ||
+    current.isSymbolicLink() ||
+    opened.dev !== current.dev ||
+    opened.ino !== current.ino ||
+    normalizePath(canonical) !== normalizePath(lexical)
+  ) {
+    throw new Error(DURABILITY_ERROR);
+  }
+}
+
+async function assertTrustedDirectory(path: string) {
+  const lexical = resolve(path);
+  const [metadata, canonical] = await Promise.all([lstat(lexical), realpath(lexical)]);
+  if (
+    !metadata.isDirectory() ||
+    metadata.isSymbolicLink() ||
+    normalizePath(canonical) !== normalizePath(lexical)
+  ) {
+    throw new Error(DURABILITY_ERROR);
+  }
+}
+
+function guardedFileFlags(flags: number) {
+  return process.platform === 'win32' ? flags : flags | fsConstants.O_NOFOLLOW;
+}
+
+function normalizePath(path: string) {
+  return process.platform === 'win32' ? path.toLowerCase() : path;
 }
 
 function isProcessAlive(processId: number) {

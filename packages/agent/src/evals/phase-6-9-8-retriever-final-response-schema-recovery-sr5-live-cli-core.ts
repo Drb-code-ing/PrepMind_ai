@@ -25,7 +25,7 @@ import {
   type Phase698RetrieverSchemaRecoverySr5LiveAdmissionRecord,
   type Phase698RetrieverSchemaRecoverySr5LiveReservationCapability,
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-admission.ts';
-import type { Phase698RetrieverSchemaRecoverySr5Source } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.ts';
+import type { Phase698RetrieverSchemaRecoverySr5LiveSource as Phase698RetrieverSchemaRecoverySr5Source } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-schema.ts';
 import {
   reservePhase698RetrieverSchemaRecoverySr5LiveAttempt,
   sealPhase698RetrieverSchemaRecoverySr5LiveInterruptedAttempt,
@@ -86,7 +86,9 @@ export type Phase698RetrieverSchemaRecoverySr5LiveCliPorts = Readonly<{
     credentials: Phase698Task9LiveCredentials;
   }): Phase698RetrieverSchemaRecoverySr5LiveHarness;
   run(input: RunPhase698RetrieverSchemaRecoverySr5LiveInput): Promise<unknown>;
-  validate(input: { root: string }): ReturnType<typeof validatePhase698RetrieverSchemaRecoverySr5LiveBundle>;
+  validate(input: {
+    root: string;
+  }): ReturnType<typeof validatePhase698RetrieverSchemaRecoverySr5LiveBundle>;
   recover(input: { root: string }): Promise<Phase698RetrieverSchemaRecoverySr5LiveCrashSealResult>;
   randomUUID(): string;
   now(): number;
@@ -138,41 +140,62 @@ export async function executePhase698RetrieverSchemaRecoverySr5LiveCliCore(
     );
     return 0;
   }
-  if (input.args.length === 1 && input.args[0] === PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_VALIDATE_ARGUMENT) {
+  if (
+    input.args.length === 1 &&
+    input.args[0] === PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_VALIDATE_ARGUMENT
+  ) {
     try {
       const result = await ports.validate({ root: input.root });
-      safeWrite(ports.write, JSON.stringify({
-        version: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_CLI_VERSION,
-        operation: 'validate',
-        authority: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_AUTHORITY,
-        ...result,
-      }));
+      safeWrite(
+        ports.write,
+        JSON.stringify({
+          version: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_CLI_VERSION,
+          operation: 'validate',
+          authority: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_AUTHORITY,
+          ...result,
+        }),
+      );
       return result.ok ? 0 : 1;
     } catch {
       return blocked('bundle_validation_failed');
     }
   }
-  if (input.args.length === 1 && input.args[0] === PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RECOVER_ARGUMENT) {
+  if (
+    input.args.length === 1 &&
+    input.args[0] === PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RECOVER_ARGUMENT
+  ) {
     try {
       const result = await ports.recover({ root: input.root });
-      safeWrite(ports.write, JSON.stringify({
-        version: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_CLI_VERSION,
-        operation: 'recover',
-        authority: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_AUTHORITY,
-        ...result,
-      }));
+      safeWrite(
+        ports.write,
+        JSON.stringify({
+          version: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_CLI_VERSION,
+          operation: 'recover',
+          authority: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_AUTHORITY,
+          ...result,
+        }),
+      );
       return result.ok ? 0 : 1;
     } catch {
       return blocked('crash_only_recovery_failed');
     }
   }
-  if (input.args.length !== 1 || input.args[0] !== PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RUN_ARGUMENT) {
+  if (
+    input.args.length !== 1 ||
+    input.args[0] !== PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RUN_ARGUMENT
+  ) {
     return blocked('cli_argument_invalid');
   }
   if (input.signal.aborted) return blocked('aborted_before_admission');
 
-  const boundary = readEnv(input.authorizationEnv, PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_DATA_BOUNDARY_ENV);
-  const approval = readEnv(input.authorizationEnv, PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVAL_ENV);
+  const boundary = readEnv(
+    input.authorizationEnv,
+    PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_DATA_BOUNDARY_ENV,
+  );
+  const approval = readEnv(
+    input.authorizationEnv,
+    PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVAL_ENV,
+  );
   if (boundary !== PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_DATA_BOUNDARY_CONFIRMATION) {
     return blocked('data_boundary_not_accepted');
   }
@@ -235,7 +258,10 @@ export async function executePhase698RetrieverSchemaRecoverySr5LiveCliCore(
   let reservation: Phase698RetrieverSchemaRecoverySr5LiveReservation;
   try {
     runId = z.string().uuid().parse(ports.randomUUID());
-    const createdAt = z.string().datetime({ offset: true }).parse(new Date(ports.now()).toISOString());
+    const createdAt = z
+      .string()
+      .datetime({ offset: true })
+      .parse(new Date(ports.now()).toISOString());
     reservation = await ports.reserve({
       root: input.root,
       runId,
@@ -255,42 +281,48 @@ export async function executePhase698RetrieverSchemaRecoverySr5LiveCliCore(
 
   try {
     const harness = ports.createHarness({ runId, credentials });
-    if (harness.transportAuthority !== 'external_provider') throw new Error('harness_authority_mismatch');
-    const report = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_REPORT_SCHEMA.parse(await ports.run({
-      runId,
-      repositoryRoot: input.root,
-      admissionAuthority: 'git_verified_live',
-      admissionCapability: admission.capability,
-      harness,
-      lifecycle: reservation.lifecycle,
-      signal: input.signal,
-    }));
+    if (harness.transportAuthority !== 'external_provider')
+      throw new Error('harness_authority_mismatch');
+    const report = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_REPORT_SCHEMA.parse(
+      await ports.run({
+        runId,
+        repositoryRoot: input.root,
+        admissionAuthority: 'git_verified_live',
+        admissionCapability: admission.capability,
+        harness,
+        lifecycle: reservation.lifecycle,
+        signal: input.signal,
+      }),
+    );
     const published = await reservation.publishArtifact(report);
     const validation = await ports.validate({ root: input.root });
     if (!validation.ok || validation.runId !== runId) throw new Error('bundle_invalid');
-    safeWrite(ports.write, JSON.stringify({
-      version: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_CLI_VERSION,
-      ok: report.gate.passed,
-      evidenceSealed: true,
-      authority: report.authority,
-      qualityAuthority: report.qualityAuthority,
-      runId,
-      gate: report.gate,
-      execution: report.execution,
-      caseCounts: report.caseCounts,
-      providers: report.providers,
-      rewrite: report.rewrite,
-      finalResponse: report.finalResponse,
-      budget: report.budget,
-      proxy: {
-        code: proxy.code,
-        listenerProbeCalls: proxy.listenerProbeCalls,
-        providerCalls: 0,
-      },
-      journalRecords: validation.journalRecords,
-      reportLogicalSha256: validation.reportLogicalSha256,
-      artifactSha256: published.evidenceSha256,
-    }));
+    safeWrite(
+      ports.write,
+      JSON.stringify({
+        version: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_CLI_VERSION,
+        ok: report.gate.passed,
+        evidenceSealed: true,
+        authority: report.authority,
+        qualityAuthority: report.qualityAuthority,
+        runId,
+        gate: report.gate,
+        execution: report.execution,
+        caseCounts: report.caseCounts,
+        providers: report.providers,
+        rewrite: report.rewrite,
+        finalResponse: report.finalResponse,
+        budget: report.budget,
+        proxy: {
+          code: proxy.code,
+          listenerProbeCalls: proxy.listenerProbeCalls,
+          providerCalls: 0,
+        },
+        journalRecords: validation.journalRecords,
+        reportLogicalSha256: validation.reportLogicalSha256,
+        artifactSha256: published.evidenceSha256,
+      }),
+    );
     return report.gate.passed ? 0 : 1;
   } catch {
     return blocked('live_runtime_or_evidence_io', {
@@ -312,7 +344,8 @@ function createPorts(
       throw new Error('PROXY_PREFLIGHT_PORT_NOT_BOUND');
     },
     readAdmission:
-      overrides?.readAdmission ?? ((value: Parameters<Phase698RetrieverSchemaRecoverySr5LiveCliPorts['readAdmission']>[0]) => {
+      overrides?.readAdmission ??
+      ((value: Parameters<Phase698RetrieverSchemaRecoverySr5LiveCliPorts['readAdmission']>[0]) => {
         const result = admitPhase698RetrieverSchemaRecoverySr5ControlledLive({
           repositoryRoot: value.root,
           dataBoundaryConfirmation: value.dataBoundaryConfirmation,
@@ -321,7 +354,8 @@ function createPorts(
         if (!result.ok) throw new Error(result.reasonCode);
         return result;
       }),
-    loadCredentialEnv: overrides?.loadCredentialEnv ?? readPhase698RetrieverSchemaRecoverySr5RootCredentialEnv,
+    loadCredentialEnv:
+      overrides?.loadCredentialEnv ?? readPhase698RetrieverSchemaRecoverySr5RootCredentialEnv,
     readCredential: overrides?.readCredential ?? readCredential,
     reserve: overrides?.reserve ?? reservePhase698RetrieverSchemaRecoverySr5LiveAttempt,
     createHarness: overrides?.createHarness ?? createPhase698Task9LiveHarness,
@@ -341,10 +375,29 @@ function normalizeInput(value: unknown): Phase698RetrieverSchemaRecoverySr5LiveC
   const proxyEnv = Reflect.getOwnPropertyDescriptor(value, 'proxyEnv');
   const authorizationEnv = Reflect.getOwnPropertyDescriptor(value, 'authorizationEnv');
   const signal = Reflect.getOwnPropertyDescriptor(value, 'signal');
-  if (!args || !('value' in args) || !Array.isArray(args.value) || args.value.some((v) => typeof v !== 'string')) return null;
-  if (!root || !('value' in root) || typeof root.value !== 'string' || root.value.length === 0) return null;
-  if (!proxyEnv || !('value' in proxyEnv) || typeof proxyEnv.value !== 'object' || proxyEnv.value === null) return null;
-  if (!authorizationEnv || !('value' in authorizationEnv) || typeof authorizationEnv.value !== 'object' || authorizationEnv.value === null) return null;
+  if (
+    !args ||
+    !('value' in args) ||
+    !Array.isArray(args.value) ||
+    args.value.some((v) => typeof v !== 'string')
+  )
+    return null;
+  if (!root || !('value' in root) || typeof root.value !== 'string' || root.value.length === 0)
+    return null;
+  if (
+    !proxyEnv ||
+    !('value' in proxyEnv) ||
+    typeof proxyEnv.value !== 'object' ||
+    proxyEnv.value === null
+  )
+    return null;
+  if (
+    !authorizationEnv ||
+    !('value' in authorizationEnv) ||
+    typeof authorizationEnv.value !== 'object' ||
+    authorizationEnv.value === null
+  )
+    return null;
   if (!signal || !('value' in signal) || !isAbortSignal(signal.value)) return null;
   return Object.freeze({
     args: Object.freeze(args.value.slice()),
@@ -359,14 +412,16 @@ function parseProxy(value: unknown): Readonly<{
   code: 'direct_ready' | 'loopback_proxy_ready';
   listenerProbeCalls: 0 | 1;
 }> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('proxy_invalid');
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new Error('proxy_invalid');
   const record = value as Record<string, unknown>;
   if (
     record.ok !== true ||
     (record.code !== 'direct_ready' && record.code !== 'loopback_proxy_ready') ||
     record.providerCalls !== 0 ||
     (record.listenerProbeCalls !== 0 && record.listenerProbeCalls !== 1)
-  ) throw new Error('proxy_invalid');
+  )
+    throw new Error('proxy_invalid');
   return Object.freeze({
     code: record.code,
     listenerProbeCalls: record.listenerProbeCalls,
@@ -402,12 +457,14 @@ export async function readPhase698RetrieverSchemaRecoverySr5RootCredentialEnv(
     if (values.has(match[1])) throw new Error('credential_conflict');
     values.set(match[1], value);
   }
-  const deepseek = values.get(
-    'PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_REWRITE_DEEPSEEK_API_KEY',
-  ) ?? values.get('DEEPSEEK_API_KEY');
-  const finalDeepseek = values.get(
-    'PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_FINAL_RESPONSE_DEEPSEEK_API_KEY',
-  ) ?? values.get('DEEPSEEK_API_KEY');
+  const deepseek =
+    values.get(
+      'PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_REWRITE_DEEPSEEK_API_KEY',
+    ) ?? values.get('DEEPSEEK_API_KEY');
+  const finalDeepseek =
+    values.get(
+      'PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_FINAL_RESPONSE_DEEPSEEK_API_KEY',
+    ) ?? values.get('DEEPSEEK_API_KEY');
   const qwenAliases = ['QWEN_API_KEY', 'Qwen_API_KEY', 'DASHSCOPE_API_KEY']
     .map((key) => values.get(key))
     .filter((value): value is string => value !== undefined);
@@ -435,7 +492,8 @@ export async function readPhase698RetrieverSchemaRecoverySr5RootCredentialEnv(
   }
   return Object.freeze({
     PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_REWRITE_DEEPSEEK_API_KEY: deepseek,
-    PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_FINAL_RESPONSE_DEEPSEEK_API_KEY: finalDeepseek,
+    PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_FINAL_RESPONSE_DEEPSEEK_API_KEY:
+      finalDeepseek,
     PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_QWEN_API_KEY: qwen,
   });
 }
@@ -445,17 +503,29 @@ function unquote(value: string): string {
   if (
     (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
     (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) return trimmed.slice(1, -1);
+  )
+    return trimmed.slice(1, -1);
   return trimmed;
 }
 
 function validCredential(value: string): boolean {
-  return value.length >= 1 && value.length <= 512 && value === value.trim() && /^[\x21-\x7e]+$/u.test(value);
+  return (
+    value.length >= 1 &&
+    value.length <= 512 &&
+    value === value.trim() &&
+    /^[\x21-\x7e]+$/u.test(value)
+  );
 }
 
 function readCredential(env: Readonly<Record<string, string | undefined>>, key: string): string {
   const value = readEnv(env, key);
-  if (typeof value !== 'string' || value !== value.trim() || value.length < 1 || value.length > 512 || !/^[\x21-\x7e]+$/u.test(value)) {
+  if (
+    typeof value !== 'string' ||
+    value !== value.trim() ||
+    value.length < 1 ||
+    value.length > 512 ||
+    !/^[\x21-\x7e]+$/u.test(value)
+  ) {
     throw new Error('credential_invalid');
   }
   return value;

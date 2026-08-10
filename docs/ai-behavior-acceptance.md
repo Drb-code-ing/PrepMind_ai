@@ -2,10 +2,11 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 Live proxy fix（当前，zero-provider）
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 Live tag compatibility（当前，zero-provider）
 
 首次 controlled-Live 在 proxy 前门 `proxy_preflight_not_ready` fail-closed，approved tag/正式 Live evidence/Provider 调用均仍为 `0`。
-修复提交 `b531adef` 已以 merge=`671188bb` 合并并推送 main，解决 Bun/Windows accessor-backed proxy 环境快照问题；本节记录的是修复后的实现合同，不是 Provider 质量结果：
+proxy accessor 修复已完成；Live source admission 又从历史 tag 中独立出来。本节记录的是 zero-provider 实现合同，
+不是 Provider 质量结果：
 
 ```text
 lineage         phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1
@@ -15,16 +16,20 @@ concurrency     1; pair-serial; single-dispatch; no retry/resume/replay/backfill
 budget          37,600 input / 8,800 output / 0.176 CNY
 qualityAuthority none
 provider/env    0 / 0; formal evidence 0; business writes 0
+source tag      phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved
+historical tag  phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved (immutable)
 ```
 
 唯一 RUN 必须依次通过 exact argv、当次 DeepSeek/Qwen data-boundary 与 exact authorization、正式 namespace fence、source/tag/bundle
 parity、proxy preflight，之后才可 late-bind 根 `.env` 的三个 SR5 credential。help/validate/recover 不读取
 credential；任何 credential、prompt 或 Provider 原文都不得进入 report/journal/artifact。完整质量门 pass 才能产生
 `schema_recovery_sr5_branch_semantic_gate`；失败只形成 durable diagnostic，且无论结果都不自动解锁 `/api/chat`、Docker/API/
-browser、Trace、产品数据或 `main`。当前修复 focused `11/11`（39 assertions），typecheck/lint/Prettier/diff check 通过；独立 preflight 为
+ browser、Trace、产品数据或 `main`。当前 SR5 contract/source/Live focused `26/26`（102 assertions），Agent full
+`1527/1527`（25213 expect()，196 files），typecheck/lint 与源文件 Prettier/diff check 通过；独立 preflight 为
 `loopback_proxy_ready` 且 `providerCalls=0`。详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`；故障与修复证据见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`；tag 分离见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
 
 ## 历史 Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 runner/durability（zero-provider）
 

@@ -50,9 +50,12 @@ git diff --check：通过
 
 修复改变了 Live source bundle，旧
 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved` tag 仍指向修复前的 `ca9a9eb0`，不可移动或复用。
-修复已以 merge=`671188bb` 合并回 `main`、推送并完成 parity；合并后二次 zero-provider 回归通过。接下来必须让功能分支同步到该最终
-source，再重新接受当前 source 的 DeepSeek/Qwen 数据边界并给出新的两行 exact authorization，创建新的 approved tag 并执行唯一一次
-controlled-Live。旧授权不适用于新 source。
+修复已以 merge=`671188bb` 合并回 `main`、推送并完成 parity；合并后二次 zero-provider 回归通过。后续 tag compatibility
+修复需再完成一次最终 parity：在最终 commit 创建并推送新的
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved` annotated tag，核对 tag object/peeled commit，
+再重新接受该 source 的 DeepSeek/Qwen 数据边界并给出新的两行 exact authorization，之后才执行唯一一次 controlled-Live。
+旧授权不适用于新 source；tag isolation 的实现回执见
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
 
 在新的 exact authorization 前禁止 Live retry/replay/curl/单 case/追加 Provider 探测。下一次运行无论质量通过、schema、transport、usage、
 timeout、abort 或 I/O 失败，都必须 durable seal 后停止；成功也只产生分支 semantic authority，不自动解锁产品、Docker/API/browser、Trace、SLA

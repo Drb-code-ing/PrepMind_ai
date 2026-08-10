@@ -1,10 +1,10 @@
 # PrepMind AI 智能备考助手
 
-## 当前工作回执：Schema Recovery SR5 Live proxy fix（2026-08-10）
+## 当前工作回执：Schema Recovery SR5 Live tag compatibility（2026-08-10）
 
-SR5 Live 首次唯一入口在 proxy 前门 `proxy_preflight_not_ready` fail-closed，`providerCalls=0 / credentialReads=0 / formalEvidence=0 /
-businessWrites=0`，没有创建正式 evidence，也没有清理 Docker/数据库/Redis/MinIO。修复提交 `b531adef` 已推送功能分支，解决
-Bun/Windows accessor-backed proxy 环境快照并新增 zero-provider 回归。
+SR5 Live 首次入口在 proxy 前门 `proxy_preflight_not_ready` fail-closed，`providerCalls=0 / credentialReads=0 / formalEvidence=0 /
+businessWrites=0`，没有创建正式 evidence，也没有清理 Docker/数据库/Redis/MinIO。proxy accessor 修复已完成；当前又将 Live
+source admission 从不可变历史 tag 中分离出来。
 
 ```text
 implementation  zero_provider_live_boundary (runtime authority not issued)
@@ -13,15 +13,19 @@ lineage         phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1
 fixed           8 guards + 6 rewrite pairs + 6 FinalResponse; 24 Provider slots
 schedule        DeepSeek 12 + Qwen embedding 12; concurrency 1; pair-serial
 budget          37,600 input / 8,800 output / 0.176 CNY
-focused         11/11 tests, 39 assertions; accessor-backed proxy regression passed
+focused         26/26 tests, 102 assertions; historical/live tag isolation passed
+Agent full      1527/1527 tests, 25213 assertions, 196 files
 provider/env    0 / 0; formal evidence 0; business writes 0
 ```
 
-完整实现验收见
+历史 tag `phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved` 保持指向 `ca9a9eb0`；Live 使用新的
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved` 合同。完整实现验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`；故障与修复见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
-实现完成不等于真实模型质量或产品可用性：修复已以 merge=`671188bb` 合并并推送，合并后二次 zero-provider 回归通过；现在必须重新接受
-当前 source 的 DeepSeek/Qwen 数据边界并给出新 exact authorization、创建新 approved tag，才可执行唯一一次 controlled-Live；旧授权/tag 不得复用。
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
+实现完成不等于真实模型质量或产品可用性：必须先合并并推送最终 `main`、完成二次 zero-provider 回归，再在最终 parity commit
+创建并推送新 tag、核对 tag object/peeled commit，然后重新接受该 source 的数据边界与 exact authorization，最后执行唯一一次
+controlled-Live；旧授权/tag 不得复用。
 Docker、PostgreSQL、Redis、MinIO 不因本阶段被清空或重建。
 
 ### 历史 SR5 runner/durability checkpoint（zero-provider）
