@@ -1,5 +1,17 @@
 # PrepMind AI 开发日志
 
+> 2026-08-10 — Phase 6.9.8 SR5 runner/durability main closeout 已完成：
+>
+> 功能提交 `d077bf9d` 已推送到
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`，随后从最新 `main` 以 `--no-ff` 合并为
+> `b2b5b9c9`。合并后的 `main` 再次通过 SR5 focused `25/25`（82 assertions）、typecheck、lint、CLI help/run smoke 与
+> `git diff --check`；CLI 仍为 `12/12/12/12` reservations/dispatches/responses/verifiedUsage、`12/0/0`
+> succeeded/failed/notStarted，`providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`。
+>
+> 本次只完成 zero-provider 工程边界与 main parity，不创建 approved tag、不读取 credential、不调用 DeepSeek/Qwen，不进入
+> Docker/API/browser 或产品 Trace。下一步必须重新接受当次 DeepSeek/Qwen 数据边界，并为已推送 source/tag 提供 exact
+> authorization；在新的 controlled-Live 授权前保持所有 gate 关闭。
+
 > 2026-08-10 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 runner/durability zero-provider checkpoint 已完成：
 >
 > 在已推送 `main@42abbbbd` 上新开普通分支

@@ -2,10 +2,11 @@
 
 日期：2026-08-10
 
-分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`
+证据分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`
 
 基线：`main@42abbbbd`（SR5 admission contract 已合并并推送）
-状态：**zero-provider runner/durability 已完成；controlled-Live 未授权、未执行**
+
+状态：**zero-provider runner/durability 已完成；已以 `--no-ff` 合并到 `main`（merge=`b2b5b9c9`），合并后二次回放通过；controlled-Live 未授权、未执行**
 
 ## 1. 这一步解决什么问题
 
@@ -117,15 +118,16 @@ Outbox 或产品数据。
 
 ## 6. 当前停止门与下一步
 
-本次 runner/durability 完成后，必须先：
+本次 runner/durability 已完成以下交付收口：
 
-1. 将代码、测试和本验收/入口文档作为一个阶段提交并推送功能分支；
-2. 从最新 `main` 做 `--no-ff` 合并，合并后重新跑 focused、typecheck、lint、CLI zero-provider smoke，再推送
-   `origin/main`；
-3. 只有在新的已推送 source/tag 上，重新接受当次 DeepSeek/Qwen 数据保留/训练边界，并给出绑定该 source 的 exact
-   authorization，才可规划唯一一次 SR5 controlled-Live；
-4. controlled-Live 即使通过，也只形成分支 semantic authority，之后才进入独立 SR6 Docker/API/可见浏览器/Trace
-   验收。任何终态均不得 retry/resume/replay/backfill、recovery、curl、单 case 或追加 Provider 探测。
+1. 代码、测试、入口文档已在功能提交 `d077bf9d` 提交并推送；
+2. 功能分支已从最新 `main` 以 `--no-ff` 合并为 `b2b5b9c9`；
+3. 合并后的 `main` 已重新通过 focused `25/25`、typecheck、lint、CLI zero-provider smoke 与 `git diff --check`，
+   runtime 仍为 `12/12/12/12` wire、`12/0/0` succeeded/failed/notStarted；
+4. 当前停止在新的 source-bound controlled-Live 授权门：必须先重新接受当次 DeepSeek/Qwen 数据保留/训练边界，并给出
+   绑定新 source/tag 的 exact authorization。controlled-Live 即使通过，也只形成分支 semantic authority，之后才进入独立
+   SR6 Docker/API/可见浏览器/Trace 验收。任何终态均不得 retry/resume/replay/backfill、recovery、curl、单 case 或追加
+   Provider 探测。
 
 禁止修改历史 P1 L2/T3/R5/L3/Phase 6.9.7 SR5 sealed evidence；禁止清理 Docker 数据卷、数据库、Redis 或 MinIO。
 

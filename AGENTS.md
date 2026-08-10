@@ -2,10 +2,11 @@
 
 ## 当前状态：Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 runner/durability（2026-08-10）
 
-当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`，从已推送
-`main@42abbbbd` 新开；不使用 worktree。SR5 admission contract 已合并到该基线，本 checkpoint 又完成了
+当前普通 git 分支为 `main`。功能分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已推送，功能提交为 `d077bf9d`，并以
+`--no-ff` 合并为 main merge `b2b5b9c9`；不使用 worktree。SR5 admission contract 与本 checkpoint 的
 zero-provider reviewed-Mock runner、严格 source-bound reservation、hash-chain journal、hard-link artifact、strict
-validator 与 crash-only recovery。不读取根 `.env`/credential，不调用 Provider，不清理 Docker、数据库、Redis 或 MinIO。
+validator、crash-only recovery 已完成。合并后二次 zero-provider 验收通过；不读取根 `.env`/credential，不调用 Provider，不清理 Docker、数据库、Redis 或 MinIO。
 
 runner authority=
 `zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability`、gate=
@@ -13,14 +14,15 @@ runner authority=
 `20` report entries、`12` candidate invocations、最大并发 `1`、预算 `37,600/8,800/0.176 CNY`。CLI 只开放
 `synthetic_test` reviewed Mock、validate 与 crash-only recover；不开放 live、credential、replay 或 backfill 参数。
 
-当前 focused `25/25`（82 assertions）、typecheck/lint、CLI help/run smoke 已通过；CLI runtime 为
+当前 focused `25/25`（82 assertions）、typecheck/lint、CLI help/run smoke 已通过；合并后二次回放结果相同；CLI runtime 为
 `12/12/12/12` reservations/dispatches/responses/verifiedUsage、`12/0/0` succeeded/failed/notStarted，
 `providerCalls=0 / credentialReads=0 / businessWrites=0 / formalEvidence=0`。完整验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
 
 SR5 approved annotated tag 尚未创建，真实 `git_verified` source gate 与 controlled-Live 仍关闭；本阶段不形成真实模型
-质量、产品/API/browser、Trace、P95/SLA、`main` 或博客 authority。完成本分支后仍须按“提交→推送→从最新 main 合并→
-合并后二次验收→推送 origin/main”推进，之后才可重新接受当次 DeepSeek/Qwen 数据边界并取得绑定新 source 的 exact authorization。
+质量、产品/API/browser、Trace、P95/SLA、产品或博客 authority。当前 `main` 收口已完成，下一停止门是重新接受当次
+DeepSeek/Qwen 数据边界并取得绑定新 source/tag 的 exact authorization；在此之前不得创建 approved tag、读取 credential、
+调用 Provider 或进入 Docker/API/browser 产品验收。
 
 ### 历史 SR4 reviewed Mock checkpoint（已完成）
 

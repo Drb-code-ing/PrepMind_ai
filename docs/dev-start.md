@@ -5,10 +5,11 @@
 
 ## 当前 Schema Recovery SR5 runner/durability 入口（zero-provider，2026-08-10）
 
-当前普通分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`，基于已推送
-`main@42abbbbd`。上游 admission contract 已完成；本入口运行固定 `8/6/6` reviewed-Mock runner，并验证 source-bound
-reservation、hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery。approved tag 尚未创建，
-真实 source gate 与 provider dispatch 关闭，不读取 `.env`/credential。
+当前普通分支为 `main`。功能分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已以 `--no-ff` 合并为 `b2b5b9c9`，合并后二次
+zero-provider 回放通过。本入口运行固定 `8/6/6` reviewed-Mock runner，并验证 source-bound reservation、hash-chain journal、
+hard-link artifact、strict validator 与 crash-only recovery。approved tag 尚未创建，真实 source gate 与 provider dispatch
+关闭，不读取 `.env`/credential。
 
 ```powershell
 bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:runner -- --help

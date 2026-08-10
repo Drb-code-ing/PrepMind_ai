@@ -2,10 +2,11 @@
 
 ## 当前工作回执：Schema Recovery SR5 runner/durability（2026-08-10）
 
-当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`，从已推送的
-`main@42abbbbd` 新开；不使用 worktree，不清理 Docker、数据库、Redis 或 MinIO。SR5 admission contract 已在该基线
-完成，本 checkpoint 将它接入 zero-provider reviewed-Mock runner，并落地严格 journal、artifact、validator 与 crash-only
-recovery。approved annotated tag 尚未创建，真实 `git_verified` source gate 与 controlled-Live 保持关闭。
+当前普通 git 分支为 `main`。功能分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已推送，功能提交 `d077bf9d` 已以 `--no-ff`
+合并为 main merge `b2b5b9c9`；不使用 worktree，不清理 Docker、数据库、Redis 或 MinIO。SR5 admission contract 与
+zero-provider reviewed-Mock runner、严格 journal、artifact、validator、crash-only recovery 均已完成，合并后二次回放通过。
+approved annotated tag 尚未创建，真实 `git_verified` source gate 与 controlled-Live 保持关闭。
 
 ```text
 authority       zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability
@@ -20,7 +21,7 @@ dispatch        synthetic only; no credential/provider ports
 ```
 
 本回执只证明 SR5 runner/durability 工程边界，不证明真实 DeepSeek/Qwen 质量、RAG 召回、产品 `/api/chat`、Docker/API/browser、
-Trace、P95/SLA 或 `main` 产品可用性。runner/durability、SR5 admission、SR4 checkpoint、设计和计划见：
+Trace、P95/SLA 或产品可用性。runner/durability、SR5 admission、SR4 checkpoint、设计和计划见：
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`、
@@ -456,7 +457,7 @@ bun --cwd packages/fsrs test
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
 2. Phase 6.9.7 已完成：V1--V9 Live 与 R3/L3 失败历史保持封存；Provider Canary V2、Small/Full Gate、Schema Recovery SR0--SR7 已按各自 authority 收口。唯一 SR5 run `63f8a76b...04cb` 形成分支语义门，SR6/SR7 完成 zero-provider 产品与 main/default-off 验收且不提升 SR5 语义 authority。
-3. Phase 6.9.8 Task 0--9B 已完成，唯一 Task 9C 已失败封存且不得补跑。Architecture Recovery R0--R4 随后完成独立设计、三链路 diagnostic/robustness、runner/durability/admission 与 reviewed Mock/static；唯一 R5 run `34eb99be...` 又在第二个 rewrite pair 的 DeepSeek `provider_dispatch / unknown` 后以 `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。该 run 仅有 `4` 次 external calls，rewrite strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`。R5 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。当前新增的 P1 G1/G2/S2/L2 admission 仍是 zero-provider/diagnostic 边界；若要进入 L2 controlled-Live，必须先取得新的数据边界接受和 exact authorization。L2 完成后才评估产品 Docker/API/浏览器与后续 Task 10/11；全部 Agent 真正完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
+3. Phase 6.9.8 Task 0--9B 已完成，唯一 Task 9C 已失败封存且不得补跑。Architecture Recovery R0--R4 随后完成独立设计、三链路 diagnostic/robustness、runner/durability/admission 与 reviewed Mock/static；唯一 R5 run `34eb99be...` 又在第二个 rewrite pair 的 DeepSeek `provider_dispatch / unknown` 后以 `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。该 run 仅有 `4` 次 external calls，rewrite strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`。R5 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。SR5 runner/durability 已以 `b2b5b9c9` 合并到 `main`，合并后二次 zero-provider 回放通过，但仍不形成真实语义或产品 authority；下一步必须先重新接受当次 DeepSeek/Qwen 数据边界并取得绑定新 source/tag 的 exact authorization，之后才可规划唯一 controlled-Live。全部 Agent 真正完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 executor、dispatch、response、verified usage 要拆成四个计数？”“为什么 recovery 只能 seal durable prefix，不能 resume/replay/retry？”“为什么 transport subtype 不直接回填 V9 Trace/evidence？”“为什么 `1/1/0/0` 不能证明 Provider 收到请求或产生费用？”“为什么 L1 的 `1/1/1/1` 仍是 `qualityAuthority=none`？”“Provider health canary 与 Agent semantic acceptance 为什么必须拆开？”
 

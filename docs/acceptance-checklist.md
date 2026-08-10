@@ -7,9 +7,10 @@
 
 ## 0K. Phase 6.9.8 Schema Recovery SR5 runner/durability（当前，zero-provider，2026-08-10）
 
-当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`，基线 `main@42abbbbd`。上游 admission
-contract 已完成；本 checkpoint 验证固定 runner、durability、validator 与 crash-only recovery。approved tag 尚未创建，
-真实 `git_verified` source gate 与 Provider dispatch 仍关闭；CLI 仅 synthetic reviewed Mock。
+当前分支：`main`。功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已以 `--no-ff` 合并为
+`b2b5b9c9`，合并后二次 zero-provider 回放通过。上游 admission contract 与本 checkpoint 的 runner、durability、validator
+和 crash-only recovery 均已完成。approved tag 尚未创建，真实 `git_verified` source gate 与 Provider dispatch 仍关闭；CLI
+仅 synthetic reviewed Mock。
 
 ```powershell
 bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:runner -- --help
@@ -31,8 +32,8 @@ Outbox。完整回执：
 
 Admission contract 的 source/tag/bundle、data-boundary、exact authorization、预算和 single-use capability 回执见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。它不创建 runner evidence，
-也不授权 controlled-Live；approved tag 缺失时 source gate 必须 fail-closed。只有 runner/durability 合并后二次回归完成，且
-重新接受当次 DeepSeek/Qwen 数据边界并取得绑定新 source 的 exact authorization 后，才可规划唯一 controlled-Live。
+也不授权 controlled-Live；approved tag 缺失时 source gate 必须 fail-closed。runner/durability 已完成合并后二次回归；下一步
+仍须重新接受当次 DeepSeek/Qwen 数据边界并取得绑定新 source/tag 的 exact authorization，之后才可规划唯一 controlled-Live。
 
 ## 0K-H. Phase 6.9.8 Schema Recovery SR4 reviewed Mock/static（历史，zero-provider，2026-08-09）
 

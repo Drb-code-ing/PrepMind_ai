@@ -2,8 +2,9 @@
 
 ## 当前 SR5 runner/durability flow（2026-08-10）
 
-当前工作分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 从
-`main@42abbbbd` 新开。SR5 admission 已作为上游 source-bound capability，当前 runner 仍不进入产品 Chat，也不触发 Provider：
+当前工作分支为 `main`。功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已以
+`--no-ff` 合并为 `b2b5b9c9`，合并后二次 zero-provider 回放通过。SR5 admission 已作为上游 source-bound capability，
+当前 runner 仍不进入产品 Chat，也不触发 Provider：
 
 ```text
 Git HEAD/upstream/origin/approved tag
@@ -34,7 +35,7 @@ bundle，测试结束后精确清理；正式 runner namespace 在当前回放�
 DeepSeek/Qwen、不启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser，不写 Trace/BackgroundJob/Outbox。authority=
 `zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability`、gate=`schema_recovery_mock_quality_not_evidence`、
 `qualityAuthority=none`；focused `25/25`（82 assertions）、typecheck/lint/CLI help/run smoke 已通过。因此不形成
-semantic/product/main/P95/SLA authority。验收见
+semantic/product/P95/SLA authority。main 只承载本次 zero-provider 工程实现，不等于产品或真实模型可用性。验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
 
 ## 历史 SR4 reviewed Mock/static flow

@@ -6,7 +6,8 @@
 
 SR5 admission 已作为上游 capability contract；当前 checkpoint 验证固定 reviewed-Mock runner 的调度、schema accounting、
 durability、strict validator 与 crash-only recovery。approved tag 尚未创建，真实 `git_verified` source gate 与 provider
-dispatch=false，CLI 只创建 synthetic capability。
+dispatch=false，CLI 只创建 synthetic capability。功能分支已以 `--no-ff` 合并到 `main`（merge=`b2b5b9c9`），合并后二次
+zero-provider 回放通过；这不等于产品或真实模型可用性。
 
 ```text
 authority       zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability
@@ -27,6 +28,8 @@ DeepSeek/Qwen、不进入 `/api/chat`、RAG、Trace、Docker/API/browser、Backg
 
 上游 admission contract 的 source/tag/bundle 与 data-boundary/exact-authorization 记录仍见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`；它不授权 controlled-Live。
+下一步必须重新接受当次 DeepSeek/Qwen 数据边界并取得绑定新 source/tag 的 exact authorization，之后才可创建 approved tag
+并进入唯一 controlled-Live。
 
 ## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR4（历史，zero-provider reviewed Mock/static）
 
