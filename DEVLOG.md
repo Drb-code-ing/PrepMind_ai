@@ -1,6 +1,21 @@
 # PrepMind AI 开发日志
 
-> 2026-08-10 — Phase 6.9.8 SR5 Live implementation main parity 已完成：
+> 2026-08-10 — Phase 6.9.8 SR5 controlled-Live proxy 前门诊断与修复：
+>
+> 在已授权的唯一入口尝试中，CLI 在 proxy preflight 处 fail-closed：`proxy_preflight_not_ready`。输出明确为
+> `providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`，没有 run id、marker、journal、report、artifact
+> 或 recovery claim，因此不能归因 Provider、账号或模型质量，也没有清理 Docker/PostgreSQL/Redis/MinIO。
+>
+> 根因是 Bun/Windows 的 inherited `HTTP_PROXY`/`HTTPS_PROXY` 等项使用 accessor descriptor，SR5 CLI 仅读取 descriptor `value`，
+> 不能把代理配置安全物化给共享 preflight。修复提交 `b531adef` 改为固定 allowlist + `Reflect.get` + 不可变 data-property，异常值写入
+> `null` 后由 preflight fail-closed；新增 accessor-backed regression。修复后 focused Live zero-provider `11/11`（39 assertions），
+> typecheck/lint/Prettier/diff check 通过，独立 preflight 为 `loopback_proxy_ready / configuredProxyVariables=4 / listenerProbeCalls=1 / providerCalls=0`。
+>
+> 修复已推送功能分支，尚未在新 source 上创建/移动 approved tag，也未重试 Live。下一步必须合并并推送 main、重新接受当前 source 的
+> DeepSeek/Qwen 数据边界并提供新的 exact authorization，再创建新 tag 后执行唯一一次；旧授权不得复用。详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
+
+> 2026-08-10 — Phase 6.9.8 SR5 Live implementation main parity 已完成（修复前历史 checkpoint）：
 >
 > `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5` 已以 `--no-ff` 合并到 `main`，merge=`1d0f798d`。
 > 合并后在 main 完成 Agent 全量 `1523/1523`（25189 assertions，196 files）、SR5 + Task 9B boundary `48/48`
@@ -12,7 +27,7 @@
 > `origin/main` parity，再重新接受绑定最终 source 的两行 exact authorization，创建 approved tag 后执行唯一一次 SR5
 > controlled-Live。成功也只形成分支 semantic authority；失败必须 durable seal，禁止 retry/replay/curl/单 case/追加探测。
 
-> 2026-08-10 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 Live implementation 已完成（zero-provider）：
+> 2026-08-10 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 Live implementation 已完成（zero-provider，修复前）：
 >
 > 从历史 `main@0d624c9f` 新开普通 git 分支
 > `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，实现提交 `14301d03` 已推送。新增独立 Live

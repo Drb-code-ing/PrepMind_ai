@@ -1,11 +1,14 @@
 # PrepMind AI 学习与开发路线图
 
-## 当前原子阶段：Phase 6.9.8 Schema Recovery SR5 Live implementation（2026-08-10）
+## 当前原子阶段：Phase 6.9.8 Schema Recovery SR5 Live proxy fix（2026-08-10）
 
-当前普通 git 分支为 `main`，SR5 Live 实现已以 `--no-ff` 合并提交 `1d0f798d`；功能提交 `14301d03` 与文档提交 `d1f19c8a` 已推送，
-`origin/main` 推送待本轮最后一步。SR5 Live 的生产形状实现已完成：独立 Live Git-object source bundle、
-proxy preflight、三项 credential late-bind、single-use admission/reservation、exclusive marker、fsynced hash-chain
-journal、hard-link artifact、strict validator 与 crash-only recovery 均已落地。
+SR5 Live 首次唯一入口尝试在 proxy 前门 fail-closed（`proxy_preflight_not_ready`），Provider/credential/formal evidence/business writes
+均为 `0`，没有创建 marker/journal/report/artifact，也没有清理 Docker 或任何基础设施。诊断确认根因是 Bun/Windows inherited proxy
+环境项的 accessor descriptor 未被 SR5 CLI 正确物化；修复提交 `b531adef` 已推送功能分支，新增固定 allowlist 的 immutable snapshot 与 accessor
+回归测试。
+
+SR5 Live 的生产形状实现仍固定为独立 Git-object source bundle、三项 credential late-bind、single-use admission/reservation、exclusive
+marker、fsynced hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery；修复不改变 Provider adapter、预算或质量门。
 
 固定合同为 `8 guards + 6 rewrite pairs + 6 FinalResponse`，DeepSeek `12` + Qwen embedding `12`（共 `24` Provider slots），
 最大并发 `1`、pair-serial、single dispatch，预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。Live
@@ -13,17 +16,15 @@ manifest=`2eb786e19e3e6de2f26bcc9d4b4e1b1898ee1ee3eb87976090275f4468696608`，po
 `e979f30c6979e1e4ff17a439f77820ff4ded5882189d58ba753fa02b9e6f74b1`，source bundle=
 `sha256:4aa3c6e8b6f66ad0c74dcaab932cbfa9bb04202f3219e38005a2571ae60853ef`。
 
-当前是 zero-provider implementation checkpoint（runtime authority 尚未产生，`qualityAuthority=none`）；focused Live `10/10`
-（36 assertions）、SR5 + Task 9B boundary 组合 `48/48`（164 assertions）、Agent typecheck/lint/
-`git diff --check` 通过，`providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`。未创建 approved
-annotated tag，未读取真实 `.env`，未调用 Provider，未启动或清理 Docker/API/browser；实现完成不等于真实模型质量、产品、P95/SLA
-或 `main` authority。
+当前修复后的 zero-provider 回归为 focused `11/11`（39 assertions），Agent typecheck/lint/Prettier/diff check 通过；独立 proxy preflight 为
+`loopback_proxy_ready / configuredProxyVariables=4 / listenerProbeCalls=1 / providerCalls=0`。旧 approved tag 仍绑定修复前 `ca9a9eb0`，
+不能移动或复用；当前没有新的 source/tag/Live authority，仍未读取真实 `.env`、未调用 DeepSeek/Qwen、未启动或清理 Docker/API/browser。
 
-下一顺序固定为：推送并确认 `origin/main` parity → 重新接受绑定最终 source 的 DeepSeek/Qwen 数据边界并提供两行 exact authorization →
-创建并推送 approved annotated tag →
-执行唯一一次 controlled-Live。成功也只形成分支 semantic authority，失败则 durable seal 后停止；不得 retry/replay/curl/单
-case/追加 Provider 探测。实现验收见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+下一顺序固定为：将修复合并回 `main` 并推送、确认 source/upstream/origin parity → 重新接受当前 source 的 DeepSeek/Qwen 数据边界并提供
+新的两行 exact authorization → 创建并推送新 approved annotated tag → 执行唯一一次 controlled-Live。旧授权不得复用；成功也只形成分支
+semantic authority，失败则 durable seal 后停止；不得 retry/replay/curl/单 case/追加 Provider 探测。实现与修复回执分别见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
 
 ### 历史 SR4 reviewed Mock/static checkpoint（已完成）
 

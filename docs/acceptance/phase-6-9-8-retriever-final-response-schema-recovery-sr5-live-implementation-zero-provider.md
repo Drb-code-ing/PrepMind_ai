@@ -4,6 +4,10 @@
 
 ## 结论
 
+后续首次 controlled-Live 尝试已在 proxy 前门 fail-closed；该故障与零 Provider 修复不改变本文件对“实现完成、尚未形成质量 authority”的结论。
+修复与诊断单独记录在
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`，避免把实现回归和 Live 结果混为一谈。
+
 SR5 controlled-Live 的生产形状实现已经完成并以 `--no-ff` 合并到 `main`（merge=`1d0f798d`）。实现提交
 `14301d03` 与文档提交 `d1f19c8a` 已推送到远程功能分支；这里记录的是“实现完成、尚未执行 Live”的验收，
 不是 Provider 质量结果：本次 providerCalls、credentialReads、formalEvidence、businessWrites 均为 `0`，没有读取真实根

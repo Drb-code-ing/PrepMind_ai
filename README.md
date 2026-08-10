@@ -1,10 +1,10 @@
 # PrepMind AI 智能备考助手
 
-## 当前工作回执：Schema Recovery SR5 Live implementation（2026-08-10）
+## 当前工作回执：Schema Recovery SR5 Live proxy fix（2026-08-10）
 
-当前普通 git 分支为 `main`，SR5 Live 实现已以 `--no-ff` 合并提交 `1d0f798d`；功能分支提交 `14301d03` 与文档提交
-`d1f19c8a` 均已推送。SR5 Live 的生产形状入口、source manifest、proxy 前置检查、三项 credential late-bind、24-slot runner
-与 crash-only durability 已完成；尚未创建 approved tag、读取真实 credential 或执行 controlled-Live。
+SR5 Live 首次唯一入口在 proxy 前门 `proxy_preflight_not_ready` fail-closed，`providerCalls=0 / credentialReads=0 / formalEvidence=0 /
+businessWrites=0`，没有创建正式 evidence，也没有清理 Docker/数据库/Redis/MinIO。修复提交 `b531adef` 已推送功能分支，解决
+Bun/Windows accessor-backed proxy 环境快照并新增 zero-provider 回归。
 
 ```text
 implementation  zero_provider_live_boundary (runtime authority not issued)
@@ -13,15 +13,15 @@ lineage         phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1
 fixed           8 guards + 6 rewrite pairs + 6 FinalResponse; 24 Provider slots
 schedule        DeepSeek 12 + Qwen embedding 12; concurrency 1; pair-serial
 budget          37,600 input / 8,800 output / 0.176 CNY
-focused         10/10 tests, 36 assertions; SR5 + Task 9B combo 48/48, 164 assertions
+focused         11/11 tests, 39 assertions; accessor-backed proxy regression passed
 provider/env    0 / 0; formal evidence 0; business writes 0
 ```
 
 完整实现验收见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
-实现完成不等于真实模型质量或产品可用性：main 合并后二次回归已完成；推送并确认最终 source parity 后重新接受
-DeepSeek/Qwen 数据边界并给出 exact authorization，再创建并推送 approved annotated tag，才执行唯一一次 controlled-Live；成功也只形成分支 semantic
-authority。Docker、PostgreSQL、Redis、MinIO 不因本阶段被清空或重建。
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`；故障与修复见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
+实现完成不等于真实模型质量或产品可用性：修复需先合并并确认最终 source parity，再重新接受 DeepSeek/Qwen 数据边界并给出新 exact
+authorization、创建新 approved tag，才可执行唯一一次 controlled-Live；旧授权/tag 不得复用。Docker、PostgreSQL、Redis、MinIO 不因本阶段被清空或重建。
 
 ### 历史 SR5 runner/durability checkpoint（zero-provider）
 

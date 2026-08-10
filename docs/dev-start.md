@@ -3,9 +3,10 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 Schema Recovery SR5 Live implementation 入口（zero-provider，2026-08-10）
+## 当前 Schema Recovery SR5 Live 入口与 proxy 修复（zero-provider，2026-08-10）
 
-当前实现已在 `main` 的 merge=`1d0f798d`；功能提交 `14301d03` 与文档提交 `d1f19c8a` 已推送，`origin/main` 待本轮收口推送。
+SR5 Live 首次入口在 proxy 前门以 `proxy_preflight_not_ready` fail-closed，未读取 credential、未调用 Provider、未创建正式 evidence。
+修复提交 `b531adef` 已推送功能分支；修复后的 focused 回归为 `11/11`（39 assertions）。
 本节只验证生产形状入口与前门，不执行真实模型。Live 固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek
 `12` + Qwen `12`（共 `24` slots）、最大并发 `1`、pair-serial、预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。
 
@@ -21,10 +22,11 @@ bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:recover
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts
 ```
 
-当前预期是 help 成功、validate/recover 在无正式 bundle 时 fail-closed，focused Live `10/10`（36 assertions）。这些命令
+当前预期是 help 成功、validate/recover 在无正式 bundle 时 fail-closed，focused Live `11/11`（39 assertions）。这些命令
 `providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`，不创建正式 marker/journal/report/artifact，
 不启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。完整实现回执见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`；proxy accessor 修复回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
 
 ### 历史 Schema Recovery SR5 runner/durability 入口（zero-provider，2026-08-10）
 
@@ -58,7 +60,7 @@ bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:admission -- -
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-source-admission.test.ts
 ```
 
-当前 approved tag 不存在，真实 source gate 预期 fail-closed；该命令不读取 `.env`、不调用 Provider、不创建正式
+旧 approved tag 只绑定修复前 source，当前修复 source 的 tag parity 预期 fail-closed；该命令不读取 `.env`、不调用 Provider、不创建正式
 marker/journal/report/artifact/recovery claim，也不授权 controlled-Live。回执见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
 

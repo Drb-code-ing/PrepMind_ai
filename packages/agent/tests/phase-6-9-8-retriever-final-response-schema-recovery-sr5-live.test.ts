@@ -5,15 +5,18 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'bun:test';
 
 import {
+  PHASE_6_9_7_ARCHITECTURE_RECOVERY_PROXY_PREFLIGHT_ENV_KEYS,
+  runPhase697ArchitectureRecoveryProxyPreflight,
+} from '@repo/ai';
+
+import {
   buildPhase698RetrieverSchemaRecoverySr5LiveReport,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_AUTHORITY,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SYNTHETIC_AUTHORITY,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RUN_ARGUMENT,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_VALIDATE_ARGUMENT,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-contract.ts';
-import {
-  createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest,
-} from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-admission.ts';
+import { createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-admission.ts';
 import {
   createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest,
   runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest,
@@ -28,9 +31,8 @@ import {
   executePhase698RetrieverSchemaRecoverySr5LiveCliCore,
   readPhase698RetrieverSchemaRecoverySr5RootCredentialEnv,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-cli-core.ts';
-import {
-  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
-} from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.ts';
+import { snapshotPhase698RetrieverSchemaRecoverySr5LiveProxyEnv } from '../scripts/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-cli.ts';
+import { PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.ts';
 import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST_SHA256,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_OBJECTS,
@@ -88,7 +90,9 @@ describe('SR5 live lineage (zero-provider tests)', () => {
       lifecycle: reservation.lifecycle,
       signal: new AbortController().signal,
     });
-    expect(report.authority).toBe(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SYNTHETIC_AUTHORITY);
+    expect(report.authority).toBe(
+      PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SYNTHETIC_AUTHORITY,
+    );
     expect(report.gate.passed).toBe(false);
     expect(report.callEntries).toHaveLength(24);
     expect(report.execution.externalProviderCalls).toBe(0);
@@ -177,7 +181,8 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         signal: new AbortController().signal,
       },
       {
-        readAdmission: () => createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest(),
+        readAdmission: () =>
+          createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest(),
         runProxyPreflight: async () => ({
           ok: false,
           code: 'loopback_proxy_unavailable',
@@ -198,6 +203,40 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     expect(code).toBe(1);
     expect(credentialReads).toBe(0);
     expect(JSON.parse(writes[0] ?? '{}').code).toBe('proxy_preflight_not_ready');
+  });
+
+  it('materializes Bun-style accessor proxy variables before shared preflight', async () => {
+    const env = Object.create(null) as Record<string, unknown>;
+    for (const key of PHASE_6_9_7_ARCHITECTURE_RECOVERY_PROXY_PREFLIGHT_ENV_KEYS) {
+      const value = ['HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy'].includes(key)
+        ? 'http://127.0.0.1:7897'
+        : undefined;
+      Object.defineProperty(env, key, {
+        configurable: true,
+        enumerable: true,
+        get: () => value,
+      });
+    }
+    const snapshot = snapshotPhase698RetrieverSchemaRecoverySr5LiveProxyEnv(env);
+    expect(Object.keys(snapshot)).toEqual(
+      expect.arrayContaining(['HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy']),
+    );
+    expect(Object.getOwnPropertyDescriptor(snapshot, 'HTTP_PROXY')).toMatchObject({
+      value: 'http://127.0.0.1:7897',
+      writable: false,
+      configurable: false,
+    });
+    const report = await runPhase697ArchitectureRecoveryProxyPreflight(
+      { env: snapshot, signal: new AbortController().signal },
+      { probeLoopbackListener: async () => true },
+    );
+    expect(report).toMatchObject({
+      ok: true,
+      code: 'loopback_proxy_ready',
+      configuredProxyVariables: 4,
+      listenerProbeCalls: 1,
+      providerCalls: 0,
+    });
   });
 
   it('rejects current-lineage temp leftovers before creating a marker', async () => {
@@ -241,7 +280,9 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     const journalPath = join(root, journalRelativePath(runId));
     const original = await Bun.file(journalPath).text();
     await Bun.write(journalPath, `${original}tampered`);
-    expect(await validatePhase698RetrieverSchemaRecoverySr5LiveBundle({ root })).toMatchObject({ ok: false });
+    expect(await validatePhase698RetrieverSchemaRecoverySr5LiveBundle({ root })).toMatchObject({
+      ok: false,
+    });
 
     const interrupted = await createReservation();
     const sealed = await sealPhase698RetrieverSchemaRecoverySr5LiveInterruptedAttemptForTest({
@@ -249,7 +290,9 @@ describe('SR5 live lineage (zero-provider tests)', () => {
       isProcessAlive: () => false,
     });
     expect(sealed.ok).toBe(true);
-    expect(await validatePhase698RetrieverSchemaRecoverySr5LiveBundle({ root: interrupted.root })).toMatchObject({ ok: true });
+    expect(
+      await validatePhase698RetrieverSchemaRecoverySr5LiveBundle({ root: interrupted.root }),
+    ).toMatchObject({ ok: true });
     const second = await sealPhase698RetrieverSchemaRecoverySr5LiveInterruptedAttemptForTest({
       root: interrupted.root,
       isProcessAlive: () => false,
@@ -306,9 +349,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         transportAuthority: 'external_provider' as const,
       })),
       rewriteEntries: synthetic.rewriteEntries.map((entry, index) =>
-        index === 0
-          ? { ...entry, candidateRecallAt5: 0, candidateNdcgAt5: 0 }
-          : entry,
+        index === 0 ? { ...entry, candidateRecallAt5: 0, candidateNdcgAt5: 0 } : entry,
       ),
       finalResponseEntries: synthetic.finalResponseEntries.map((entry, index) =>
         index === 0
@@ -324,7 +365,12 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     expect(live.gate.passed).toBe(false);
     expect(live.qualityAuthority).toBe('none');
     expect(live.gate.failureReasons).toEqual(
-      expect.arrayContaining(['rewrite_recall', 'rewrite_ndcg', 'citation_precision', 'citation_recall']),
+      expect.arrayContaining([
+        'rewrite_recall',
+        'rewrite_ndcg',
+        'citation_precision',
+        'citation_recall',
+      ]),
     );
   });
 });
