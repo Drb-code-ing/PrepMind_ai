@@ -48,6 +48,15 @@ export type Phase698RetrieverSchemaRecoverySr5RepositoryObservation = Readonly<{
   sourceBundleSha256: string;
 }>;
 
+export type Phase698RetrieverSchemaRecoverySr5SourceAdmissionOptions = Readonly<{
+  /**
+   * The current Live lineage may coexist with immutable artifacts from older
+   * lineages.  This option only affects the historical-path sidecar; current
+   * SR5 formal evidence, Git parity and the source bundle remain strict.
+   */
+  allowHistoricalLineage?: boolean;
+}>;
+
 export type Phase698RetrieverSchemaRecoverySr5AdmissionCapability = Readonly<{
   version: 'phase-6.9.8-retriever-final-response-schema-recovery-sr5-admission-capability-v1';
 }>;
@@ -86,7 +95,10 @@ const issuedBoundReservations = new WeakMap<
 >();
 const consumedBoundReservations = new WeakSet<object>();
 
-export function inspectPhase698RetrieverSchemaRecoverySr5SourceAdmission(repositoryRoot: string):
+export function inspectPhase698RetrieverSchemaRecoverySr5SourceAdmission(
+  repositoryRoot: string,
+  options: Phase698RetrieverSchemaRecoverySr5SourceAdmissionOptions = {},
+):
   | Readonly<{
       ok: true;
       source: Phase698RetrieverSchemaRecoverySr5Source;
@@ -98,8 +110,11 @@ export function inspectPhase698RetrieverSchemaRecoverySr5SourceAdmission(reposit
   if (observation === null || !observation.clean || observation.formalEvidencePaths.length !== 0) {
     return invalidAdmission();
   }
-  const source = sourceFromObservation(observation);
-  if (source === null || !sourceMatchesObservation(source, observation)) return invalidAdmission();
+  const allowHistoricalLineage = options.allowHistoricalLineage === true;
+  const source = sourceFromObservation(observation, allowHistoricalLineage);
+  if (source === null || !sourceMatchesObservation(source, observation, allowHistoricalLineage)) {
+    return invalidAdmission();
+  }
   const pair = issuePair('git_verified', source);
   return Object.freeze({ ok: true as const, source, ...pair });
 }
@@ -312,14 +327,98 @@ export function computePhase698RetrieverSchemaRecoverySr5GitSourceBundleSha256(
 ):
   | Readonly<{ ok: true; sha256: string }>
   | Readonly<{ ok: false; reasonCode: 'source_bundle_invalid' }> {
-  if (!/^[0-9a-f]{40}$/u.test(commitSha)) return { ok: false, reasonCode: 'source_bundle_invalid' };
+  return computePhase698RetrieverSchemaRecoverySr5GitSourceBundleSha256ForPaths(
+    repositoryRoot,
+    commitSha,
+    PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_SOURCE_PATHS,
+  );
+}
+
+export function computePhase698RetrieverSchemaRecoverySr5GitSourceBundleSha256ForPaths(
+  repositoryRoot: string,
+  commitSha: string,
+  sourcePaths: readonly string[],
+):
+  | Readonly<{ ok: true; sha256: string }>
+  | Readonly<{ ok: false; reasonCode: 'source_bundle_invalid' }> {
+  if (
+    !/^[0-9a-f]{40}$/u.test(commitSha) ||
+    sourcePaths.length === 0 ||
+    new Set(sourcePaths).size !== sourcePaths.length ||
+    sourcePaths.some(
+      (path) =>
+        typeof path !== 'string' ||
+        path.length === 0 ||
+        path.startsWith('/') ||
+        path.includes('\\') ||
+        path.split('/').some((segment) => !segment || segment === '.' || segment === '..'),
+    )
+  ) {
+    return { ok: false, reasonCode: 'source_bundle_invalid' };
+  }
   const root = resolveTrustedGitRoot(repositoryRoot);
   if (root === null) return { ok: false, reasonCode: 'source_bundle_invalid' };
   const entries: Array<Readonly<{ path: string; sha256: string }>> = [];
-  for (const path of PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_SOURCE_PATHS) {
+  for (const path of sourcePaths) {
     const blob = runGitBuffer(root, ['cat-file', 'blob', `${commitSha}:${path}`]);
     if (blob === null) return { ok: false, reasonCode: 'source_bundle_invalid' };
     entries.push(Object.freeze({ path, sha256: sha256Phase698RetrieverSchemaRecoverySr5(blob) }));
+  }
+  return Object.freeze({
+    ok: true as const,
+    sha256: `sha256:${sha256Phase698RetrieverSchemaRecoverySr5(
+      canonicalPhase698RetrieverSchemaRecoverySr5Json(entries),
+    )}`,
+  });
+}
+
+export function computePhase698RetrieverSchemaRecoverySr5GitObjectBundleSha256(
+  repositoryRoot: string,
+  commitSha: string,
+  sourceObjects: readonly Readonly<{ path: string; objectKind: 'blob' | 'tree' }>[],
+):
+  | Readonly<{ ok: true; sha256: string }>
+  | Readonly<{ ok: false; reasonCode: 'source_bundle_invalid' }> {
+  if (
+    !/^[0-9a-f]{40}$/u.test(commitSha) ||
+    sourceObjects.length === 0 ||
+    new Set(sourceObjects.map((entry) => `${entry.objectKind}:${entry.path}`)).size !==
+      sourceObjects.length ||
+    sourceObjects.some(
+      (entry) =>
+        (entry.objectKind !== 'blob' && entry.objectKind !== 'tree') ||
+        typeof entry.path !== 'string' ||
+        entry.path.length === 0 ||
+        entry.path.startsWith('/') ||
+        entry.path.includes('\\') ||
+        entry.path.split('/').some((segment) => !segment || segment === '.' || segment === '..'),
+    )
+  ) {
+    return { ok: false, reasonCode: 'source_bundle_invalid' };
+  }
+  const root = resolveTrustedGitRoot(repositoryRoot);
+  if (root === null) return { ok: false, reasonCode: 'source_bundle_invalid' };
+  const entries: Array<Readonly<{ path: string; objectKind: 'blob' | 'tree'; objectId: string }>> = [];
+  for (const sourceObject of sourceObjects) {
+    const objectId = runGitText(root, [
+      'rev-parse',
+      '--verify',
+      `${commitSha}:${sourceObject.path}`,
+    ]);
+    if (objectId === null || !/^[0-9a-f]{40}$/u.test(objectId)) {
+      return { ok: false, reasonCode: 'source_bundle_invalid' };
+    }
+    const observedKind = runGitText(root, ['cat-file', '-t', objectId]);
+    if (observedKind !== sourceObject.objectKind) {
+      return { ok: false, reasonCode: 'source_bundle_invalid' };
+    }
+    entries.push(
+      Object.freeze({
+        path: sourceObject.path,
+        objectKind: sourceObject.objectKind,
+        objectId,
+      }),
+    );
   }
   return Object.freeze({
     ok: true as const,
@@ -432,7 +531,9 @@ function inspectRepository(
 
 function sourceFromObservation(
   observation: Phase698RetrieverSchemaRecoverySr5RepositoryObservation,
+  allowHistoricalLineage = false,
 ): Phase698RetrieverSchemaRecoverySr5Source | null {
+  const historicalLineagePaths = allowHistoricalLineage ? [] : observation.oldLineagePaths;
   const parsed = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_SOURCE_SCHEMA.safeParse({
     schemaVersion: `${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_VERSION}-source`,
     lineage: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LINEAGE,
@@ -444,7 +545,7 @@ function sourceFromObservation(
     approvedTag: observation.approvedTag,
     clean: observation.clean,
     formalEvidencePaths: observation.formalEvidencePaths,
-    oldLineagePaths: observation.oldLineagePaths,
+    oldLineagePaths: historicalLineagePaths,
     sourceBundleSha256: observation.sourceBundleSha256,
     admissionManifestSha256: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
     identities: {
@@ -461,8 +562,10 @@ function sourceFromObservation(
 function sourceMatchesObservation(
   source: Phase698RetrieverSchemaRecoverySr5Source,
   observation: Phase698RetrieverSchemaRecoverySr5RepositoryObservation,
+  allowHistoricalLineage = false,
 ): boolean {
   try {
+    const historicalLineagePaths = allowHistoricalLineage ? [] : observation.oldLineagePaths;
     return (
       source.mode === 'controlled_live' &&
       source.branch === PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH &&
@@ -478,16 +581,16 @@ function sourceMatchesObservation(
       source.formalEvidencePaths.every(
         (value, index) => value === observation.formalEvidencePaths[index],
       ) &&
-      source.oldLineagePaths.length === observation.oldLineagePaths.length &&
+      source.oldLineagePaths.length === historicalLineagePaths.length &&
       source.oldLineagePaths.every(
-        (value, index) => value === observation.oldLineagePaths[index],
+        (value, index) => value === historicalLineagePaths[index],
       ) &&
       source.sourceBundleSha256 === observation.sourceBundleSha256 &&
       source.head === source.upstream &&
       source.head === source.origin &&
       source.head === source.approvedTag.commit &&
       observation.formalEvidencePaths.length === 0 &&
-      observation.oldLineagePaths.length === 0 &&
+      historicalLineagePaths.length === 0 &&
       source.clean
     );
   } catch {
@@ -538,6 +641,16 @@ function assertSourceStillMatches(
 ): void {
   const observation = inspectRepository(repositoryRoot);
   if (observation === null || !sourceMatchesObservation(source, observation)) {
+    throw new Error('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_SOURCE_DRIFT');
+  }
+}
+
+export function assertPhase698RetrieverSchemaRecoverySr5SourceStillMatchesForLive(
+  source: Phase698RetrieverSchemaRecoverySr5Source,
+  repositoryRoot: string,
+): void {
+  const observation = inspectRepository(repositoryRoot);
+  if (observation === null || !sourceMatchesObservation(source, observation, true)) {
     throw new Error('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_SOURCE_DRIFT');
   }
 }
