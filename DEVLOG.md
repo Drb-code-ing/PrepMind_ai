@@ -15,8 +15,9 @@
 > `providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`，没有 run id、marker、journal、report、artifact
 > 或 recovery claim，因此不能归因 Provider、账号或模型质量，也没有清理 Docker/PostgreSQL/Redis/MinIO。
 >
-> 根因是 Bun/Windows 的 inherited `HTTP_PROXY`/`HTTPS_PROXY` 等项使用 accessor descriptor，SR5 CLI 仅读取 descriptor `value`，
-> 不能把代理配置安全物化给共享 preflight。修复提交 `b531adef` 改为固定 allowlist + `Reflect.get` + 不可变 data-property，异常值写入
+> 已确认一个 Bun/Windows 兼容缺陷：inherited `HTTP_PROXY`/`HTTPS_PROXY` 等项使用 accessor descriptor，SR5 CLI 仅读取 descriptor `value`，
+> 不能把代理配置安全物化给共享 preflight；但生产输出将所有 preflight 异常压缩为同一个 code，不能把该缺陷断言为本次停止的唯一 subtype。
+> 修复提交 `b531adef` 改为固定 allowlist + `Reflect.get` + 不可变 data-property，异常值写入
 > `null` 后由 preflight fail-closed；新增 accessor-backed regression。修复后 focused Live zero-provider `11/11`（39 assertions），
 > typecheck/lint/Prettier/diff check 通过，独立 preflight 为 `loopback_proxy_ready / configuredProxyVariables=4 / listenerProbeCalls=1 / providerCalls=0`。
 >

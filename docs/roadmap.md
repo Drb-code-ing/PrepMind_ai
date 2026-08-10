@@ -3,8 +3,9 @@
 ## 当前原子阶段：Phase 6.9.8 Schema Recovery SR5 Live proxy fix（2026-08-10）
 
 SR5 Live 首次唯一入口尝试在 proxy 前门 fail-closed（`proxy_preflight_not_ready`），Provider/credential/formal evidence/business writes
-均为 `0`，没有创建 marker/journal/report/artifact，也没有清理 Docker 或任何基础设施。诊断确认根因是 Bun/Windows inherited proxy
-环境项的 accessor descriptor 未被 SR5 CLI 正确物化；修复提交 `b531adef` 已以 merge=`671188bb` 合并并推送 main，新增固定 allowlist 的 immutable snapshot 与 accessor
+均为 `0`，没有创建 marker/journal/report/artifact，也没有清理 Docker 或任何基础设施。诊断确认一个 Bun/Windows inherited proxy
+环境项 accessor descriptor 未被 SR5 CLI 正确物化的兼容缺陷；生产输出压缩了 preflight 异常，不能从本次 sealed code 断言唯一停止 subtype。
+修复提交 `b531adef` 已以 merge=`671188bb` 合并并推送 main，新增固定 allowlist 的 immutable snapshot 与 accessor
 回归测试。
 
 SR5 Live 的生产形状实现仍固定为独立 Git-object source bundle、三项 credential late-bind、single-use admission/reservation、exclusive

@@ -4,8 +4,8 @@
 
 SR5 Live 首次入口尝试在 proxy 前门 fail-closed：`proxy_preflight_not_ready`，
 `providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`，没有创建任何正式 marker/journal/report/artifact，
-也没有修改 Docker、PostgreSQL、Redis、MinIO。根因是 Bun/Windows 的 inherited proxy 环境项为 accessor descriptor，而 CLI 只读取
-descriptor `value`；修复提交为 `b531adef`，已推送到普通功能分支
+也没有修改 Docker、PostgreSQL、Redis、MinIO。已确认一个 Bun/Windows 兼容缺陷：inherited proxy 环境项为 accessor descriptor，而 CLI 只读取
+descriptor `value`；由于生产输出将所有 preflight 异常压缩为同一个 code，sealed 输出不能把该缺陷断言为本次停止的唯一 subtype。修复提交为 `b531adef`，已推送到普通功能分支
 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`。
 
 本分支新增独立 Live lineage

@@ -17,11 +17,15 @@ businessWrites=0
 因此没有 run id、marker、journal、report、artifact 或 recovery claim；旧 approved tag、历史 evidence 与 Docker/PostgreSQL/Redis/MinIO
 均未被删除或改写。本次不是 Provider、账号、余额、模型权限或语义质量结论。
 
-## 根因与修复
+## 已确认缺陷与修复边界
 
 Bun 1.3.14 在 Windows 上把继承的 `HTTP_PROXY`/`HTTPS_PROXY` 等环境项暴露为 getter/setter accessor descriptor。SR5 CLI 原先
 只读取 descriptor 的 `value`，不能可靠地把代理配置物化给共享 preflight；AI 独立 preflight CLI 已使用直接读取并冻结 data-property
-的兼容模式。修复提交 `b531adef`：
+的兼容模式。该兼容缺陷已在本次修复中消除。
+
+需要保留一个诊断边界：生产 CLI 将所有 preflight 抛错或非 ready 结果统一输出为 `proxy_preflight_not_ready`，因此本次 sealed 输出
+不能区分 accessor 快照缺陷、listener probe 异常或其它 preflight subtype，也不能把其中任何一个断言为唯一网络/账号根因。修复提交
+`b531adef`：
 
 - 只读取固定的六个 proxy/NO_PROXY key；
 - 通过 `Reflect.get` 读取 accessor，并立即写入不可变 data-property；
