@@ -2,15 +2,16 @@
 
 日期：2026-08-09
 
-状态：SR4 zero-provider reviewed Mock/static 已完成；本文件保留 SR0 设计与 SR1/SR2/SR3 handoff，并记录 SR4 到
-fresh SR5 admission 的停止门
+状态：SR4 zero-provider reviewed Mock/static 与 SR5 zero-provider admission contract 已完成；本文件保留 SR0 设计与
+SR1--SR4 handoff，并记录 SR5 到唯一 controlled-Live 的停止门
 
-当前分支：`main`（SR4 功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 已以 `--no-ff` 合并）
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`（从已推送 `main@82936a95` 新开普通 git branch）
 
-创建 SR4 分支时基线为 `main@421015dbf472e008fad32200fa8a89e240818fcf`、`main == origin/main`；当前 merge 后二次回归与
-远程推送已通过，`main == origin/main`（merge=`d5029f90`）。
+SR4 已在历史分支完成并以 `--no-ff` 合并；当前最新 `main == origin/main ==
+82936a955670a647756940fb398119647064d095`。SR4 merge `d5029f90` 是历史合并事实，不是当前 HEAD。
 
-独立 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
+SR5 独立 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；SR3/SR4 lineage
+`phase-6.9.8-retriever-final-response-schema-recovery-v1` 仅作为上游 identity 保留。
 
 SR0 authority：`zero_provider_retriever_final_response_schema_recovery_design`
 
@@ -37,6 +38,20 @@ SR4 focused `11/11`（99 assertions）、组合 `74/74`（734 assertions）、Ag
 `42/42 + tsc`、Web `487/487`、Server build 与 Agent/AI typecheck/lint 均通过；文档 parity 与 main 二次回归以 SR4 acceptance
 为准。SR4 只解锁
 fresh SR5 admission；任何真实 Live 必须重新接受当次 DeepSeek/Qwen 数据边界并给出绑定新 source 的 exact authorization。
+
+## SR5 admission checkpoint（2026-08-10，zero-provider）
+
+SR5 admission 已在普通分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5` 完成。合同固定 approved branch/annotated tag 名称与 tag
+object id、Git blob source bundle、SR3/SR4 identity、DeepSeek/Qwen 当前账号 data-boundary receipt、source-bound exact
+authorization、预算 `12 / 37,600 / 8,800 / 0.176 CNY`、最大并发 `1`、single dispatch 与 no
+retry/resume/replay/backfill。source-bound API 将四类输入组合为 bound admission/reservation capability；record 只保留
+boundary/authorization SHA。
+
+当前 approved annotated tag 尚未创建，真实 source gate 仍关闭。SR5 admission focused `12/12`（50 assertions）、typecheck/lint 与
+CLI help smoke 通过；providerCalls/credentialReads/formalEvidence/businessWrites 均为 `0`。本 checkpoint 不读取 `.env`、
+不调用 Provider、不创建正式 evidence，也不构成 controlled-Live 或 semantic/product/main authority。验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
 
 ## SR1 handoff（2026-08-09，独立实现 checkpoint）
 

@@ -2,9 +2,28 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR4（当前，zero-provider reviewed Mock/static）
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 admission（当前，zero-provider）
 
-SR4 是 Retriever/FinalResponse 生产形状链路与 schema recovery 边界验收，不是真实 Provider 质量验收。当前 `main` 已由
+SR5 admission 只验证未来唯一 controlled-Live 的 source/annotated-tag/bundle、DeepSeek/Qwen 当前账号 data-boundary、
+source-bound exact authorization、预算与 single-use bound capability；approved tag 尚未创建，provider dispatch=false。
+
+```text
+authority       zero_provider_retriever_final_response_schema_recovery_sr5_admission
+gate            sr5_admission_zero_provider
+qualityAuthority none
+providerCalls   0
+credentialReads 0
+formalEvidence  0
+```
+
+focused `12/12`（50 assertions）、typecheck/lint 与 CLI help smoke 已通过。合同只保存 confirmation SHA，不保存边界/授权
+原文；不读 `.env`/credential、不调用 DeepSeek/Qwen、不进入 `/api/chat`、RAG、Trace、Docker/API/browser、BackgroundJob、
+Outbox 或业务写入。当前 source gate 预期在缺少 approved tag 时 fail-closed。完整回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
+
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR4（历史，zero-provider reviewed Mock/static）
+
+SR4 是 Retriever/FinalResponse 生产形状链路与 schema recovery 边界验收，不是真实 Provider 质量验收。历史 `main` 曾由
 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 以 `--no-ff` 合并；固定 `8` 条 zero-call guard、`6` 条 rewrite、`6` 条
 FinalResponse、最大并发 `1`、每 lane 单次 dispatch 与首错 breaker；链路为
 `actual bounded prompt -> raw-content policy parser -> Retriever -> synthetic Qwen port -> evidence projector ->
@@ -724,6 +743,8 @@ recovery Tutor、Organizer V9、第一方 synthetic adapter、本地 authority/m
 runtime `48/48/0/0`、wire `48/48/48/48`、schema `42 canonical + 6 extension discarded`、Tutor/Organizer/
 Combined semantic `1/0.996875/0.9984375`、L2 anchor `1`、usage `17732/654` 与 `0.05712 CNY`。该结果只具有
 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；不能证明 Provider、真实语义或产品可用。
+
+以下 SR5 controlled-Live 记录属于 Phase 6.9.7 Full-gate Schema Recovery 历史 lineage，不是当前 Phase 6.9.8 Retriever/FinalResponse SR5 admission。
 
 唯一 SR5 controlled-Live run `63f8a76b-1c2a-403d-b774-0235caae04cb` 随后在独立 approved source/tag
 `67661f5f...d4441` 上完成真实 `deepseek_network` full gate：guards `24/24` zero-call，runtime

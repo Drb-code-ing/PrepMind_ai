@@ -3,9 +3,26 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 Schema Recovery SR4 reviewed Mock 入口（zero-provider，2026-08-09）
+## 当前 Schema Recovery SR5 admission 入口（zero-provider，2026-08-10）
 
-当前普通分支为 `main`（SR4 功能分支已以 `--no-ff` 合并并推送远程）；SR4 固定
+当前普通分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，基于已推送
+`main@82936a955670a647756940fb398119647064d095`。本入口先验证 source/annotated-tag/bundle；source-bound API 再组合
+数据边界、exact authorization、预算和 single-use capability。approved tag 尚未创建，provider dispatch 关闭，不读取
+`.env`/credential。
+
+```powershell
+bun --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:admission -- --help
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-source-admission.test.ts
+```
+
+CLI help 与 focused `12/12`（50 assertions）回归应显示 `providerCalls=0`、`credentialReads=0`；当前 source gate 预期因 approved tag 不存在而
+fail-closed。完整回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。这不是 controlled-Live，
+不启动项目浏览器，不创建正式 evidence。
+
+## 历史 Schema Recovery SR4 reviewed Mock 入口（zero-provider，2026-08-09）
+
+历史普通分支为 `main`（SR4 功能分支已以 `--no-ff` 合并并推送远程）；SR4 固定
 `8 guards + 6 rewrite + 6 FinalResponse`
 与 `12` 次 candidate invocation，最大并发 `1`，每 lane single dispatch、首错 breaker；它真实穿过 Retriever、bounded
 schema parser、synthetic Qwen port、evidence projector、FinalResponse、local merger 与 SR3 runner。
@@ -52,9 +69,9 @@ evidence。SR3 全程不读 root `.env`、不调用 DeepSeek/Qwen、不启动/�
 
 ## 历史 Schema Recovery SR2 入口（zero-provider，2026-08-09）
 
-P1 L2 唯一 controlled-Live 已失败封存，SR0/SR1/SR2 已合并并推送；当前 `main == origin/main ==
-17ce07ba386f3a54eb4fdfffdf050b561c319754`，SR2 功能分支为
-`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`，下一步从该 main 新开 SR3 普通 git 分支。SR2 使用
+P1 L2 唯一 controlled-Live 已失败封存，SR0/SR1/SR2 已合并并推送；历史 SR2 merge 为
+`17ce07ba386f3a54eb4fdfffdf050b561c319754`，不是当前 main HEAD。SR2 功能分支为
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`。SR2 使用
 `reviewed_mock/mock/mock` 合成 runtime，不读取根 `.env`/credential，不调用 Provider，不启动 Docker/API/browser，也不执行
 任何 `live`、`controlled`、`seal`、`recover`、`replay` 或 `backfill` 命令。实现、计划、验收见：
 
@@ -1657,6 +1674,8 @@ SHA=e081939b...dbe5`。该 validator 不读取 credential、不调用 Provider�
 22 次 response、21 次 verified usage、S3 Mock 或 L2 小样本成功拼接为完整 full-gate pass。L3 失败证明与
 停止门见
 `docs/acceptance/phase-6-9-7-tutor-organizer-l3-controlled-live-quality-gate-failure.md`。
+
+以下 Full-gate Schema Recovery SR0--SR5 记录属于 Phase 6.9.7 历史 lineage，不是当前 Phase 6.9.8 Retriever/FinalResponse SR5 admission；不得把该历史 Live 当作当前授权。
 
 Full-gate Schema Recovery SR0--SR4 已完成 zero-provider 设计、TDD、robustness、独立 runner/durability 与
 reviewed Mock/static。唯一 SR5 controlled-Live run `63f8a76b-1c2a-403d-b774-0235caae04cb` 已以

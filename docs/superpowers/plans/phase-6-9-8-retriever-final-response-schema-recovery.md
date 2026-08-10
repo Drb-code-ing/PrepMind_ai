@@ -2,17 +2,17 @@
 
 日期：2026-08-09
 
-当前状态：SR4 已在独立普通分支完成 zero-provider reviewed Mock/static；没有读取凭据、调用 Provider、创建正式 evidence
-或启动产品。当前只解锁 fresh SR5 admission。
+当前状态：SR4 reviewed Mock/static 与 SR5 zero-provider admission contract 已完成；没有读取凭据、调用 Provider、创建正式
+evidence 或启动产品。当前真实 source gate 因 approved tag/当次授权尚不存在而保持关闭。
 
 设计来源：
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
 
-当前分支：`main`（SR4 功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr4` 已以 `--no-ff` 合并）
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`
 
-当前基线：`main@421015dbf472e008fad32200fa8a89e240818fcf`
+当前基线：`main@82936a955670a647756940fb398119647064d095`
 
-lineage：`phase-6.9.8-retriever-final-response-schema-recovery-v1`
+SR5 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`（SR3/SR4 lineage 仍作为上游 identity 保留）
 
 SR3 authority：`zero_provider_retriever_final_response_schema_recovery_runner_durability / qualityAuthority=none`
 
@@ -148,11 +148,28 @@ SR3 GREEN：focused `15/15`（49 assertions，5 files）；SR1+SR2+SR3+Task 9B �
 - [x] 固定结果 `8/8` guards、`12/12/12/12` wire、schema `4/2/0`、FinalResponse strict `6`、节点路径 `18/6/6/6/6`，
   gate=`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；
 - [x] 临时 evidence `1` 创建后精确清理为 `0`，正式 SR5 namespace/tag/marker/journal/artifact/claim 保持 `0`；
-- [x] 完成 Agent/AI/Types/Server/Web 与 historical validator/SHA parity 的最终回放；SR4 提交/推送、`main --no-ff` 合并、合并后二次 focused/static/typecheck 回放与 `origin/main` 推送已完成（merge=`d5029f90`）。
+- [x] 完成 Agent/AI/Types/Server/Web 与 historical validator/SHA parity 的最终回放；SR4 提交/推送、`main --no-ff` 合并、合并后二次 focused/static/typecheck 回放与 `origin/main` 推送已完成（历史 merge=`d5029f90`）。
 
 只解锁 fresh SR5 admission，不解锁 Provider。
 
-## 7. SR5：唯一 controlled-Live（未来、无预授权）
+## 7. SR5：admission contract 与唯一 controlled-Live
+
+### 7.1 Zero-provider admission contract（已完成）
+
+- [x] 固定 approved branch/annotated tag、tag object id、SR3/SR4 identity 与 Git blob source bundle；
+- [x] source/HEAD/upstream/origin/tag/clean tree/formal namespace fail-closed；
+- [x] 固定 DeepSeek/Qwen data-boundary receipt、source-bound exact authorization 与 confirmation SHA-only record；
+- [x] 固定 12 次候选调用、37,600/8,800 token、0.176 CNY、最大并发 1 与 no retry/resume/replay/backfill；
+- [x] source-bound API 将 source、boundary、authorization、budget 组合为 module-owned single-use
+  admission/reservation capability，并在 reservation 时重查 source drift；
+- [x] zero-provider CLI 只开放 source-only help/admission/validate；live/seal/recover/replay/credential 参数关闭；
+- [x] focused `12/12`（50 assertions）、typecheck/lint、CLI help smoke 与 diff check 通过。
+
+authority=`zero_provider_retriever_final_response_schema_recovery_sr5_admission`、gate=`sr5_admission_zero_provider`、
+`qualityAuthority=none`。approved tag 尚未创建，provider dispatch=false；验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
+
+### 7.2 唯一 controlled-Live（未来、无预授权）
 
 只有 SR1--SR4 各自提交、推送并在 clean source 上验收后，才可重新接受当次 DeepSeek/Qwen 数据边界并取得新的
 exact authorization。SR5 使用新 approved tag/credential mapping/marker/journal/artifact，最多一次；无论成功、schema、
@@ -173,11 +190,12 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md`、
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md`、
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`、
-  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`；
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`、
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`；
 - 入口：`AGENTS.md`、`README.md`、`DEVLOG.md`、`docs/roadmap.md`、`docs/data-flow.md`、`docs/dev-start.md`、
   `docs/acceptance-checklist.md`、`docs/ai-behavior-acceptance.md`；
 - [x] SR2 fixture/responder SHA、shape/fault/metamorphic matrix 与 zero-provider authority 已记录；
 - [x] SR2 focused/组合/AI/typecheck/lint/Prettier/diff evidence 已记录；
 - [x] SR4 factory SHA、production-shaped node path、schema accounting、anti-oracle、fault matrix 与 zero-provider authority 已记录；
-- [ ] SR4 Agent/AI/Types/Server/Web/historical validator parity、分支推送、`main --no-ff` 合并与合并后二次回归完成后勾选；
+- [x] SR4 Agent/AI/Types/Server/Web/historical validator parity、分支推送、`main --no-ff` 合并与合并后二次回归已完成；
 - 历史 P1 spec/plan 与 Agents 设计计划只更新“当前状态/下一步”指针，不改写已封存事实。
