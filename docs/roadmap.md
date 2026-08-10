@@ -1,24 +1,30 @@
 # PrepMind AI 学习与开发路线图
 
-## 当前原子阶段：Phase 6.9.8 Schema Recovery SR5 runner/durability（2026-08-10）
+## 当前原子阶段：Phase 6.9.8 Schema Recovery SR5 Live implementation（2026-08-10）
 
-功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已推送，功能提交 `d077bf9d` 已以
-`--no-ff` 合并为 main merge `b2b5b9c9`。上游 SR5 admission 的 strict source/tag/bundle parity、SR3/SR4 identity、
-DeepSeek/Qwen data-boundary receipt、source-bound exact authorization、固定预算与 opaque single-use capability，以及本阶段
-zero-provider reviewed-Mock runner、pair-serial 单并发、首错 breaker、fsynced hash-chain journal、hard-link artifact、strict
-validator 与 crash-only recovery 均已完成。合并后二次 zero-provider 回放通过；approved annotated tag 尚未创建，真实
-`git_verified` source gate 与 controlled-Live 保持关闭。
+当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，实现提交 `14301d03` 已推送；
+`main/origin/main` 仍为 `0d624c9f`，尚未合并本分支。SR5 Live 的生产形状实现已完成：独立 Live Git-object source bundle、
+proxy preflight、三项 credential late-bind、single-use admission/reservation、exclusive marker、fsynced hash-chain
+journal、hard-link artifact、strict validator 与 crash-only recovery 均已落地。
 
-authority=`zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability`、
-gate=`schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`；固定 `8/6/6` 分母、`20` entries、`12`
-invocations、预算 `37,600/8,800/0.176 CNY`、最大并发 `1`。focused `25/25`（82 assertions）、typecheck/lint/CLI
-help/run smoke 通过；providerCalls、credentialReads、formalEvidence、businessWrites 均为 `0`。不读根 `.env`，不调用
-Provider，不启动/清理 Docker/API/browser，不写 Trace/BackgroundJob/Outbox。验收记录见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
+固定合同为 `8 guards + 6 rewrite pairs + 6 FinalResponse`，DeepSeek `12` + Qwen embedding `12`（共 `24` Provider slots），
+最大并发 `1`、pair-serial、single dispatch，预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。Live
+manifest=`2eb786e19e3e6de2f26bcc9d4b4e1b1898ee1ee3eb87976090275f4468696608`，policy=
+`e979f30c6979e1e4ff17a439f77820ff4ded5882189d58ba753fa02b9e6f74b1`，source bundle=
+`sha256:4aa3c6e8b6f66ad0c74dcaab932cbfa9bb04202f3219e38005a2571ae60853ef`。
 
-runner/durability 不等于 controlled-Live，不形成真实模型语义、产品、P95/SLA 或博客 authority。当前 `main` 收口已完成；
-下一停止门是重新接受当次 DeepSeek/Qwen 数据边界并取得绑定新 source/tag 的 exact authorization。只有该独立 admission
-完成后才可创建 approved tag 并规划唯一 controlled-Live；在此之前不得读取 credential、调用 Provider 或进入产品验收。
+当前是 zero-provider implementation checkpoint（runtime authority 尚未产生，`qualityAuthority=none`）；focused Live `10/10`
+（36 assertions）、SR5 + Task 9B boundary 组合 `48/48`（164 assertions）、Agent typecheck/lint/
+`git diff --check` 通过，`providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`。未创建 approved
+annotated tag，未读取真实 `.env`，未调用 Provider，未启动或清理 Docker/API/browser；实现完成不等于真实模型质量、产品、P95/SLA
+或 `main` authority。
+
+下一顺序固定为：同步文档并提交 → 从最新 `main` 合并后二次 zero-provider 回归 → 合并回 `main`、再次验收并推送
+`origin/main` → 确认最终 source parity → 重新接受绑定最终 source 的 DeepSeek/Qwen 数据边界并提供两行 exact authorization →
+创建并推送 approved annotated tag →
+执行唯一一次 controlled-Live。成功也只形成分支 semantic authority，失败则 durable seal 后停止；不得 retry/replay/curl/单
+case/追加 Provider 探测。实现验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
 
 ### 历史 SR4 reviewed Mock/static checkpoint（已完成）
 

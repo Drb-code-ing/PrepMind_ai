@@ -2,17 +2,19 @@
 
 日期：2026-08-09
 
-当前状态：SR4 reviewed Mock/static、SR5 zero-provider admission contract 与 SR5 runner/durability 已完成；没有读取凭据、
-调用 Provider、创建正式 evidence 或启动产品。当前真实 source gate 因 approved tag/当次授权尚不存在而保持关闭。
+当前状态：SR4 reviewed Mock/static、SR5 zero-provider admission/runner/durability 与 SR5 Live implementation 已完成；没有
+读取凭据、调用 Provider、创建正式 evidence 或启动产品。当前真实 source gate 因最终 main parity、approved tag 与当次
+授权尚未完成而保持关闭。
 
 设计来源：
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
 
-当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`
 
-当前基线：`main@42abbbbd`
+当前基线：`main@0d624c9f`（实现提交 `14301d03` 已推送，尚未合并）
 
-SR5 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`（SR3/SR4 lineage 仍作为上游 identity 保留）
+SR5 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；Live implementation lineage：
+`phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`（SR3/SR4 lineage 仍作为上游 identity 保留）
 
 SR3 authority：`zero_provider_retriever_final_response_schema_recovery_runner_durability / qualityAuthority=none`
 
@@ -187,10 +189,29 @@ authority=`zero_provider_retriever_final_response_schema_recovery_sr5_runner_dur
 `schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`。验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
 
-### 7.3 唯一 controlled-Live（未来、无预授权）
+### 7.3 Live implementation（已完成，zero-provider）
 
-只有 SR1--SR5 runner/durability 各自提交、推送并在 clean source 上验收后，才可重新接受当次 DeepSeek/Qwen 数据边界并取得新的
-exact authorization。SR5 使用新 approved tag/credential mapping/marker/journal/artifact，最多一次；无论成功、schema、
+- [x] 新增独立 Live Git-object source manifest，绑定根 `package.json`、`bun.lock` 与 `packages/agent`、`packages/ai`、
+  `packages/types`；source bundle SHA=`sha256:4aa3c6e8b6f66ad0c74dcaab932cbfa9bb04202f3219e38005a2571ae60853ef`；
+  历史 admission manifest 保持 `sha256:f71bdee19cf4509395566d8bf54d85ad1f37cf867ca2cbf37211b1daef8fa38b` 不变；
+- [x] 新增 production-shaped Live CLI/core，显式 `bun --no-env-file`，执行 exact argv/data-boundary/authorization/formal
+  namespace/source/tag/proxy 前门，credential 只在前门通过后 selective-read；
+- [x] 固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek `12` + Qwen `12`、最大并发 `1`、pair-serial、预算
+  `37600/8800/0.176 CNY` 与 no retry/resume/replay/backfill；
+- [x] 接入 exclusive marker、fsynced hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery；
+- [x] focused Live `10/10`（36 assertions）、SR5 + Task 9B boundary 组合 `48/48`（164 assertions）、Agent typecheck/lint/diff check 通过；
+  当前 `providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`；
+- [x] 新增 implementation acceptance，并将 AGENTS/README/DEVLOG/roadmap/data-flow/dev-start/checklist/AI/spec/plan 纳入同步清单。
+
+这是 zero-provider implementation checkpoint（runtime authority 尚未产生，`qualityAuthority=none`）；实现完成不形成
+controlled-Live、semantic/product/main/P95/SLA authority。验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+
+### 7.4 唯一 controlled-Live（未执行，等待最终 source 授权）
+
+文档提交并从最新 `main` 合并后二次回归、再合并回 `main` 推送后，确认最终 source parity，重新接受当次 DeepSeek/Qwen 数据
+边界并取得绑定最终 source 的两行 exact authorization；随后创建并推送
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved` annotated tag。SR5 使用新 tag/credential mapping/marker/journal/artifact，最多一次；无论成功、schema、
 transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 retry/resume/replay/backfill/recovery 或单 case
 补证。即使完整 gate pass，也只形成新分支 semantic authority，不自动解锁产品或 main。
 
@@ -210,7 +231,8 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr3-zero-provider-runner-durability.md`、
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`、
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`、
-  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`；
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`、
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`；
 - 入口：`AGENTS.md`、`README.md`、`DEVLOG.md`、`docs/roadmap.md`、`docs/data-flow.md`、`docs/dev-start.md`、
   `docs/acceptance-checklist.md`、`docs/ai-behavior-acceptance.md`；
 - [x] SR2 fixture/responder SHA、shape/fault/metamorphic matrix 与 zero-provider authority 已记录；

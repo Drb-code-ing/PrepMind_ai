@@ -2,15 +2,14 @@
 
 日期：2026-08-09
 
-状态：SR4 zero-provider reviewed Mock/static、SR5 admission contract 与 SR5 runner/durability zero-provider checkpoint
-已完成；本文件保留 SR0 设计与 SR1--SR4 handoff，并记录 SR5 到唯一 controlled-Live 的停止门
+状态：SR4 zero-provider reviewed Mock/static、SR5 admission/runner/durability checkpoint 与 SR5 Live implementation
+均已完成；唯一 controlled-Live 尚未执行。本文件保留 SR0 设计与历史 handoff，并区分实现态与真实质量 authority。
 
-当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`（从已推送 `main@42abbbbd` 新开普通 git branch）
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`（实现提交 `14301d03` 已推送；普通 git branch，
+不使用 worktree）。当前 `main/origin/main=0d624c9f`，功能分支尚未合并；文档与 parity 收口后才会创建 approved tag。
 
-SR5 admission 已在历史分支完成并以 `--no-ff` 合并；当前基线 `main == origin/main == 42abbbbd`。SR4 merge `d5029f90`
-与 SR5 admission merge `42abbbbd` 是已封存的上游事实；runner 分支尚未合并回 main。
-
-SR5 独立 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；SR3/SR4 lineage
+SR5 zero-provider lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；Live implementation lineage：
+`phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`；SR3/SR4 lineage
 `phase-6.9.8-retriever-final-response-schema-recovery-v1` 仅作为上游 identity 保留。
 
 SR0 authority：`zero_provider_retriever_final_response_schema_recovery_design`
@@ -75,6 +74,32 @@ crash-only recover，不开放 live/credential/replay/backfill；临时 evidence
 
 runner 已完成但尚未形成真实 semantic/product/main authority。下一步是提交、推送、从最新 main 合并后二次 zero-provider
 回归并推送；之后仍需重新接受当次 DeepSeek/Qwen 数据边界与绑定新 source 的 exact authorization，才能规划唯一 controlled-Live。
+
+## SR5 Live implementation checkpoint（2026-08-10，zero-provider）
+
+Live implementation 在独立普通分支完成，未改写历史 admission manifest。它新增独立 Git-object source bundle（根
+`package.json`、`bun.lock`、`packages/agent`、`packages/ai`、`packages/types`），source bundle SHA=
+`sha256:4aa3c6e8b6f66ad0c74dcaab932cbfa9bb04202f3219e38005a2571ae60853ef`；Live manifest SHA=
+`2eb786e19e3e6de2f26bcc9d4b4e1b1898ee1ee3eb87976090275f4468696608`，policy SHA=
+`e979f30c6979e1e4ff17a439f77820ff4ded5882189d58ba753fa02b9e6f74b1`。
+
+固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`；DeepSeek `12`、Qwen embedding `12`，总 `24` slots，最大并发 `1`、
+pair-serial、single dispatch，预算 `37,600/8,800/0.176 CNY`，无 retry/resume/replay/backfill。前门顺序为
+`exact argv -> data-boundary/exact authorization -> namespace/source/tag -> proxy preflight -> selective root .env projection ->
+single-use reservation -> marker/journal -> runtime -> validator`；入口显式 `bun --no-env-file`，credential 只在前门后读取。
+
+focused Live `10/10`（36 assertions）、SR5 + Task 9B boundary 组合 `48/48`（164 assertions）、Agent typecheck/lint 与 diff check 通过；
+`providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`。当前是 zero-provider implementation checkpoint
+（runtime authority 尚未产生，`qualityAuthority=none`），不是
+controlled-Live 或 semantic/product/main authority。完整 implementation 验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+
+### 唯一 controlled-Live 停止门（未执行）
+
+文档与 main/source parity 完成后，重新接受绑定最终 source 的 DeepSeek/Qwen 数据边界并取得两行 exact authorization，
+再创建并推送 annotated tag `phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved`，才可执行一次 RUN。成功才可能产生
+`schema_recovery_sr5_branch_semantic_gate`；失败、schema、transport、usage、timeout、abort 或 I/O 都必须 durable seal，
+且禁止 retry/replay/curl/单 case/追加 Provider 探测。无论结果均不自动解锁产品、Docker/API/browser、Trace、SLA 或博客。
 
 ## SR1 handoff（2026-08-09，独立实现 checkpoint）
 
