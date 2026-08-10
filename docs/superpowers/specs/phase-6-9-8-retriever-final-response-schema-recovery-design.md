@@ -2,11 +2,12 @@
 
 日期：2026-08-09
 
-状态：SR4 zero-provider reviewed Mock/static、SR5 admission/runner/durability checkpoint 与 SR5 Live implementation
-均已完成；唯一 controlled-Live 尚未执行。本文件保留 SR0 设计与历史 handoff，并区分实现态与真实质量 authority。
+状态：SR4 zero-provider reviewed Mock/static、SR5 admission/runner/durability、Live implementation 与 proxy snapshot fix 均已完成；
+唯一 controlled-Live 首次尝试在 proxy 前门 fail-closed，未读取 credential/调用 Provider。本文件保留 SR0 设计与历史 handoff，并区分
+实现态、诊断失败与真实质量 authority。
 
-当前分支：`main`（merge=`1d0f798d`；实现提交 `14301d03`、文档提交 `d1f19c8a` 已推送；普通 git branch，不使用 worktree）。
-`origin/main` 待本轮收口推送；approved tag 尚未创建。
+修复提交 `b531adef` 已推送普通 git 分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`；旧 approved tag 仍绑定修复前
+`ca9a9eb0`，不可移动或复用。修复合并回 main、远程 parity、新 source tag 与新授权均是下一停止门。
 
 SR5 zero-provider lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；Live implementation lineage：
 `phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`；SR3/SR4 lineage
@@ -88,16 +89,25 @@ pair-serial、single dispatch，预算 `37,600/8,800/0.176 CNY`，无 retry/resu
 `exact argv -> data-boundary/exact authorization -> namespace/source/tag -> proxy preflight -> selective root .env projection ->
 single-use reservation -> marker/journal -> runtime -> validator`；入口显式 `bun --no-env-file`，credential 只在前门后读取。
 
-focused Live `10/10`（36 assertions）、SR5 + Task 9B boundary 组合 `48/48`（164 assertions）、Agent typecheck/lint 与 diff check 通过；
-`providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`。当前是 zero-provider implementation checkpoint
+原实现 focused Live `10/10`（36 assertions）；proxy snapshot 修复后 focused `11/11`（39 assertions），SR5 + Task 9B boundary 组合
+`48/48`（164 assertions）、Agent typecheck/lint/Prettier 与 diff check 通过；`providerCalls=0 / credentialReads=0 / formalEvidence=0 /
+businessWrites=0`。当前是 zero-provider implementation checkpoint
 （runtime authority 尚未产生，`qualityAuthority=none`），不是
 controlled-Live 或 semantic/product/main authority。完整 implementation 验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
 
-### 唯一 controlled-Live 停止门（未执行）
+### Proxy snapshot fix（2026-08-10，zero-provider）
 
-文档与 main/source parity 完成后，重新接受绑定最终 source 的 DeepSeek/Qwen 数据边界并取得两行 exact authorization，
-再创建并推送 annotated tag `phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved`，才可执行一次 RUN。成功才可能产生
+首次 RUN 在 proxy 前门返回 `proxy_preflight_not_ready`，`providerCalls=0 / credentialReads=0 / formalEvidence=0`，没有 reservation 或
+正式 evidence。原因与修复边界见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`；修复后的 focused
+Live `11/11`（39 assertions）、typecheck/lint/Prettier/diff check 与 accessor-backed preflight 回归均通过。该诊断不形成 Provider、语义或
+产品 authority。
+
+### 唯一 controlled-Live 停止门（等待新 source 授权）
+
+修复合并并完成 main/source parity 后，重新接受绑定最终 source 的 DeepSeek/Qwen 数据边界并取得新的两行 exact authorization，
+再创建并推送新的 annotated tag，才可执行一次 RUN。旧授权与旧 tag 不得复用。成功才可能产生
 `schema_recovery_sr5_branch_semantic_gate`；失败、schema、transport、usage、timeout、abort 或 I/O 都必须 durable seal，
 且禁止 retry/replay/curl/单 case/追加 Provider 探测。无论结果均不自动解锁产品、Docker/API/browser、Trace、SLA 或博客。
 

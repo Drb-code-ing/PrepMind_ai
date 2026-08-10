@@ -2,10 +2,10 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 Live implementation（当前，zero-provider）
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 Live proxy fix（当前，zero-provider）
 
-当前实现已在 `main` 的 merge=`1d0f798d`；功能提交 `14301d03` 与文档提交 `d1f19c8a` 已推送，approved tag/正式 Live evidence
-仍为 `0`。本节记录的是实现合同，不是 Provider 质量结果：
+首次 controlled-Live 在 proxy 前门 `proxy_preflight_not_ready` fail-closed，approved tag/正式 Live evidence/Provider 调用均仍为 `0`。
+修复提交 `b531adef` 已推送功能分支，解决 Bun/Windows accessor-backed proxy 环境快照问题；本节记录的是修复后的实现合同，不是 Provider 质量结果：
 
 ```text
 lineage         phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1
@@ -21,9 +21,10 @@ provider/env    0 / 0; formal evidence 0; business writes 0
 parity、proxy preflight，之后才可 late-bind 根 `.env` 的三个 SR5 credential。help/validate/recover 不读取
 credential；任何 credential、prompt 或 Provider 原文都不得进入 report/journal/artifact。完整质量门 pass 才能产生
 `schema_recovery_sr5_branch_semantic_gate`；失败只形成 durable diagnostic，且无论结果都不自动解锁 `/api/chat`、Docker/API/
-browser、Trace、产品数据或 `main`。当前实现 focused `10/10`（36 assertions），SR5 + Task 9B boundary 组合为 `48/48`（164 assertions），typecheck/lint
-通过。详见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+browser、Trace、产品数据或 `main`。当前修复 focused `11/11`（39 assertions），typecheck/lint/Prettier/diff check 通过；独立 preflight 为
+`loopback_proxy_ready` 且 `providerCalls=0`。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`；故障与修复证据见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
 
 ## 历史 Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 runner/durability（zero-provider）
 

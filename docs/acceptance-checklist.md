@@ -5,9 +5,10 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0K-Live. Phase 6.9.8 Schema Recovery SR5 Live implementation（当前，zero-provider）
+## 0K-Live. Phase 6.9.8 Schema Recovery SR5 Live proxy fix（当前，zero-provider）
 
-当前实现已在 `main` 的 merge=`1d0f798d`；功能提交 `14301d03` 与文档提交 `d1f19c8a` 已推送，`origin/main` 待本轮收口推送。
+首次 controlled-Live 在 `proxy_preflight_not_ready` 处 fail-closed，Provider/credential/formal evidence/business writes 均为 `0`。
+修复提交 `b531adef` 已推送功能分支，新增 Bun/Windows accessor-backed proxy 快照回归；修复后 focused `11/11`（39 assertions）。
 实现固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek `12` + Qwen embedding `12`、最大并发 `1`、pair-serial、
 single dispatch、预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。当前只做 zero-provider implementation
 验收，不能宣称真实模型质量或产品可用。
@@ -24,11 +25,12 @@ bun run --cwd packages/agent lint
 git diff --check
 ```
 
-预期 focused Live `10/10`（36 assertions），validate/recover 在正式 bundle=0 时 fail-closed，且始终
+预期 focused Live `11/11`（39 assertions），validate/recover 在正式 bundle=0 时 fail-closed，且始终
 `providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`。不读取真实 `.env`、不调用 DeepSeek/Qwen、不
 启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。只有完成文档/main parity、确认最终 source parity、重新接受当次
 数据边界并给出两行 exact authorization、再创建并推送 approved annotated tag 后，才可执行唯一一次 controlled-Live；成功也只给分支 semantic authority。
-实现回执：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+实现回执：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`；
+proxy 修复与失败边界回执：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
 
 ## 0K. Phase 6.9.8 Schema Recovery SR5 runner/durability（历史，zero-provider，2026-08-10）
 

@@ -1,9 +1,10 @@
 # PrepMind AI 数据流
 
-## 当前 SR5 Live implementation flow（zero-provider，2026-08-10）
+## 当前 SR5 Live flow 与 proxy 修复（zero-provider，2026-08-10）
 
-当前实现已在 `main` 的 merge=`1d0f798d`；功能提交 `14301d03` 与文档提交 `d1f19c8a` 已推送，`origin/main` 待本轮收口推送。
-下面是唯一 controlled-Live 的生产形状顺序，当前只完成到实现/zero-provider 验收，尚无正式 run accounting：
+首次 controlled-Live 在 `proxy_preflight_not_ready` 处停止，`providerCalls=0 / credentialReads=0 / formalEvidence=0`；没有进入
+credential、reservation 或 Provider。修复提交 `b531adef` 将 Bun/Windows accessor-backed proxy 环境先物化为 immutable data-properties，新增
+回归后 focused `11/11`（39 assertions）通过。下面仍是唯一 controlled-Live 的生产形状顺序，当前没有正式 run accounting：
 
 ```text
 exact argv
@@ -25,7 +26,8 @@ Live lineage=`phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`�
 `schema_recovery_sr5_branch_semantic_gate`。实现验收固定 `providerCalls=0 / credentialReads=0 / formalEvidence=0 /
 businessWrites=0`；不读取真实 `.env`、不调用 DeepSeek/Qwen、不写产品 Trace/BackgroundJob/Outbox，也不启动或清理
 Docker/PostgreSQL/Redis/MinIO/API/browser。实现完成不等于语义、产品或 `main` authority；验收见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md` 与
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
 
 ## 历史 SR5 runner/durability flow（2026-08-10）
 
