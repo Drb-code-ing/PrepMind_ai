@@ -2,7 +2,7 @@
 
 ## 当前 SR5 Live implementation flow（zero-provider，2026-08-10）
 
-当前实现分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，`14301d03` 已推送；`main` 尚未合并。
+当前实现已在 `main` 的 merge=`1d0f798d`；功能提交 `14301d03` 与文档提交 `d1f19c8a` 已推送，`origin/main` 待本轮收口推送。
 下面是唯一 controlled-Live 的生产形状顺序，当前只完成到实现/zero-provider 验收，尚无正式 run accounting：
 
 ```text

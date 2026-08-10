@@ -2,10 +2,9 @@
 
 ## 当前工作回执：Schema Recovery SR5 Live implementation（2026-08-10）
 
-当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，实现提交 `14301d03` 已推送；
-`main` 尚未合并本分支。SR5 Live 的生产形状入口、source manifest、proxy 前置检查、三项 credential late-bind、
-24-slot runner 与 crash-only durability 已完成，但文档/main parity 尚在收口，尚未创建 approved tag、读取真实 credential
-或执行 controlled-Live；本轮授权会在最终 source 冻结后重新确认，避免把旧授权绑定到错误 SHA。
+当前普通 git 分支为 `main`，SR5 Live 实现已以 `--no-ff` 合并提交 `1d0f798d`；功能分支提交 `14301d03` 与文档提交
+`d1f19c8a` 均已推送。SR5 Live 的生产形状入口、source manifest、proxy 前置检查、三项 credential late-bind、24-slot runner
+与 crash-only durability 已完成；尚未创建 approved tag、读取真实 credential 或执行 controlled-Live。
 
 ```text
 implementation  zero_provider_live_boundary (runtime authority not issued)
@@ -20,7 +19,7 @@ provider/env    0 / 0; formal evidence 0; business writes 0
 
 完整实现验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
-实现完成不等于真实模型质量或产品可用性：必须从最新 `main` 合并回归并推送，确认最终 source parity 后重新接受
+实现完成不等于真实模型质量或产品可用性：main 合并后二次回归已完成；推送并确认最终 source parity 后重新接受
 DeepSeek/Qwen 数据边界并给出 exact authorization，再创建并推送 approved annotated tag，才执行唯一一次 controlled-Live；成功也只形成分支 semantic
 authority。Docker、PostgreSQL、Redis、MinIO 不因本阶段被清空或重建。
 

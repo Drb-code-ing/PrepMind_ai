@@ -3,15 +3,15 @@
 日期：2026-08-09
 
 当前状态：SR4 reviewed Mock/static、SR5 zero-provider admission/runner/durability 与 SR5 Live implementation 已完成；没有
-读取凭据、调用 Provider、创建正式 evidence 或启动产品。当前真实 source gate 因最终 main parity、approved tag 与当次
-授权尚未完成而保持关闭。
+读取凭据、调用 Provider、创建正式 evidence 或启动产品。SR5 实现已合并到 `main`（merge=`1d0f798d`），远程 main parity
+与 approved tag/当次授权尚未完成，因此真实 source gate 保持关闭。
 
 设计来源：
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
 
 当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`
 
-当前基线：`main@0d624c9f`（实现提交 `14301d03` 已推送，尚未合并）
+当前基线：`main@1d0f798d`（实现提交 `14301d03`、文档提交 `d1f19c8a` 已推送）
 
 SR5 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；Live implementation lineage：
 `phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`（SR3/SR4 lineage 仍作为上游 identity 保留）

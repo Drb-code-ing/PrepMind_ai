@@ -4,9 +4,8 @@
 
 ## 结论
 
-SR5 controlled-Live 的生产形状实现已经完成并提交在功能分支
-`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，提交为
-`14301d03`，已推送到同名远程分支。这里记录的是“实现完成、尚未执行 Live”的验收，
+SR5 controlled-Live 的生产形状实现已经完成并以 `--no-ff` 合并到 `main`（merge=`1d0f798d`）。实现提交
+`14301d03` 与文档提交 `d1f19c8a` 已推送到远程功能分支；这里记录的是“实现完成、尚未执行 Live”的验收，
 不是 Provider 质量结果：本次 providerCalls、credentialReads、formalEvidence、businessWrites 均为 `0`，没有读取真实根
 `.env`，没有调用 DeepSeek/Qwen，也没有启动或清理 Docker、
 PostgreSQL、Redis、MinIO、API 或浏览器。

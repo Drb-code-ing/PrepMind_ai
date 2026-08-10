@@ -7,7 +7,7 @@
 
 ## 0K-Live. Phase 6.9.8 Schema Recovery SR5 Live implementation（当前，zero-provider）
 
-当前实现分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，提交 `14301d03` 已推送；`main` 尚未合并。
+当前实现已在 `main` 的 merge=`1d0f798d`；功能提交 `14301d03` 与文档提交 `d1f19c8a` 已推送，`origin/main` 待本轮收口推送。
 实现固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek `12` + Qwen embedding `12`、最大并发 `1`、pair-serial、
 single dispatch、预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。当前只做 zero-provider implementation
 验收，不能宣称真实模型质量或产品可用。

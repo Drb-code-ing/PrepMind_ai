@@ -5,7 +5,7 @@
 
 ## 当前 Schema Recovery SR5 Live implementation 入口（zero-provider，2026-08-10）
 
-当前实现分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，提交 `14301d03` 已推送；`main` 尚未合并。
+当前实现已在 `main` 的 merge=`1d0f798d`；功能提交 `14301d03` 与文档提交 `d1f19c8a` 已推送，`origin/main` 待本轮收口推送。
 本节只验证生产形状入口与前门，不执行真实模型。Live 固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek
 `12` + Qwen `12`（共 `24` slots）、最大并发 `1`、pair-serial、预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。
 

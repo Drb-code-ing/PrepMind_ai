@@ -2,8 +2,8 @@
 
 ## 当前原子阶段：Phase 6.9.8 Schema Recovery SR5 Live implementation（2026-08-10）
 
-当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，实现提交 `14301d03` 已推送；
-`main/origin/main` 仍为 `0d624c9f`，尚未合并本分支。SR5 Live 的生产形状实现已完成：独立 Live Git-object source bundle、
+当前普通 git 分支为 `main`，SR5 Live 实现已以 `--no-ff` 合并提交 `1d0f798d`；功能提交 `14301d03` 与文档提交 `d1f19c8a` 已推送，
+`origin/main` 推送待本轮最后一步。SR5 Live 的生产形状实现已完成：独立 Live Git-object source bundle、
 proxy preflight、三项 credential late-bind、single-use admission/reservation、exclusive marker、fsynced hash-chain
 journal、hard-link artifact、strict validator 与 crash-only recovery 均已落地。
 
@@ -19,8 +19,7 @@ manifest=`2eb786e19e3e6de2f26bcc9d4b4e1b1898ee1ee3eb87976090275f4468696608`，po
 annotated tag，未读取真实 `.env`，未调用 Provider，未启动或清理 Docker/API/browser；实现完成不等于真实模型质量、产品、P95/SLA
 或 `main` authority。
 
-下一顺序固定为：同步文档并提交 → 从最新 `main` 合并后二次 zero-provider 回归 → 合并回 `main`、再次验收并推送
-`origin/main` → 确认最终 source parity → 重新接受绑定最终 source 的 DeepSeek/Qwen 数据边界并提供两行 exact authorization →
+下一顺序固定为：推送并确认 `origin/main` parity → 重新接受绑定最终 source 的 DeepSeek/Qwen 数据边界并提供两行 exact authorization →
 创建并推送 approved annotated tag →
 执行唯一一次 controlled-Live。成功也只形成分支 semantic authority，失败则 durable seal 后停止；不得 retry/replay/curl/单
 case/追加 Provider 探测。实现验收见

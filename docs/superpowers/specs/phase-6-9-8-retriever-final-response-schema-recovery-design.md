@@ -5,8 +5,8 @@
 状态：SR4 zero-provider reviewed Mock/static、SR5 admission/runner/durability checkpoint 与 SR5 Live implementation
 均已完成；唯一 controlled-Live 尚未执行。本文件保留 SR0 设计与历史 handoff，并区分实现态与真实质量 authority。
 
-当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`（实现提交 `14301d03` 已推送；普通 git branch，
-不使用 worktree）。当前 `main/origin/main=0d624c9f`，功能分支尚未合并；文档与 parity 收口后才会创建 approved tag。
+当前分支：`main`（merge=`1d0f798d`；实现提交 `14301d03`、文档提交 `d1f19c8a` 已推送；普通 git branch，不使用 worktree）。
+`origin/main` 待本轮收口推送；approved tag 尚未创建。
 
 SR5 zero-provider lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；Live implementation lineage：
 `phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`；SR3/SR4 lineage

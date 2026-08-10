@@ -4,8 +4,8 @@
 
 ## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 Live implementation（当前，zero-provider）
 
-当前实现分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，提交 `14301d03` 已推送；`main` 尚未合并，
-approved tag/正式 Live evidence 仍为 `0`。本节记录的是实现合同，不是 Provider 质量结果：
+当前实现已在 `main` 的 merge=`1d0f798d`；功能提交 `14301d03` 与文档提交 `d1f19c8a` 已推送，approved tag/正式 Live evidence
+仍为 `0`。本节记录的是实现合同，不是 Provider 质量结果：
 
 ```text
 lineage         phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1

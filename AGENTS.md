@@ -2,9 +2,9 @@
 
 ## 当前状态：Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 Live implementation（2026-08-10）
 
-当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，实现提交
-`14301d03` 已推送到同名远程分支；`main` 仍为历史基线 `0d624c9f`，尚未合并本分支。实现已完成，
-但 source、文档与 `main` parity 尚在收口，因此本轮用户给出的授权不会在 parity 稳定前消费。
+当前普通 git 分支为 `main`，SR5 Live 实现已以 `--no-ff` 合并提交 `1d0f798d` 进入本地 main；功能分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5` 的实现提交 `14301d03` 与文档提交 `d1f19c8a` 均已推送。
+main 的远程推送与最终 parity 复核仍在本轮收口，授权不会在远程 parity 稳定前消费。
 
 本分支新增独立 Live lineage
 `phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`：固定 `8 guards + 6 rewrite pairs + 6
@@ -13,14 +13,14 @@ dispatch，预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill
 只有 exact argv、当次数据边界与 exact authorization、当前正式 namespace=0、source/tag parity、proxy preflight 全部通过
 后才会选择性读取根 `.env` 的三个 SR5 credential alias。credential、prompt、Provider 原文不进入 report/journal/artifact。
 
-当前是 zero-provider implementation checkpoint（runtime authority 尚未产生，`qualityAuthority=none`）；focused Live `10/10`
+当前是已合并到 main 的 zero-provider implementation checkpoint（runtime authority 尚未产生，`qualityAuthority=none`）；focused Live `10/10`
 （36 assertions）、SR5 implementation + Task 9B boundary 组合 `48/48`（164 assertions）、Agent typecheck/lint 与 `git diff --check` 已通过；providerCalls、
 credentialReads、formalEvidence、businessWrites 均为 `0`。这只证明生产形状实现，不是 controlled-Live、真实模型质量、产品/API/browser、Trace、P95/SLA 或
 `main` authority。完整记录见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
 
-在文档提交、从最新 `main` 合并后二次回归、合并回 `main` 并推送后，先确认最终 source/upstream/origin parity 与 formal evidence=`0`，
-再重新接受绑定最终 source 的 DeepSeek/Qwen 数据边界并给出两行 exact authorization；随后才创建并推送
+main 合并后二次回归已完成；推送 `origin/main` 后确认最终 source/upstream/origin parity 与 formal evidence=`0`，再重新接受绑定最终 source 的
+DeepSeek/Qwen 数据边界并给出两行 exact authorization；随后才创建并推送
 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved` annotated tag，复核 tag parity 后执行唯一一次 controlled-Live。成功也只形成分支 semantic
 authority，失败则 durable seal 后停止；两者都不自动解锁产品或博客收尾。不得清空或重建 Docker、PostgreSQL、Redis、
 MinIO。
