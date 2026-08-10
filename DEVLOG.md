@@ -1,5 +1,14 @@
 # PrepMind AI 开发日志
 
+> 2026-08-10 — SR5 proxy snapshot fix main parity 收口：
+>
+> 修复提交 `b531adef` 与文档提交 `c0155ca1` 已以 `--no-ff` 合并到 `main`，merge=`671188bb`，并已推送 `origin/main`。合并后只做
+> zero-provider 二次回归：SR5 Live + Task 9B `24/24`（85 assertions）、Agent typecheck/lint、CLI help/validate/recover 与
+> `git diff --check` 通过；无正式 bundle 的 validate/recover 仍按预期 fail-closed。`main == origin/main`，formal namespace=0。
+>
+> 旧 approved tag 仍指向修复前 `ca9a9eb0`，不可移动或复用。下一步只在当前 `main`/功能分支 parity 完整后重新接受 DeepSeek/Qwen 数据边界并提供
+> 新的 exact authorization，再创建新 approved tag；在此之前不读 credential、不调用 Provider、不重试。Docker/PostgreSQL/Redis/MinIO 均保持原状。
+
 > 2026-08-10 — Phase 6.9.8 SR5 controlled-Live proxy 前门诊断与修复：
 >
 > 在已授权的唯一入口尝试中，CLI 在 proxy preflight 处 fail-closed：`proxy_preflight_not_ready`。输出明确为

@@ -6,8 +6,8 @@
 唯一 controlled-Live 首次尝试在 proxy 前门 fail-closed，未读取 credential/调用 Provider。本文件保留 SR0 设计与历史 handoff，并区分
 实现态、诊断失败与真实质量 authority。
 
-修复提交 `b531adef` 已推送普通 git 分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`；旧 approved tag 仍绑定修复前
-`ca9a9eb0`，不可移动或复用。修复合并回 main、远程 parity、新 source tag 与新授权均是下一停止门。
+修复提交 `b531adef` 已以 merge=`671188bb` 合并并推送 main，合并后二次 zero-provider 回归通过；功能分支需在 Live admission 前快进到该最终提交。
+旧 approved tag 仍绑定修复前 `ca9a9eb0`，不可移动或复用；功能分支同步到最终 main、新 source tag 与新授权是下一停止门。
 
 SR5 zero-provider lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；Live implementation lineage：
 `phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`；SR3/SR4 lineage

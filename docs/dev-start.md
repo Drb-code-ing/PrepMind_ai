@@ -6,7 +6,8 @@
 ## 当前 Schema Recovery SR5 Live 入口与 proxy 修复（zero-provider，2026-08-10）
 
 SR5 Live 首次入口在 proxy 前门以 `proxy_preflight_not_ready` fail-closed，未读取 credential、未调用 Provider、未创建正式 evidence。
-修复提交 `b531adef` 已推送功能分支；修复后的 focused 回归为 `11/11`（39 assertions）。
+修复提交 `b531adef` 已以 merge=`671188bb` 合并并推送 main；修复后的 focused 回归为 `11/11`（39 assertions），功能分支在新 Live admission
+前仍需快进到该最终 main。
 本节只验证生产形状入口与前门，不执行真实模型。Live 固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek
 `12` + Qwen `12`（共 `24` slots）、最大并发 `1`、pair-serial、预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。
 

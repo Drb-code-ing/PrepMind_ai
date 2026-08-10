@@ -8,7 +8,7 @@
 ## 0K-Live. Phase 6.9.8 Schema Recovery SR5 Live proxy fix（当前，zero-provider）
 
 首次 controlled-Live 在 `proxy_preflight_not_ready` 处 fail-closed，Provider/credential/formal evidence/business writes 均为 `0`。
-修复提交 `b531adef` 已推送功能分支，新增 Bun/Windows accessor-backed proxy 快照回归；修复后 focused `11/11`（39 assertions）。
+修复提交 `b531adef` 已以 merge=`671188bb` 合并并推送 main，新增 Bun/Windows accessor-backed proxy 快照回归；修复后 focused `11/11`（39 assertions）。
 实现固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek `12` + Qwen embedding `12`、最大并发 `1`、pair-serial、
 single dispatch、预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。当前只做 zero-provider implementation
 验收，不能宣称真实模型质量或产品可用。

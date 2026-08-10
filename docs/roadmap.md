@@ -4,7 +4,7 @@
 
 SR5 Live 首次唯一入口尝试在 proxy 前门 fail-closed（`proxy_preflight_not_ready`），Provider/credential/formal evidence/business writes
 均为 `0`，没有创建 marker/journal/report/artifact，也没有清理 Docker 或任何基础设施。诊断确认根因是 Bun/Windows inherited proxy
-环境项的 accessor descriptor 未被 SR5 CLI 正确物化；修复提交 `b531adef` 已推送功能分支，新增固定 allowlist 的 immutable snapshot 与 accessor
+环境项的 accessor descriptor 未被 SR5 CLI 正确物化；修复提交 `b531adef` 已以 merge=`671188bb` 合并并推送 main，新增固定 allowlist 的 immutable snapshot 与 accessor
 回归测试。
 
 SR5 Live 的生产形状实现仍固定为独立 Git-object source bundle、三项 credential late-bind、single-use admission/reservation、exclusive
@@ -20,8 +20,8 @@ manifest=`2eb786e19e3e6de2f26bcc9d4b4e1b1898ee1ee3eb87976090275f4468696608`，po
 `loopback_proxy_ready / configuredProxyVariables=4 / listenerProbeCalls=1 / providerCalls=0`。旧 approved tag 仍绑定修复前 `ca9a9eb0`，
 不能移动或复用；当前没有新的 source/tag/Live authority，仍未读取真实 `.env`、未调用 DeepSeek/Qwen、未启动或清理 Docker/API/browser。
 
-下一顺序固定为：将修复合并回 `main` 并推送、确认 source/upstream/origin parity → 重新接受当前 source 的 DeepSeek/Qwen 数据边界并提供
-新的两行 exact authorization → 创建并推送新 approved annotated tag → 执行唯一一次 controlled-Live。旧授权不得复用；成功也只形成分支
+修复已以 merge=`671188bb` 合并并推送，合并后二次 zero-provider 回归通过。下一顺序固定为：同步功能分支到最终 main parity → 重新接受当前 source 的
+DeepSeek/Qwen 数据边界并提供新的两行 exact authorization → 创建并推送新 approved annotated tag → 执行唯一一次 controlled-Live。旧授权不得复用；成功也只形成分支
 semantic authority，失败则 durable seal 后停止；不得 retry/replay/curl/单 case/追加 Provider 探测。实现与修复回执分别见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。

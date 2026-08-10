@@ -5,7 +5,7 @@
 ## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 Live proxy fix（当前，zero-provider）
 
 首次 controlled-Live 在 proxy 前门 `proxy_preflight_not_ready` fail-closed，approved tag/正式 Live evidence/Provider 调用均仍为 `0`。
-修复提交 `b531adef` 已推送功能分支，解决 Bun/Windows accessor-backed proxy 环境快照问题；本节记录的是修复后的实现合同，不是 Provider 质量结果：
+修复提交 `b531adef` 已以 merge=`671188bb` 合并并推送 main，解决 Bun/Windows accessor-backed proxy 环境快照问题；本节记录的是修复后的实现合同，不是 Provider 质量结果：
 
 ```text
 lineage         phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1

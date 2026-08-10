@@ -20,8 +20,9 @@ provider/env    0 / 0; formal evidence 0; business writes 0
 完整实现验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`；故障与修复见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`。
-实现完成不等于真实模型质量或产品可用性：修复需先合并并确认最终 source parity，再重新接受 DeepSeek/Qwen 数据边界并给出新 exact
-authorization、创建新 approved tag，才可执行唯一一次 controlled-Live；旧授权/tag 不得复用。Docker、PostgreSQL、Redis、MinIO 不因本阶段被清空或重建。
+实现完成不等于真实模型质量或产品可用性：修复已以 merge=`671188bb` 合并并推送，合并后二次 zero-provider 回归通过；现在必须重新接受
+当前 source 的 DeepSeek/Qwen 数据边界并给出新 exact authorization、创建新 approved tag，才可执行唯一一次 controlled-Live；旧授权/tag 不得复用。
+Docker、PostgreSQL、Redis、MinIO 不因本阶段被清空或重建。
 
 ### 历史 SR5 runner/durability checkpoint（zero-provider）
 

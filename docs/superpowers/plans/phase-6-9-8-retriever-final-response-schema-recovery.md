@@ -3,15 +3,15 @@
 日期：2026-08-09
 
 当前状态：SR4 reviewed Mock/static、SR5 zero-provider admission/runner/durability、Live implementation 与 proxy snapshot fix 已完成。
-首次 controlled-Live 在 proxy 前门 fail-closed（Provider/credential/formal evidence/business writes 均为 `0`）；修复提交 `b531adef` 已推送，
-尚未合并回 main，也未为新 source 创建 approved tag/授权。
+首次 controlled-Live 在 proxy 前门 fail-closed（Provider/credential/formal evidence/business writes 均为 `0`）；修复提交 `b531adef` 与文档
+提交 `c0155ca1` 已以 merge=`671188bb` 合并回 main 并推送，合并后二次 zero-provider 回归通过；新 source 尚未创建 approved tag/授权。
 
 设计来源：
 `docs/superpowers/specs/phase-6-9-8-retriever-final-response-schema-recovery-design.md`
 
 当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`
 
-当前基线：修复前 `main@ca9a9eb0`；修复提交 `b531adef` 位于功能分支并待 main parity 收口。
+当前基线：`main@671188bb`（修复提交 `b531adef`；文档提交 `c0155ca1`）；功能分支需在 Live admission 前快进到该最终基线。
 
 SR5 lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；Live implementation lineage：
 `phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`（SR3/SR4 lineage 仍作为上游 identity 保留）
@@ -221,8 +221,8 @@ controlled-Live、semantic/product/main/P95/SLA authority。验收见
 
 ### 7.4 唯一 controlled-Live（等待修复后的新 source 授权）
 
-修复提交先合并回最新 `main` 并推送，完成 source/upstream/origin parity 与二次 zero-provider 回归；随后重新接受当次 DeepSeek/Qwen 数据
-边界并取得绑定修复 source 的新两行 exact authorization，再创建新的 approved annotated tag。SR5 使用新 tag/credential mapping/marker/journal/artifact，最多一次；无论成功、schema、
+功能分支先快进到 `main@671188bb` 并推送，完成 source/upstream/origin parity；随后重新接受当次 DeepSeek/Qwen 数据边界并取得绑定修复 source
+的新两行 exact authorization，再创建新的 approved annotated tag。SR5 使用新 tag/credential mapping/marker/journal/artifact，最多一次；无论成功、schema、
 transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 retry/resume/replay/backfill/recovery 或单 case
 补证。即使完整 gate pass，也只形成新分支 semantic authority，不自动解锁产品或 main。
 
