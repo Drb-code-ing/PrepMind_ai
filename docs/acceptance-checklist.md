@@ -5,7 +5,32 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0K. Phase 6.9.8 Schema Recovery SR5 runner/durability（当前，zero-provider，2026-08-10）
+## 0K-Live. Phase 6.9.8 Schema Recovery SR5 Live implementation（当前，zero-provider）
+
+当前实现分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，提交 `14301d03` 已推送；`main` 尚未合并。
+实现固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek `12` + Qwen embedding `12`、最大并发 `1`、pair-serial、
+single dispatch、预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。当前只做 zero-provider implementation
+验收，不能宣称真实模型质量或产品可用。
+
+先做无 credential 的入口检查：
+
+```powershell
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live -- --help
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:validate
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:recover
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/agent lint
+git diff --check
+```
+
+预期 focused Live `10/10`（36 assertions），validate/recover 在正式 bundle=0 时 fail-closed，且始终
+`providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`。不读取真实 `.env`、不调用 DeepSeek/Qwen、不
+启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。只有完成文档/main parity、确认最终 source parity、重新接受当次
+数据边界并给出两行 exact authorization、再创建并推送 approved annotated tag 后，才可执行唯一一次 controlled-Live；成功也只给分支 semantic authority。
+实现回执：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+
+## 0K. Phase 6.9.8 Schema Recovery SR5 runner/durability（历史，zero-provider，2026-08-10）
 
 当前分支：`main`。功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已以 `--no-ff` 合并为
 `b2b5b9c9`，合并后二次 zero-provider 回放通过。上游 admission contract 与本 checkpoint 的 runner、durability、validator

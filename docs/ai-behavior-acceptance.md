@@ -2,7 +2,30 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 runner/durability（当前，zero-provider）
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 Live implementation（当前，zero-provider）
+
+当前实现分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，提交 `14301d03` 已推送；`main` 尚未合并，
+approved tag/正式 Live evidence 仍为 `0`。本节记录的是实现合同，不是 Provider 质量结果：
+
+```text
+lineage         phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1
+implementation  zero_provider_live_boundary (runtime authority not issued)
+runtime         8 guards + 6 rewrite pairs + 6 FinalResponse; DeepSeek 12 + Qwen 12
+concurrency     1; pair-serial; single-dispatch; no retry/resume/replay/backfill
+budget          37,600 input / 8,800 output / 0.176 CNY
+qualityAuthority none
+provider/env    0 / 0; formal evidence 0; business writes 0
+```
+
+唯一 RUN 必须依次通过 exact argv、当次 DeepSeek/Qwen data-boundary 与 exact authorization、正式 namespace fence、source/tag/bundle
+parity、proxy preflight，之后才可 late-bind 根 `.env` 的三个 SR5 credential。help/validate/recover 不读取
+credential；任何 credential、prompt 或 Provider 原文都不得进入 report/journal/artifact。完整质量门 pass 才能产生
+`schema_recovery_sr5_branch_semantic_gate`；失败只形成 durable diagnostic，且无论结果都不自动解锁 `/api/chat`、Docker/API/
+browser、Trace、产品数据或 `main`。当前实现 focused `10/10`（36 assertions），SR5 + Task 9B boundary 组合为 `48/48`（164 assertions），typecheck/lint
+通过。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+
+## 历史 Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 runner/durability（zero-provider）
 
 SR5 admission 已作为上游 capability contract；当前 checkpoint 验证固定 reviewed-Mock runner 的调度、schema accounting、
 durability、strict validator 与 crash-only recovery。approved tag 尚未创建，真实 `git_verified` source gate 与 provider

@@ -1,27 +1,33 @@
 # PrepMind AI 智能备考助手
 
-## 当前工作回执：Schema Recovery SR5 runner/durability（2026-08-10）
+## 当前工作回执：Schema Recovery SR5 Live implementation（2026-08-10）
 
-当前普通 git 分支为 `main`。功能分支
-`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已推送，功能提交 `d077bf9d` 已以 `--no-ff`
-合并为 main merge `b2b5b9c9`；不使用 worktree，不清理 Docker、数据库、Redis 或 MinIO。SR5 admission contract 与
-zero-provider reviewed-Mock runner、严格 journal、artifact、validator、crash-only recovery 均已完成，合并后二次回放通过。
-approved annotated tag 尚未创建，真实 `git_verified` source gate 与 controlled-Live 保持关闭。
+当前普通 git 分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，实现提交 `14301d03` 已推送；
+`main` 尚未合并本分支。SR5 Live 的生产形状入口、source manifest、proxy 前置检查、三项 credential late-bind、
+24-slot runner 与 crash-only durability 已完成，但文档/main parity 尚在收口，尚未创建 approved tag、读取真实 credential
+或执行 controlled-Live；本轮授权会在最终 source 冻结后重新确认，避免把旧授权绑定到错误 SHA。
 
 ```text
-authority       zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability
+implementation  zero_provider_live_boundary (runtime authority not issued)
 qualityAuthority none
-gate            schema_recovery_mock_quality_not_evidence
-mode            zero_provider_reviewed_mock_only
-fixed           8 guards + 6 rewrite + 6 FinalResponse; 20 entries / 12 invocations
-focused         25/25 tests, 82 assertions
-runtime         12/12/12/12 wire; 12 succeeded, 0 failed, 0 notStarted
+lineage         phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1
+fixed           8 guards + 6 rewrite pairs + 6 FinalResponse; 24 Provider slots
+schedule        DeepSeek 12 + Qwen embedding 12; concurrency 1; pair-serial
+budget          37,600 input / 8,800 output / 0.176 CNY
+focused         10/10 tests, 36 assertions; SR5 + Task 9B combo 48/48, 164 assertions
 provider/env    0 / 0; formal evidence 0; business writes 0
-dispatch        synthetic only; no credential/provider ports
 ```
 
-本回执只证明 SR5 runner/durability 工程边界，不证明真实 DeepSeek/Qwen 质量、RAG 召回、产品 `/api/chat`、Docker/API/browser、
-Trace、P95/SLA 或产品可用性。runner/durability、SR5 admission、SR4 checkpoint、设计和计划见：
+完整实现验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+实现完成不等于真实模型质量或产品可用性：必须从最新 `main` 合并回归并推送，确认最终 source parity 后重新接受
+DeepSeek/Qwen 数据边界并给出 exact authorization，再创建并推送 approved annotated tag，才执行唯一一次 controlled-Live；成功也只形成分支 semantic
+authority。Docker、PostgreSQL、Redis、MinIO 不因本阶段被清空或重建。
+
+### 历史 SR5 runner/durability checkpoint（zero-provider）
+
+以下回执保留旧 `main` merge `b2b5b9c9` 的 runner/durability 事实，不代表当前 Live implementation 已执行。
+runner、admission、SR4、设计和计划见：
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr4-reviewed-mock-static.md`、

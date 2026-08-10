@@ -94,7 +94,10 @@ describe('Phase 6.9.8 Retriever / FinalResponse SR5 source admission', () => {
     expect(
       validatePhase698RetrieverSchemaRecoverySr5ObservationForTest(source, {
         ...base,
-        oldLineagePaths: ['.tmp/old-lineage.marker'],
+        oldLineagePaths: [
+          '.tmp/phase-6-9-7-tutor-organizer-schema-recovery-sr5-controlled-live.marker',
+          '.tmp/phase-6-9-8-retriever-final-response-transport-reentry-v2-l1-root-env-diagnosis.json',
+        ],
       }),
     ).toBe(false);
   });

@@ -3,7 +3,30 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 Schema Recovery SR5 runner/durability 入口（zero-provider，2026-08-10）
+## 当前 Schema Recovery SR5 Live implementation 入口（zero-provider，2026-08-10）
+
+当前实现分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，提交 `14301d03` 已推送；`main` 尚未合并。
+本节只验证生产形状入口与前门，不执行真实模型。Live 固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek
+`12` + Qwen `12`（共 `24` slots）、最大并发 `1`、pair-serial、预算 `37,600/8,800/0.176 CNY`，禁止 retry/resume/replay/backfill。
+
+安全的 help/validate/recover 路径不会加载 `.env` 或 credential；package script 显式使用 `bun --no-env-file`。唯一 RUN
+参数必须同时满足最终 source/tag parity、正式 evidence namespace=0、loopback/direct proxy preflight、当次数据边界和 exact
+authorization；只有这些前门通过后才会 selective-read 根 `.env` 的三个 SR5 credential。不要在 source/main parity 收口前运行
+RUN，也不要把本轮旧授权复用到新 source。
+
+```powershell
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live -- --help
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:validate
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:recover
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts
+```
+
+当前预期是 help 成功、validate/recover 在无正式 bundle 时 fail-closed，focused Live `10/10`（36 assertions）。这些命令
+`providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`，不创建正式 marker/journal/report/artifact，
+不启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。完整实现回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+
+### 历史 Schema Recovery SR5 runner/durability 入口（zero-provider，2026-08-10）
 
 当前普通分支为 `main`。功能分支
 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已以 `--no-ff` 合并为 `b2b5b9c9`，合并后二次

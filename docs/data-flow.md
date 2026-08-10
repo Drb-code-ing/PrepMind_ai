@@ -1,6 +1,33 @@
 # PrepMind AI 数据流
 
-## 当前 SR5 runner/durability flow（2026-08-10）
+## 当前 SR5 Live implementation flow（zero-provider，2026-08-10）
+
+当前实现分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，`14301d03` 已推送；`main` 尚未合并。
+下面是唯一 controlled-Live 的生产形状顺序，当前只完成到实现/zero-provider 验收，尚无正式 run accounting：
+
+```text
+exact argv
+  -> DeepSeek/Qwen data-boundary receipt + exact authorization
+  -> historical namespace coexistence / current formal namespace = 0
+  -> source HEAD/upstream/origin/approved-tag + Live Git-object bundle parity
+  -> proxy preflight (direct or loopback listener only; providerCalls = 0)
+  -> selective root .env projection (three SR5 credentials; bun --no-env-file)
+  -> opaque single-use admission/reservation capability
+  -> exclusive marker + fsynced hash-chain journal
+  -> 8 zero-call guards
+  -> pair-serial: DeepSeek rewrite -> Qwen embedding -> DeepSeek FinalResponse (24 slots total)
+  -> local strict schema/usage/semantic scorer and bounded breaker
+  -> hard-link artifact -> strict validator -> crash-only seal/recovery
+```
+
+Live lineage=`phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`，authority（仅运行时）=
+`controlled_live_retriever_final_response_schema_recovery_sr5`，完整质量门通过时才可产生
+`schema_recovery_sr5_branch_semantic_gate`。实现验收固定 `providerCalls=0 / credentialReads=0 / formalEvidence=0 /
+businessWrites=0`；不读取真实 `.env`、不调用 DeepSeek/Qwen、不写产品 Trace/BackgroundJob/Outbox，也不启动或清理
+Docker/PostgreSQL/Redis/MinIO/API/browser。实现完成不等于语义、产品或 `main` authority；验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
+
+## 历史 SR5 runner/durability flow（2026-08-10）
 
 当前工作分支为 `main`。功能分支 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner` 已以
 `--no-ff` 合并为 `b2b5b9c9`，合并后二次 zero-provider 回放通过。SR5 admission 已作为上游 source-bound capability，
