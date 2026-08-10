@@ -3,22 +3,40 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 Schema Recovery SR5 admission 入口（zero-provider，2026-08-10）
+## 当前 Schema Recovery SR5 runner/durability 入口（zero-provider，2026-08-10）
 
-当前普通分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，基于已推送
-`main@82936a955670a647756940fb398119647064d095`。本入口先验证 source/annotated-tag/bundle；source-bound API 再组合
-数据边界、exact authorization、预算和 single-use capability。approved tag 尚未创建，provider dispatch 关闭，不读取
-`.env`/credential。
+当前普通分支为 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`，基于已推送
+`main@42abbbbd`。上游 admission contract 已完成；本入口运行固定 `8/6/6` reviewed-Mock runner，并验证 source-bound
+reservation、hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery。approved tag 尚未创建，
+真实 source gate 与 provider dispatch 关闭，不读取 `.env`/credential。
 
 ```powershell
-bun --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:admission -- --help
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:runner -- --help
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:runner
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner*.test.ts
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/agent lint
+git diff --check
+```
+
+CLI help 与 focused `25/25`（82 assertions）回归应显示 `providerCalls=0`、`credentialReads=0`；CLI run 的 runtime 应为
+`12/12/12/12` wire、`12/0/0` succeeded/failed/notStarted，gate=`schema_recovery_mock_quality_not_evidence`，
+`qualityAuthority=none`。临时 evidence 会在临时 root 清理，正式 namespace 保持 `0`。完整回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。这不是
+controlled-Live，不启动项目浏览器，不创建正式 evidence。
+
+### 上游 SR5 admission contract（zero-provider）
+
+如需只读检查 source/tag/bundle 准入合同，使用：
+
+```powershell
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:admission -- --help
 bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-source-admission.test.ts
 ```
 
-CLI help 与 focused `12/12`（50 assertions）回归应显示 `providerCalls=0`、`credentialReads=0`；当前 source gate 预期因 approved tag 不存在而
-fail-closed。完整回执见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。这不是 controlled-Live，
-不启动项目浏览器，不创建正式 evidence。
+当前 approved tag 不存在，真实 source gate 预期 fail-closed；该命令不读取 `.env`、不调用 Provider、不创建正式
+marker/journal/report/artifact/recovery claim，也不授权 controlled-Live。回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
 
 ## 历史 Schema Recovery SR4 reviewed Mock 入口（zero-provider，2026-08-09）
 

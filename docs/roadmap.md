@@ -1,22 +1,24 @@
 # PrepMind AI 学习与开发路线图
 
-## 当前原子阶段：Phase 6.9.8 Schema Recovery SR5 zero-provider admission（2026-08-10）
+## 当前原子阶段：Phase 6.9.8 Schema Recovery SR5 runner/durability（2026-08-10）
 
-从已推送 `main == origin/main == 82936a955670a647756940fb398119647064d095` 新开普通分支
-`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`。本阶段已完成 strict source/tag/bundle parity、SR3/SR4
-identity、DeepSeek/Qwen data-boundary receipt、source-bound exact authorization、固定预算与 opaque single-use bound
-capability；approved annotated tag 尚未创建，真实 source gate 保持关闭。SR5 独立 lineage=
-`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`。
+从已推送 `main@42abbbbd` 新开普通分支
+`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`。上游 SR5 admission 已完成 strict
+source/tag/bundle parity、SR3/SR4 identity、DeepSeek/Qwen data-boundary receipt、source-bound exact authorization、固定
+预算与 opaque single-use capability；本阶段新增 zero-provider reviewed-Mock runner、pair-serial 单并发、首错 breaker、
+fsynced hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery。approved annotated tag 尚未创建，
+真实 `git_verified` source gate 与 controlled-Live 保持关闭。
 
-authority=`zero_provider_retriever_final_response_schema_recovery_sr5_admission`、gate=`sr5_admission_zero_provider`、
-`qualityAuthority=none`；focused `12/12`（50 assertions）、typecheck/lint/CLI help smoke 通过；providerCalls、credentialReads、
-formalEvidence、businessWrites 均为 `0`。不读根 `.env`，不调用 Provider，不启动/清理 Docker/API/browser，不写
-Trace/BackgroundJob/Outbox。验收记录见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
+authority=`zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability`、
+gate=`schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`；固定 `8/6/6` 分母、`20` entries、`12`
+invocations、预算 `37,600/8,800/0.176 CNY`、最大并发 `1`。focused `25/25`（82 assertions）、typecheck/lint/CLI
+help/run smoke 通过；providerCalls、credentialReads、formalEvidence、businessWrites 均为 `0`。不读根 `.env`，不调用
+Provider，不启动/清理 Docker/API/browser，不写 Trace/BackgroundJob/Outbox。验收记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
 
-SR5 admission 不等于 controlled-Live，不形成真实模型语义、产品、`main`、P95/SLA 或博客 authority。完成本分支 parity 后
-必须按一阶段一提交推送、从最新 `main` 合并、合并后二次 zero-provider 回归并推送远程；之后仍需新的数据边界接受与 exact
-authorization 才能进入唯一 controlled-Live。
+runner/durability 不等于 controlled-Live，不形成真实模型语义、产品、`main`、P95/SLA 或博客 authority。完成本分支后
+必须按一阶段一提交推送、从最新 `main` 合并、合并后二次 zero-provider 回归并推送远程；之后仍需新的数据边界接受与
+绑定新 source 的 exact authorization 才能进入唯一 controlled-Live。
 
 ### 历史 SR4 reviewed Mock/static checkpoint（已完成）
 

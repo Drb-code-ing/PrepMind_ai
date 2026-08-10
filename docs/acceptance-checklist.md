@@ -5,26 +5,34 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0K. Phase 6.9.8 Schema Recovery SR5 admission（当前，zero-provider，2026-08-10）
+## 0K. Phase 6.9.8 Schema Recovery SR5 runner/durability（当前，zero-provider，2026-08-10）
 
-当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`，基线
-`main@82936a955670a647756940fb398119647064d095`。本 checkpoint 只做 source/annotated-tag/bundle、DeepSeek/Qwen
-data-boundary、source-bound exact authorization、budget 与 single-use bound capability contract；approved tag 尚未创建，
-provider dispatch=false。
+当前分支：`drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`，基线 `main@42abbbbd`。上游 admission
+contract 已完成；本 checkpoint 验证固定 runner、durability、validator 与 crash-only recovery。approved tag 尚未创建，
+真实 `git_verified` source gate 与 Provider dispatch 仍关闭；CLI 仅 synthetic reviewed Mock。
 
 ```powershell
-bun --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:admission -- --help
-bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.test.ts `
-  packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-source-admission.test.ts
-bun --filter @repo/agent typecheck
-bun --filter @repo/agent lint
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:runner -- --help
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:runner
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner*.test.ts
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/agent lint
 git diff --check
 ```
 
-预期 `12/12`、50 assertions、CLI help 通过；providerCalls/credentialReads/formalEvidence/businessWrites=`0`。当前 source
-gate 因缺少 approved tag 预期 fail-closed；不读取 `.env`、不调用 Provider、不启动/清理 Docker/数据库/Redis/MinIO/API/browser，
-不写 Trace/BackgroundJob/Outbox。完整回执：
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
+预期 focused `25/25`、82 assertions；CLI run 为 `12/12/12/12` wire、`12/0/0` succeeded/failed/notStarted，
+providerCalls/credentialReads/formalEvidence/businessWrites=`0`。durability 还必须覆盖 journal/artifact tamper、
+crash-only prefix、terminal publication recovery、二次 seal、CRLF 与 foreign artifact fail-closed。测试使用临时 root 并
+精确清理；不读取 `.env`、不调用 Provider、不启动/清理 Docker/数据库/Redis/MinIO/API/browser，不写 Trace/BackgroundJob/
+Outbox。完整回执：
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
+
+## 0K-A. Phase 6.9.8 Schema Recovery SR5 admission contract（上游 checkpoint，zero-provider）
+
+Admission contract 的 source/tag/bundle、data-boundary、exact authorization、预算和 single-use capability 回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。它不创建 runner evidence，
+也不授权 controlled-Live；approved tag 缺失时 source gate 必须 fail-closed。只有 runner/durability 合并后二次回归完成，且
+重新接受当次 DeepSeek/Qwen 数据边界并取得绑定新 source 的 exact authorization 后，才可规划唯一 controlled-Live。
 
 ## 0K-H. Phase 6.9.8 Schema Recovery SR4 reviewed Mock/static（历史，zero-provider，2026-08-09）
 

@@ -1,26 +1,29 @@
 # PrepMind AI 开发日志
 
-> 2026-08-10 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 zero-provider admission contract 已完成：
+> 2026-08-10 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 runner/durability zero-provider checkpoint 已完成：
 >
-> 从已推送 `main == origin/main == 82936a955670a647756940fb398119647064d095` 新开普通分支
-> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5`。新增 strict source/tag/bundle、DeepSeek/Qwen
-> data-boundary、source-bound exact authorization、固定预算、最大并发 1、no retry/replay/resume/backfill 与 opaque
-> single-use bound capability；SR5 使用独立 `phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1` lineage，Git source
-> bundle 从 approved commit blob 重算，不信任调用者自报 SHA；approved tag 必须是 annotated tag 且绑定 tag object id。
+> 在已推送 `main@42abbbbd` 上新开普通分支
+> `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner`。SR5 admission contract 的 strict source/tag/bundle、
+> DeepSeek/Qwen data-boundary、source-bound exact authorization、固定预算与 opaque single-use capability 已作为上游能力
+> 绑定；本次新增固定 `8 guards + 6 rewrite + 6 FinalResponse` runner、pair-serial 单并发、首错 breaker、fsynced
+> hash-chain journal、hard-link artifact、strict recomputing validator 与 crash-only recovery。
 >
-> 新增零 Provider CLI 只接受 help/admission/validate 三种严格参数面，不开放 live/seal/recover/replay；approved tag 尚未
-> 创建，因此真实 source gate 保持关闭。focused `12/12`（50 assertions）、Agent typecheck/lint、CLI help smoke 与
-> `git diff --check` 通过；`providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`，未读取根
-> `.env`、未启动 Docker/API/browser、未写 Trace/BackgroundJob/Outbox。
+> 新增 runner CLI 明确只接受 zero-provider reviewed Mock、validate 与 crash-only recover token，不开放 live、credential、
+> replay 或 backfill；approved tag 尚未创建，因此真实 `git_verified` source gate 保持关闭。focused `25/25`（82 assertions）、
+> Agent typecheck/lint、CLI help/run smoke 与 `git diff --check` 通过；CLI runtime `12/12/12/12` wire、`12/0/0` 成功/失败/
+> 未启动，`providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`。临时 synthetic evidence 创建 1 次后
+> 精确清理为 0；未读取根 `.env`、未调用 DeepSeek/Qwen、未启动 Docker/API/browser、未写 Trace/BackgroundJob/Outbox。
 >
-> 复审时收紧 tuple seam：它只能由 synthetic-test 使用；真实 Git source admission 通过 source-bound API 组合 source、
-> boundary、authorization、budget 后签发 bound capability，不能由调用者把任意输入标成 `git_verified`。SR3/SR4 identity 从
-> 上游常量单一导入；旧 lineage/tag-object/old-lineage drift 均 fail-closed。修复后 focused 为 `12/12`（50 assertions）。
+> runner manifest/policy/admission manifest SHA 分别为
+> `d50e27729d873833fc857efe648ba8a56fda19a4d70212a22aa01dbe02b53ea3`、
+> `ff05b647a4c00a3943c18c70d02650aad3d4b880209ac35f04e60d1d9e31f803`、
+> `sha256:f71bdee19cf4509395566d8bf54d85ad1f37cf867ca2cbf37211b1daef8fa38b`。回归覆盖 tampered journal/artifact、
+> crash-only prefix、terminal publication recovery、二次 seal、CRLF、foreign artifact 与 capability 二次消费。
 >
-> authority=`zero_provider_retriever_final_response_schema_recovery_sr5_admission`、gate=`sr5_admission_zero_provider`、
-> `qualityAuthority=none`。本 checkpoint 只完成 admission，不是 controlled-Live，也不形成 semantic/product/main/P95/SLA
-> authority。完整验收见
-> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
+> authority=`zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability`、gate=
+> `schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`。本 checkpoint 不是 controlled-Live，也不形成
+> semantic/product/main/P95/SLA authority。完整验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
 
 > 2026-08-09 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR4 reviewed Mock/static 已完成：
 >

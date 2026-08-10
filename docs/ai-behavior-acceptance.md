@@ -2,24 +2,31 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 admission（当前，zero-provider）
+## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 runner/durability（当前，zero-provider）
 
-SR5 admission 只验证未来唯一 controlled-Live 的 source/annotated-tag/bundle、DeepSeek/Qwen 当前账号 data-boundary、
-source-bound exact authorization、预算与 single-use bound capability；approved tag 尚未创建，provider dispatch=false。
+SR5 admission 已作为上游 capability contract；当前 checkpoint 验证固定 reviewed-Mock runner 的调度、schema accounting、
+durability、strict validator 与 crash-only recovery。approved tag 尚未创建，真实 `git_verified` source gate 与 provider
+dispatch=false，CLI 只创建 synthetic capability。
 
 ```text
-authority       zero_provider_retriever_final_response_schema_recovery_sr5_admission
-gate            sr5_admission_zero_provider
+authority       zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability
+gate            schema_recovery_mock_quality_not_evidence
 qualityAuthority none
 providerCalls   0
 credentialReads 0
 formalEvidence  0
+businessWrites  0
 ```
 
-focused `12/12`（50 assertions）、typecheck/lint 与 CLI help smoke 已通过。合同只保存 confirmation SHA，不保存边界/授权
-原文；不读 `.env`/credential、不调用 DeepSeek/Qwen、不进入 `/api/chat`、RAG、Trace、Docker/API/browser、BackgroundJob、
-Outbox 或业务写入。当前 source gate 预期在缺少 approved tag 时 fail-closed。完整回执见
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`。
+固定 `8 guards + 6 rewrite + 6 FinalResponse = 20 entries / 12 invocations`、最大并发 `1`、预算
+`37,600/8,800/0.176 CNY`、首错 breaker 与 no retry/resume/replay/backfill。focused `25/25`（82 assertions）、typecheck/lint
+与 CLI help/run smoke 已通过；CLI runtime wire=`12/12/12/12`，成功/失败/未启动=`12/0/0`。journal/hash-chain、hard-link
+artifact、strict recompute、CRLF/foreign-file fail-closed 与 crash-only recovery 均有回归。不读 `.env`/credential、不调用
+DeepSeek/Qwen、不进入 `/api/chat`、RAG、Trace、Docker/API/browser、BackgroundJob、Outbox 或业务写入。完整回执见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`。
+
+上游 admission contract 的 source/tag/bundle 与 data-boundary/exact-authorization 记录仍见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-admission-zero-provider.md`；它不授权 controlled-Live。
 
 ## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR4（历史，zero-provider reviewed Mock/static）
 
