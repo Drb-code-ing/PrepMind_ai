@@ -6,7 +6,7 @@ import {
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr3-contract.ts';
 import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR4_CHECKPOINT_SHA256,
-  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_SOURCE_REF,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
@@ -18,7 +18,7 @@ import { PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST_SHA256 }
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE =
   'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1' as const;
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA_VERSION =
-  'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-source-v1' as const;
+  'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-source-v2' as const;
 
 const SHA256_REF = z.string().regex(/^sha256:[0-9a-f]{64}$/u);
 const COMMIT = z.string().regex(/^[0-9a-f]{40}$/u);
@@ -33,7 +33,7 @@ export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA = z
     schemaVersion: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA_VERSION),
     lineage: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE),
     mode: z.literal('controlled_live'),
-    branch: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH),
+    branch: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH),
     head: COMMIT,
     upstream: COMMIT,
     origin: COMMIT,
@@ -90,7 +90,7 @@ export function createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixtu
     schemaVersion: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA_VERSION,
     lineage: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE,
     mode: 'controlled_live',
-    branch: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH,
+    branch: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH,
     head: commit,
     upstream: commit,
     origin: commit,

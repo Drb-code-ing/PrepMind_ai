@@ -2,6 +2,11 @@
 
 日期：2026-08-10
 
+> 状态更正（2026-08-11）：本文是 implementation checkpoint。随后 tag compatibility 已完成，但又发现并修复了
+> production `runProxyPreflight` override 被 core 端口组装丢弃的确定性缺陷；最新 zero-provider 证据见
+> `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。本文末尾“尚未执行”
+> 段落只保留该 checkpoint 时点事实，不代表当前 source/tag 状态。
+
 ## 结论
 
 后续首次 controlled-Live 尝试已在 proxy 前门 fail-closed；该故障与零 Provider 修复不改变本文件对“实现完成、尚未形成质量 authority”的结论。
@@ -110,7 +115,7 @@ namespace 临时文件 fence、journal tamper、crash-only prefix/二次 seal、
 Qwen alias 冲突、检索/引用指标不足时拒绝 semantic authority，以及历史 manifest 与独立 Live
 tree bundle 不相互污染。
 
-## 尚未执行与下一停止门
+## 该 checkpoint 时点尚未执行与下一停止门（历史记录）
 
 以下事项在本验收中刻意保持为 `0`：approved annotated tag、真实 credential read、Provider
 dispatch、formal marker/journal/report/artifact、usage/cost、Docker/API/browser/Trace 与产品

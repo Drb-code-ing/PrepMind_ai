@@ -9,7 +9,7 @@ import { PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR4_FROZEN_FACTORY_SHA256 } from 
 import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
-  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_AUTHORIZATION_CONFIRMATION,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET_SCHEMA,
@@ -29,6 +29,7 @@ import {
 import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA_VERSION,
   createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixture,
   type Phase698RetrieverSchemaRecoverySr5LiveSource,
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-schema.ts';
@@ -56,7 +57,7 @@ export type Phase698RetrieverSchemaRecoverySr5LiveBoundaryAdmissionRecord = Read
   mode: 'controlled_live';
   providerDispatchAllowed: false;
   source: Readonly<{
-    branch: typeof PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH;
+    branch: typeof PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH;
     head: string;
     approvedTag: typeof PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG;
     approvedTagObjectId: string;
@@ -104,7 +105,7 @@ export type Phase698RetrieverSchemaRecoverySr5LiveAdmissionRecord = Readonly<{
 }>;
 
 type IssuedLiveAdmission = Phase698RetrieverSchemaRecoverySr5LiveAdmissionRecord;
-type LiveRepositoryObservation = Readonly<{
+export type Phase698RetrieverSchemaRecoverySr5LiveRepositoryObservation = Readonly<{
   branch: string;
   head: string;
   upstream: string;
@@ -279,7 +280,20 @@ function inspectPhase698RetrieverSchemaRecoverySr5LiveSourceAdmission(
 ):
   | Readonly<{ ok: true; source: Phase698RetrieverSchemaRecoverySr5LiveSource }>
   | Readonly<{ ok: false; reasonCode: 'source_admission_invalid' }> {
-  const observation = inspectLiveRepository(repositoryRoot);
+  return validateLiveRepositoryObservation(inspectLiveRepository(repositoryRoot));
+}
+
+export function validatePhase698RetrieverSchemaRecoverySr5LiveObservationForTest(
+  observation: Phase698RetrieverSchemaRecoverySr5LiveRepositoryObservation,
+) {
+  return validateLiveRepositoryObservation(observation);
+}
+
+function validateLiveRepositoryObservation(
+  observation: Phase698RetrieverSchemaRecoverySr5LiveRepositoryObservation | null,
+):
+  | Readonly<{ ok: true; source: Phase698RetrieverSchemaRecoverySr5LiveSource }>
+  | Readonly<{ ok: false; reasonCode: 'source_admission_invalid' }> {
   if (
     observation === null ||
     !observation.clean ||
@@ -291,7 +305,7 @@ function inspectPhase698RetrieverSchemaRecoverySr5LiveSourceAdmission(
     return Object.freeze({ ok: false as const, reasonCode: 'source_admission_invalid' as const });
   }
   const parsed = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA.safeParse({
-    schemaVersion: 'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-source-v1',
+    schemaVersion: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA_VERSION,
     lineage: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE,
     mode: 'controlled_live',
     branch: observation.branch,
@@ -319,7 +333,9 @@ function inspectPhase698RetrieverSchemaRecoverySr5LiveSourceAdmission(
     : Object.freeze({ ok: false as const, reasonCode: 'source_admission_invalid' as const });
 }
 
-function inspectLiveRepository(repositoryRoot: string): LiveRepositoryObservation | null {
+function inspectLiveRepository(
+  repositoryRoot: string,
+): Phase698RetrieverSchemaRecoverySr5LiveRepositoryObservation | null {
   const root = resolveTrustedGitRoot(repositoryRoot);
   if (root === null) return null;
   const branch = runGitText(root, ['branch', '--show-current']);
@@ -328,7 +344,7 @@ function inspectLiveRepository(repositoryRoot: string): LiveRepositoryObservatio
   const origin = runGitText(root, [
     'rev-parse',
     '--verify',
-    `refs/remotes/origin/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH}`,
+    `refs/remotes/origin/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH}`,
   ]);
   const approvedTagCommit = runGitText(root, [
     'rev-parse',
@@ -403,7 +419,7 @@ function admitLiveBoundary(
     .object({
       confirmation: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_AUTHORIZATION_CONFIRMATION),
       lineage: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE),
-      sourceBranch: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH),
+      sourceBranch: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH),
       sourceCommit: COMMIT,
       sourceBundleSha256: SHA256_REF,
       approvedTag: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG),

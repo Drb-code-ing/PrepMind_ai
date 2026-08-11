@@ -1,6 +1,24 @@
 # PrepMind AI 数据流
 
-## 当前 SR5 Live flow 与 tag compatibility（zero-provider，2026-08-10）
+## 当前 SR5 production proxy port recovery flow（zero-provider，2026-08-11）
+
+生产 wrapper 的共享 `runProxyPreflight` 曾在 core `createPorts` 中被默认抛错桩覆盖，因此正式入口在实际 proxy
+ready 时仍停在 `proxy_preflight_not_ready`。修复后 port flow 为：
+
+```text
+production proxy snapshot
+  -> PRODUCTION_PORTS.runProxyPreflight
+  -> createPorts preserves override (missing override remains fail-closed)
+  -> shared direct/loopback preflight
+  -> credential projection (only after ready)
+```
+
+新的 source contract 预留待创建的 immutable `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`；
+`live-v1` tag 保留不动。当前 focused `16/16`（63 assertions），Provider/credential/formal evidence/business writes 均为 `0`。
+该 v2 Git tag 当前尚未创建；合并/main 回归/new tag/新授权完成后才可执行一次 controlled-Live；语义门通过后才另行进入 Docker/API/Trace/可见浏览器
+产品流。详见 `...sr5-live-proxy-port-recovery-zero-provider.md`。
+
+## 历史 SR5 Live flow 与 tag compatibility（zero-provider，2026-08-10）
 
 首次 controlled-Live 在 `proxy_preflight_not_ready` 处停止，`providerCalls=0 / credentialReads=0 / formalEvidence=0`；没有进入
 credential、reservation 或 Provider。修复提交 `b531adef` 将 Bun/Windows accessor-backed proxy 环境先物化为 immutable data-properties，新增

@@ -2,6 +2,11 @@
 
 日期：2026-08-10
 
+> 状态更正（2026-08-11）：本文是 accessor snapshot 修复 checkpoint；其后进一步确认正式 CLI 的
+> `createPorts` 仍丢弃 production `runProxyPreflight` override。该确定性组装缺陷与当前 `live-v2` source contract 见
+> `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`；本页 `live-v1`
+> 下一停止门只保留历史时点事实。
+
 ## 结论
 
 SR5 controlled-Live 的首次入口尝试在 proxy 前门 fail-closed，未进入 credential、reservation 或 Provider：

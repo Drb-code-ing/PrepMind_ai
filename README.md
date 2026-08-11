@@ -1,6 +1,26 @@
 # PrepMind AI 智能备考助手
 
-## 当前工作回执：Schema Recovery SR5 Live tag compatibility（2026-08-10）
+## 当前工作回执：Schema Recovery SR5 production proxy port recovery（2026-08-11）
+
+正式 SR5 CLI 的 production `runProxyPreflight` 曾被 core 端口组装无条件覆盖，导致独立 preflight 已
+`loopback_proxy_ready` 时仍必然返回 `proxy_preflight_not_ready`。当前分支已恢复 override、保留默认 fail-closed，并将新
+source contract 预留到待创建的 immutable
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`；已推送的 `live-v1` tag 保持不动。
+
+```text
+source manifest  sha256:61afe007f588c62833a10d6c66934bcd90bd3061f4005d1b66e943088afa2829
+live manifest    372abb4656885536a080cccc98226d41bce083a0fafc6ab54b104eed81df67a4
+focused          16/16 tests, 63 assertions
+Agent full        1529/1529 tests, 25224 assertions, 196 files
+provider/env     0 / 0; formal evidence 0; business writes 0
+```
+
+该 v2 Git tag 目前尚未创建。本分支仍须推送、`--no-ff` 合并并推送 `main`、main 二次 zero-provider、创建/核对 `live-v2` annotated tag，再由用户
+重新接受该 source 的 DeepSeek/Qwen 数据边界与 exact authorization，才可执行唯一一次 controlled-Live。语义门通过后才
+另行授权启动 Docker/API/Trace/可见浏览器产品验收；当前不能宣称产品链路已可用。验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
+
+## 历史工作回执：Schema Recovery SR5 Live tag compatibility（2026-08-10）
 
 SR5 Live 首次入口在 proxy 前门 `proxy_preflight_not_ready` fail-closed，`providerCalls=0 / credentialReads=0 / formalEvidence=0 /
 businessWrites=0`，没有创建正式 evidence，也没有清理 Docker/数据库/Redis/MinIO。proxy accessor 修复已完成；当前又将 Live

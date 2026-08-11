@@ -2,14 +2,14 @@
 
 日期：2026-08-09
 
-状态：SR4 zero-provider reviewed Mock/static、SR5 admission/runner/durability、Live implementation、proxy snapshot fix 与
-Live tag compatibility recovery 均已完成；
-唯一 controlled-Live 首次尝试在 proxy 前门 fail-closed，未读取 credential/调用 Provider。本文件保留 SR0 设计与历史 handoff，并区分
-实现态、诊断失败与真实质量 authority。
+状态：SR4 zero-provider reviewed Mock/static、SR5 admission/runner/durability、Live implementation、proxy snapshot fix、
+Live tag compatibility 与 production proxy port recovery 均已完成实现；唯一 controlled-Live 首次尝试在 proxy 前门
+fail-closed，未读取 credential/调用 Provider。确定性根因是 core 丢弃 production `runProxyPreflight` override；当前修复尚待
+分支/main/tag/source parity 收口。本文件保留 SR0 设计与历史 handoff，并区分实现态、诊断失败与真实质量 authority。
 
-旧 approved tag 仍绑定修复前 `ca9a9eb0`，不可移动或复用；Live 使用独立
-`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved` tag/ref/source schema。功能分支同步到最终
-main、新 Live tag 与新授权是下一停止门。
+旧 approved tag 仍绑定修复前 `ca9a9eb0`，`live-v1` tag 仍绑定 `284ea354`，两者都不可移动或复用；当前 source contract 预留待创建的独立
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved` tag/ref/source schema。功能分支同步到最终
+main、创建并核对 `live-v2` tag 与取得新授权是下一停止门。
 
 SR5 zero-provider lineage：`phase-6.9.8-retriever-final-response-schema-recovery-sr5-v1`；Live implementation lineage：
 `phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-v1`；SR3/SR4 lineage
@@ -116,10 +116,24 @@ CLI、durability 只接受 Live source 类型。focused SR5 contract/source/Live
 `1527/1527`（25213 expect()，196 files）、typecheck/lint/Prettier/diff check 通过；Provider/credential/formal evidence/business writes 均为 `0`。验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
 
+### Production proxy port recovery（2026-08-11，zero-provider）
+
+生产 wrapper 正确注入共享 `runProxyPreflight`，但 core `createPorts` 曾无条件安装默认抛错桩并丢弃 override，导致正式入口
+确定性返回 `proxy_preflight_not_ready`。当前修复保留 production override，未绑定时仍 fail-closed；ready/not-ready 回归证明
+proxy ready 后只到 synthetic credential stop，不 reservation、不进入 Provider。
+
+由于源码变化且 `live-v1` tag 不可移动，当前 source contract 预留待创建的 tag identity 为
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`；source manifest=
+`sha256:61afe007f588c62833a10d6c66934bcd90bd3061f4005d1b66e943088afa2829`，Live manifest=
+`372abb4656885536a080cccc98226d41bce083a0fafc6ab54b104eed81df67a4`，policy SHA 保持
+`e979f30c6979e1e4ff17a439f77820ff4ded5882189d58ba753fa02b9e6f74b1`。focused `16/16`（63 assertions）、typecheck/lint/
+diff check 通过；Provider/credential/formal evidence/business writes 均为 `0`。验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
+
 ### 唯一 controlled-Live 停止门（等待新 source 授权）
 
 修复合并并完成 main/source parity 后，先在最终 commit 创建并推送新的 annotated tag
-`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved`，核对 tag object/peeled commit，再重新接受绑定该 source 的
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`，核对 tag object/peeled commit，再重新接受绑定该 source 的
 DeepSeek/Qwen 数据边界并取得新的两行 exact authorization，才可执行一次 RUN。旧授权与旧 tag 不得复用。成功才可能产生
 `schema_recovery_sr5_branch_semantic_gate`；失败、schema、transport、usage、timeout、abort 或 I/O 都必须 durable seal，
 且禁止 retry/replay/curl/单 case/追加 Provider 探测。无论结果均不自动解锁产品、Docker/API/browser、Trace、SLA 或博客。

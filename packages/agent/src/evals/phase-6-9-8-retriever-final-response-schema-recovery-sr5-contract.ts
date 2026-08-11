@@ -35,11 +35,20 @@ export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_SOURCE_REF =
 
 /**
  * The original SR5 admission tag is a sealed historical checkpoint.  The
- * controlled-Live implementation has its own immutable tag so a source fix
- * can never make the historical admission appear to have moved.
+ * controlled-Live implementation uses immutable versioned tags so a source
+ * fix can never make either the historical admission or an earlier Live
+ * source checkpoint appear to have moved.
  */
-export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG =
+export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_TAG =
   'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved' as const;
+export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_SOURCE_REF =
+  `refs/tags/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_TAG}` as const;
+export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_BRANCH =
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH;
+export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH =
+  'drb/phase-6-9-8-sr5-proxy-port-recovery' as const;
+export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG =
+  'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved' as const;
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_SOURCE_REF =
   `refs/tags/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG}` as const;
 

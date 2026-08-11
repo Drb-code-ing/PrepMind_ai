@@ -340,9 +340,11 @@ function createPorts(
 ): Phase698RetrieverSchemaRecoverySr5LiveCliPorts {
   return Object.freeze({
     authority: 'controlled_live' as const,
-    runProxyPreflight: async () => {
-      throw new Error('PROXY_PREFLIGHT_PORT_NOT_BOUND');
-    },
+    runProxyPreflight:
+      overrides?.runProxyPreflight ??
+      (async () => {
+        throw new Error('PROXY_PREFLIGHT_PORT_NOT_BOUND');
+      }),
     readAdmission:
       overrides?.readAdmission ??
       ((value: Parameters<Phase698RetrieverSchemaRecoverySr5LiveCliPorts['readAdmission']>[0]) => {

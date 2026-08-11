@@ -5,7 +5,26 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0K-Live. Phase 6.9.8 Schema Recovery SR5 Live tag compatibility（当前，zero-provider）
+## 0K-Live-v2. Phase 6.9.8 SR5 production proxy port recovery（当前，zero-provider）
+
+当前 source contract 预留待创建的 immutable
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`，旧 `live-v1` tag 保持不动。生产
+`runProxyPreflight` override 已恢复，focused `16/16`（63 assertions），Provider/credential/formal evidence/business writes
+均为 `0`。先运行下列 zero-provider 门：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/agent lint
+git diff --check
+```
+
+该 v2 Git tag 当前尚未创建。分支 push、main `--no-ff` merge/push、main 二次回归、`live-v2` tag/source 核对与新两行 exact authorization 之前禁止
+controlled-Live。语义门通过后才另行授权启动现有 Docker，并验收真实 `/api/chat`、Trace、usage/cost、权限/降级与可见浏览器；
+当前尚不能勾选“产品可用”。证据见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
+
+## 0K-Live-v1. Phase 6.9.8 Schema Recovery SR5 Live tag compatibility（历史，zero-provider）
 
 首次 controlled-Live 在 `proxy_preflight_not_ready` 处 fail-closed，Provider/credential/formal evidence/business writes 均为 `0`。
 proxy accessor 修复已合并并推送；当前 source admission 进一步使用独立 Live tag
