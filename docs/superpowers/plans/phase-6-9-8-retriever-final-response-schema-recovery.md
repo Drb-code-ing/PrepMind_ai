@@ -249,11 +249,26 @@ controlled-Live、semantic/product/main/P95/SLA authority。验收见
 
 本小步仍不创建 approved tag、不读取真实 `.env`、不调用 Provider；只在最终 main parity 后进入唯一 controlled-Live 停止门。
 
+### 7.3.4 Production proxy port recovery（当前，zero-provider）
+
+- [x] 定位正式入口与独立 preflight 不一致的确定性根因：`createPorts` 丢弃 production `runProxyPreflight` override；
+- [x] 改为 `overrides?.runProxyPreflight ?? default fail-closed stub`，保留未绑定 port 的安全默认值；
+- [x] 新增 ready/not-ready 双向回归，确认 ready 后仅进入 synthetic credential stop，不 reservation、不运行 Provider；
+- [x] 保留已推送 `live-v1` tag 不动，将当前 source contract 预留到待创建的 immutable
+  `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`；source manifest=
+  `sha256:61afe007f588c62833a10d6c66934bcd90bd3061f4005d1b66e943088afa2829`，Live manifest=
+  `372abb4656885536a080cccc98226d41bce083a0fafc6ab54b104eed81df67a4`；
+- [x] focused SR5 Live `16/16`（63 assertions）、typecheck/lint/diff check 通过，Provider/credential/formal evidence/
+  business writes=`0`。
+
+验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
+
 ### 7.4 唯一 controlled-Live（等待修复后的新 source 授权）
 
 功能分支先提交并推送、合并并推送最终 `main`，完成 source/upstream/origin parity 与二次 zero-provider 回归；随后在最终 commit
 创建并推送 approved annotated tag
-`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved`，核对 tag object/peeled commit，再重新接受该 tag/source
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`，核对 tag object/peeled commit，再重新接受该 tag/source
 的 DeepSeek/Qwen 数据边界并取得新两行 exact authorization。SR5 使用新 tag/credential mapping/marker/journal/artifact，最多一次；无论成功、schema、
 transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 retry/resume/replay/backfill/recovery 或单 case
 补证。即使完整 gate pass，也只形成新分支 semantic authority，不自动解锁产品或 main。
@@ -277,7 +292,8 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runner-durability-zero-provider.md`、
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`、
   `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-snapshot-fix-zero-provider.md`、
-  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`；
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`、
+  `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`；
 - 入口：`AGENTS.md`、`README.md`、`DEVLOG.md`、`docs/roadmap.md`、`docs/data-flow.md`、`docs/dev-start.md`、
   `docs/acceptance-checklist.md`、`docs/ai-behavior-acceptance.md`；
 - [x] SR2 fixture/responder SHA、shape/fault/metamorphic matrix 与 zero-provider authority 已记录；

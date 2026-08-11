@@ -3,7 +3,25 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 Schema Recovery SR5 Live tag compatibility（zero-provider，2026-08-10）
+## 当前 SR5 production proxy port recovery（zero-provider，2026-08-11）
+
+生产 `runProxyPreflight` port 丢失问题已修复；新的 source-bound contract 预留的待创建 tag 为
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`，旧 `live-v1` tag 不移动、不覆盖。当前只允许
+zero-provider 检查：focused `16/16`（63 assertions），source manifest=`sha256:61afe007...fa2829`，Provider/credential/
+formal evidence/business writes 均为 `0`。
+
+```powershell
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live -- --help
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:validate
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:recover
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts
+```
+
+该 v2 Git tag 当前尚未创建；在分支/main/tag/source/新授权全部收口前禁止 RUN。controlled-Live 语义门通过后，才在独立 SR6 授权下按本文后续 Docker
+章节启动现有服务并做 API/Trace/可见浏览器验收；不得执行 `down -v`、清库、Redis flush 或 MinIO wipe。当前产品验收未执行。
+详见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
+
+## 历史 Schema Recovery SR5 Live tag compatibility（zero-provider，2026-08-10）
 
 SR5 Live 首次入口在 proxy 前门以 `proxy_preflight_not_ready` fail-closed，未读取 credential、未调用 Provider、未创建正式 evidence。
 proxy 修复已完成；当前 Live source admission 改为只接受新 annotated tag

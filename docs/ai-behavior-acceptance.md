@@ -2,7 +2,18 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 Live tag compatibility（当前，zero-provider）
+## Phase 6.9.8 SR5 production proxy port recovery（当前，zero-provider）
+
+生产 `runProxyPreflight` override 被 core 丢弃的缺陷已修复，缺失 override 时仍 fail-closed。新 source contract 预留的待创建 tag 为
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`，历史 `live-v1` tag 保持不可变；focused
+`16/16`（63 assertions），Provider/credential/formal evidence/business writes 均为 `0`。
+
+该 v2 Git tag 当前尚未创建。这只证明正式入口现在能到达真实 shared preflight，不证明模型质量或产品体验。必须完成 main/tag/source parity 并重新取得
+两行 exact authorization，执行唯一 controlled-Live；只有完整语义门通过，才另行授权 Docker `/api/chat`、Trace、usage/cost、
+权限/降级和可见浏览器验收。当前产品验收尚未执行。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
+
+## 历史 Phase 6.9.8 SR5 Live tag compatibility（zero-provider，2026-08-10）
 
 首次 controlled-Live 在 proxy 前门 `proxy_preflight_not_ready` fail-closed，approved tag/正式 Live evidence/Provider 调用均仍为 `0`。
 proxy accessor 修复已完成；Live source admission 又从历史 tag 中独立出来。本节记录的是 zero-provider 实现合同，

@@ -16,7 +16,10 @@ import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RUN_ARGUMENT,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_VALIDATE_ARGUMENT,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-contract.ts';
-import { createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-admission.ts';
+import {
+  createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest,
+  validatePhase698RetrieverSchemaRecoverySr5LiveObservationForTest,
+} from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-admission.ts';
 import {
   createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest,
   runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest,
@@ -39,15 +42,21 @@ import {
 import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_TAG,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_SOURCE_REF,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_TAG,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_BRANCH,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.ts';
 import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST_SHA256,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_OBJECTS,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-manifest.ts';
-import { createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixture } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-schema.ts';
+import {
+  createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixture,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA_VERSION,
+} from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-schema.ts';
 
 const roots: string[] = [];
 
@@ -85,7 +94,22 @@ describe('SR5 live lineage (zero-provider tests)', () => {
       'phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved',
     );
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG).toBe(
+      'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved',
+    );
+    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_TAG).toBe(
       'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved',
+    );
+    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG).not.toBe(
+      PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_TAG,
+    );
+    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH).toBe(
+      'drb/phase-6-9-8-sr5-proxy-port-recovery',
+    );
+    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_BRANCH).toBe(
+      'drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5',
+    );
+    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH).not.toBe(
+      PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_BRANCH,
     );
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG).not.toBe(
       PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_TAG,
@@ -96,6 +120,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
     });
     expect(createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixture()).toMatchObject({
+      branch: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH,
       approvedTag: {
         name: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG,
         ref: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_SOURCE_REF,
@@ -139,6 +164,31 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     expect(validation.ok).toBe(true);
     expect(validation.runId).toBe(runId);
     await expect(reservation.publishArtifact(report)).rejects.toThrow();
+  });
+
+  it('projects a production-shaped v2 repository observation through the live source schema', () => {
+    const source = createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixture();
+    expect(
+      validatePhase698RetrieverSchemaRecoverySr5LiveObservationForTest({
+        branch: source.branch,
+        head: source.head,
+        upstream: source.upstream,
+        origin: source.origin,
+        approvedTag: source.approvedTag,
+        clean: true,
+        formalEvidencePaths: [],
+        sourceBundleSha256: source.sourceBundleSha256,
+      }),
+    ).toMatchObject({
+      ok: true,
+      source: {
+        schemaVersion: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA_VERSION,
+        branch: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH,
+        approvedTag: {
+          name: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG,
+        },
+      },
+    });
   });
 
   it('stops before dispatch when the parent signal is already aborted', async () => {
@@ -238,6 +288,66 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     expect(code).toBe(1);
     expect(credentialReads).toBe(0);
     expect(JSON.parse(writes[0] ?? '{}').code).toBe('proxy_preflight_not_ready');
+  });
+
+  it('preserves an injected ready proxy port and stops at credential projection', async () => {
+    const writes: string[] = [];
+    let proxyPreflights = 0;
+    let credentialEnvLoads = 0;
+    let downstreamCalls = 0;
+    const code = await executePhase698RetrieverSchemaRecoverySr5LiveCliCore(
+      {
+        args: [PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RUN_ARGUMENT],
+        root: 'synthetic-root',
+        proxyEnv: {},
+        authorizationEnv: {
+          PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
+            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+          PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
+            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_CONTROLLED_LIVE_ONCE',
+        },
+        signal: new AbortController().signal,
+      },
+      {
+        readAdmission: () =>
+          createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest(),
+        runProxyPreflight: async () => {
+          proxyPreflights += 1;
+          return {
+            ok: true,
+            code: 'loopback_proxy_ready',
+            providerCalls: 0,
+            listenerProbeCalls: 1,
+          };
+        },
+        loadCredentialEnv: async () => {
+          credentialEnvLoads += 1;
+          throw new Error('synthetic-configuration-stop');
+        },
+        reserve: async () => {
+          downstreamCalls += 1;
+          throw new Error('must-not-reserve');
+        },
+        createHarness: () => {
+          downstreamCalls += 1;
+          throw new Error('must-not-create-harness');
+        },
+        run: async () => {
+          downstreamCalls += 1;
+          throw new Error('must-not-run');
+        },
+        write: (line) => writes.push(line),
+      },
+    );
+    expect(code).toBe(1);
+    expect(proxyPreflights).toBe(1);
+    expect(credentialEnvLoads).toBe(1);
+    expect(downstreamCalls).toBe(0);
+    expect(JSON.parse(writes[0] ?? '{}')).toMatchObject({
+      code: 'live_configuration_invalid',
+      credentialReads: 0,
+      formalEvidence: 0,
+    });
   });
 
   it('materializes Bun-style accessor proxy variables before shared preflight', async () => {

@@ -5,9 +5,9 @@
 基线：`main@82936a955670a647756940fb398119647064d095`
 状态：**历史 zero-provider admission contract 已完成并封存；controlled-Live 尚未授权、尚未执行**
 
-> 本文的旧 approved tag 与 historical manifest 保持不可变。当前 Live 若需执行，使用独立的
-> `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved` source contract；详见
-> `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
+> 本文的旧 approved tag 与 historical manifest 保持不可变。`live-v1` 后续也已成为不可移动的历史 source checkpoint；
+> 当前修复后的 Live 使用 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved` source contract。详见
+> `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
 
 ## 1. 这一步完成了什么
 

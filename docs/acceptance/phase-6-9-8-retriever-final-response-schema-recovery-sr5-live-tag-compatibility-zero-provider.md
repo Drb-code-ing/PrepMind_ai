@@ -4,6 +4,11 @@
 范围：修复 SR5 Live source admission 对不可变历史 tag 的绑定冲突。本文是实现与静态回归记录，不是
 controlled-Live 结果。
 
+> 状态更正（2026-08-11）：本文记录的是 tag compatibility checkpoint。当时写入的“尚未创建新 tag/下一步创建”
+> 只描述该 checkpoint 的时点；随后已在 `main@284ea354` 创建并推送
+> `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved`，并完成合并后二次 zero-provider 回归。
+> 当前最新阻断点与修复见 `...sr5-live-proxy-port-recovery-zero-provider.md`；不得把本页历史下一步当作当前状态。
+
 ## 为什么需要这一步
 
 历史 SR5 admission contract 固定绑定 annotated tag
@@ -35,7 +40,7 @@ source-manifest binding。两条 lineage 不共享可移动的 tag identity。
 
 ## 零 Provider 验收
 
-在未创建新 tag、未提供新的 source-bound authorization 的状态下，所有生产 Live 入口仍 fail-closed；本次没有
+在本 checkpoint 当时未创建新 tag、未提供新的 source-bound authorization，所有生产 Live 入口仍 fail-closed；本次没有
 读取根 `.env`、credential 或 Provider，也没有创建正式 marker/journal/report/artifact/recovery claim，未写入
 产品数据，未启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。
 
@@ -57,14 +62,14 @@ Durability 的目录围栏在每次文件读写前后重新检查 `.tmp` 的 `ls
 的 fail-closed 路径。该跨平台 Node CLI 不承诺对同机高权限攻击者在单次 syscall 窗口内的原子 `openat` 语义；此类攻击者不在本地
 受控评测威胁模型内，发现目录漂移时宁可停止并保留可审计残留，不继续向未知路径写入。
 
-## 下一停止门
+## 本 checkpoint 当时的下一停止门（后续已完成）
 
-1. 将本次源码与文档合并回 `main`，推送 `origin/main`，并在合并后二次执行相同 zero-provider 回归。
-2. 在最终 parity commit 上创建并推送唯一新的 annotated tag
+1. （已完成）将本次源码与文档合并回 `main`，推送 `origin/main`，并在合并后二次执行相同 zero-provider 回归。
+2. （已完成）在最终 parity commit 上创建并推送唯一新的 annotated tag
    `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved`，核对 tag object 与 peeled commit。
-3. 由用户针对该 tag、peeled commit 与 source bundle 重新接受 DeepSeek/Qwen 数据边界，并发送绑定该最终 source 的两行
+3. （已完成后再次失效）由用户针对该 tag、peeled commit 与 source bundle 重新接受 DeepSeek/Qwen 数据边界，并发送绑定该最终 source 的两行
    exact authorization。
-4. 仅在所有前门通过后执行一次 controlled-Live；成功、quality gate 失败或 transport/configuration 失败都必须
+4. （因源码再次变化而需重新执行）仅在所有前门通过后执行一次 controlled-Live；成功、quality gate 失败或 transport/configuration 失败都必须
    durable seal，之后禁止 retry/resume/replay/backfill、curl、单 case 或追加 Provider 探测。
 
 本文件不消费当前授权，也不宣称 Live 已执行。旧 tag、旧 marker/journal/artifact（如存在）均不可移动、覆盖或删除。

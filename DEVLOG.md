@@ -1,5 +1,25 @@
 # PrepMind AI 开发日志
 
+> 2026-08-11 — Phase 6.9.8 SR5 production proxy port recovery（当前分支，zero-provider）：
+>
+> 定位到上一轮 `proxy_preflight_not_ready` 的确定性根因：生产 wrapper 已注入共享 `runProxyPreflight`，但
+> `...sr5-live-cli-core.ts` 的 `createPorts` 无条件用 `PROXY_PREFLIGHT_PORT_NOT_BOUND` 抛错桩覆盖 override；因此独立
+> preflight 的 `loopback_proxy_ready` 从未进入正式入口。修复为 `overrides?.runProxyPreflight ?? default fail-closed stub`，
+> 保留没有注入 port 时的 fail-closed 安全默认值。
+>
+> 为避免移动已推送的 `live-v1` tag，当前 source contract 预留待创建的 immutable
+> `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`，source manifest=`sha256:61afe007...fa2829`，
+> Live manifest=`372abb46...df67a4`。新增 ready/not-ready 双向回归：SR5 Live focused `16/16`（63 assertions），
+> SR5 + Task 9B boundary `54/54`（191 assertions），typecheck/lint/diff check 通过；
+> Agent full `1529/1529`（25224 expect()，196 files）；
+> `providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`，未读取根 `.env`、未调用 DeepSeek/Qwen、
+> 未创建 marker/journal/report/artifact，未启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
+>
+> v2 Git tag 当前尚未创建。源码已变化，旧 SR5 tag/授权不可复用；上一轮失败未消费一次性名额。下一步是分支提交/推送、`--no-ff` 合并并推送
+> `main`、合并后二次 zero-provider、创建新的 source-bound annotated tag并重新取得 exact authorization，再执行唯一一次
+> controlled-Live。语义门通过后才另行授权启动 Docker/API/可见浏览器产品验收；当前产品验收尚未执行。
+
 > 2026-08-10 — Phase 6.9.8 SR5 Live boundary hardening（当前功能分支，zero-provider）：
 >
 > 在 tag compatibility recovery 之后补齐两个宿主边界：生产 CLI 通过 own descriptor + `Reflect.get` 将 Bun/Windows

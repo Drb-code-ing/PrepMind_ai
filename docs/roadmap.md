@@ -1,6 +1,28 @@
 # PrepMind AI 学习与开发路线图
 
-## 当前原子阶段：Phase 6.9.8 Schema Recovery SR5 Live tag compatibility recovery（2026-08-10）
+## 当前原子阶段：Phase 6.9.8 SR5 production proxy port recovery（2026-08-11）
+
+上一轮 SR5 唯一入口在 proxy 前门返回 `proxy_preflight_not_ready`，但独立 preflight 为
+`loopback_proxy_ready`。根因已定位为 production `runProxyPreflight` 被 `createPorts` 无条件丢弃，随后由默认抛错桩触发
+统一的 proxy failure；这不是代理 listener、Bun dotenv、cwd、账号或 Provider 根因。
+
+当前分支 `drb/phase-6-9-8-sr5-proxy-port-recovery` 已修复 port 组装，并新增 ready/not-ready 双向 zero-provider 回归：
+新的 source contract 预留待创建的 immutable tag identity
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`，保留 `live-v1` tag 不动；source manifest=
+`sha256:61afe007...fa2829`，Live manifest=`372abb46...df67a4`。focused `16/16`（63 assertions），
+SR5 + Task 9B boundary `54/54`（191 assertions），typecheck/lint/diff check 通过，`providerCalls=0 / credentialReads=0 /
+formalEvidence=0 / businessWrites=0`；Agent full `1529/1529`（25224 expect()，196 files）。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
+
+该 v2 Git tag 当前尚未创建。源码变化后，历史 SR5 tag 与旧授权不可复用；此前 proxy fail-closed 没有消费一次性名额，formal namespace 仍为 `0`。
+固定下一顺序：推送分支 → `--no-ff` 合并并推送 `main` → main 二次 zero-provider → 最终 parity commit 创建新的
+annotated tag 并核对 source bundle → 用户重新接受 DeepSeek/Qwen 数据边界并提供绑定新 source 的两行 exact authorization
+→ 唯一一次 controlled-Live。成功只形成语义 authority，失败 durable seal 后停止；禁止 retry/replay/curl/单 case/追加探测。
+
+controlled-Live 语义门通过后，另行授权进入 SR6 产品验收（现有 Docker、真实 `/api/chat`、Trace/usage/cost、错误回退、权限
+隔离、可见浏览器/PWA，并保留窗口和精确清理证据）。当前尚未做 Docker/API/浏览器产品验收，因此不能宣称产品链路已可用。
+
+## 历史 checkpoint：Phase 6.9.8 Schema Recovery SR5 Live tag compatibility recovery（2026-08-10）
 
 SR5 Live 首次入口在 proxy 前门 fail-closed（`proxy_preflight_not_ready`），Provider/credential/formal evidence/business writes
 均为 `0`，没有创建 marker/journal/report/artifact，也没有清理 Docker 或任何基础设施。proxy accessor 修复已合并并推送；

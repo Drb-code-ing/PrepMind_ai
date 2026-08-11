@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
-  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_SOURCE_REF,
   canonicalPhase698RetrieverSchemaRecoverySr5Json,
   sha256Phase698RetrieverSchemaRecoverySr5,
@@ -18,7 +18,7 @@ import {
  * root package manifest and Bun lockfile bind workspace resolution as blobs.
  */
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST_VERSION =
-  'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-source-manifest-v1' as const;
+  'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-source-manifest-v2' as const;
 
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_OBJECTS = Object.freeze([
   Object.freeze({ path: 'package.json', objectKind: 'blob' as const }),
@@ -30,7 +30,7 @@ export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_OBJECTS = Obj
 
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST = deepFreeze({
   version: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST_VERSION,
-  approvedBranch: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_BRANCH,
+  approvedBranch: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH,
   approvedSourceRef: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_SOURCE_REF,
   historicalAdmissionManifestSha256:
     PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_ADMISSION_MANIFEST_SHA256,
