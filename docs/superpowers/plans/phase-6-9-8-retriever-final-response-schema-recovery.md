@@ -313,3 +313,6 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
 - [x] SR4 factory SHA、production-shaped node path、schema accounting、anti-oracle、fault matrix 与 zero-provider authority 已记录；
 - [x] SR4 Agent/AI/Types/Server/Web/historical validator parity、分支推送、`main --no-ff` 合并与合并后二次回归已完成；
 - 历史 P1 spec/plan 与 Agents 设计计划只更新“当前状态/下一步”指针，不改写已封存事实。
+## Current execution override (2026-08-12)
+
+SR5 next-lineage D0/C1 is implemented as a standalone zero-provider source admission module and focused test. Remaining closeout is branch commit/push, `--no-ff` merge and push to `main`, then merged-main zero-provider parity. Do not create the future v3 tag or request Live authorization in this task.

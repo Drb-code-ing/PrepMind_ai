@@ -668,3 +668,6 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 ## 项目声明
 
 这是一个学习与作品集导向的 AI 应用工程项目，仍在快速迭代中。README 只描述当前真实状态，不把后续 Phase 包装成已经完成的能力。
+## Current SR5 checkpoint
+
+The next task is limited to independent next-lineage D0/C1 zero-provider source admission on `drb/phase-6-9-8-sr5-next-lineage-admission`. The future v3 tag is absent and no real-model Live run is authorized. See `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-next-lineage-admission-zero-provider.md`.

@@ -1897,3 +1897,6 @@ Phase 7.12 只把已有 worker readiness CLI 接入本地 Docker Compose `worker
 - healthcheck 只能作为容器级 readiness 信号，不得消费 BullMQ、不 dispatch outbox、不 requeue、不修改业务数据。
 - 验收重点是 compose 配置合法、worker service healthcheck 存在、命令指向构建产物、timeout / retries / start period 合理。
 - 本阶段的 compose config、单元测试、build、eslint 和 `git diff --check` 足以覆盖；只有后续把该信号接入真实生产编排平台或前端 UI 时，才需要新增对应部署或 UI 验收。
+## SR5 next-lineage model boundary
+
+This checkpoint evaluates no model behavior: `providerDispatchAllowed=false`, provider calls and credential reads are zero. Any future DeepSeek/Qwen claim requires a fresh source-bound tag, data-boundary acceptance, exact authorization, and separate controlled-Live evidence.

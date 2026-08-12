@@ -6273,3 +6273,9 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
   browser, API, provider, synthetic account, trace or test data was executed
   or created. The offline gates and independent contract/operations reviews
   are complete; the next required step is fresh, explicit user authorization.
+## 2026-08-12 - SR5 next-lineage admission D0/C1
+
+- Added an independent source-admission contract and single-use zero-provider capability.
+- Preserved sealed v2 tag/run/report/artifact identity; planned v3 tag is intentionally absent.
+- Focused `16/16` (`39 expect()`), Agent full `1554/1554` (`25286 expect()`, `197 files`), typecheck, and ESLint pass. No `.env`, credential, Provider, evidence, Docker/API/browser, Trace, BackgroundJob, or Outbox access.
+- Next closeout: push branch, `--no-ff` merge and push `main`, then rerun zero-provider parity on `main`. Tag and controlled-Live remain separate future decisions.

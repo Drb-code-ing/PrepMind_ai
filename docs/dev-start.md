@@ -2158,3 +2158,6 @@ docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker
 ```
 
 `stop` 保留容器、镜像、network、PostgreSQL/MinIO volume 与所有数据。关机收口禁止 `down`、`down -v`、prune、container/image/volume 删除、数据库 reset、Redis flush 或 MinIO wipe。
+## SR5 next-lineage checkpoint
+
+Run the focused admission tests on `drb/phase-6-9-8-sr5-next-lineage-admission`; do not use the Live CLI or load `.env`. The future v3 tag is intentionally absent. Push the branch, merge with `--no-ff` to `main`, push `main`, then rerun zero-provider checks on `main`.
