@@ -2250,3 +2250,5 @@ Phase 3 已将 OCR 识别链路从 Markdown-first 升级为 structured output：
 ## SR5 next-lineage boundary
 
 Git parity and source-object bundle produce an immutable predecessor receipt and a single-use zero-provider capability. The flow stops before credentials, providers, formal evidence, business writes, Trace, BackgroundJob, and Outbox. The planned v3 evidence namespace is isolated from sealed v1/v2 namespaces.
+
+C2 flow: final merged `main` -> computed whole-tree bundle -> canonical annotated tag -> push remote tag -> local/origin raw object and peeled commit verification -> single-use zero-provider tag-binding capability. No provider path is reachable.

@@ -1900,3 +1900,5 @@ Phase 7.12 只把已有 worker readiness CLI 接入本地 Docker Compose `worker
 ## SR5 next-lineage model boundary
 
 This checkpoint evaluates no model behavior: `providerDispatchAllowed=false`, provider calls and credential reads are zero. Any future DeepSeek/Qwen claim requires a fresh source-bound tag, data-boundary acceptance, exact authorization, and separate controlled-Live evidence.
+
+C2 tag parity is also model-zero-call. An approved source tag is only source authority; it cannot be reported as schema, semantic, transport, usage, cost, product, or SLA authority.

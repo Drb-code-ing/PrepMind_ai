@@ -6279,3 +6279,10 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Preserved sealed v2 tag/run/report/artifact identity; planned v3 tag is intentionally absent.
 - Focused `16/16` (`39 expect()`), Agent full `1554/1554` (`25286 expect()`, `197 files`), typecheck, and ESLint pass. No `.env`, credential, Provider, evidence, Docker/API/browser, Trace, BackgroundJob, or Outbox access.
 - Feature `87dd1e24` was pushed and merged with `--no-ff` as `001770ff`; `main` was pushed. Merged-main Git admission produced bundle `sha256:047ca220...3821f` with future tag absent and all zero-provider counters at zero; focused/full/typecheck/lint/parity passed again. Tag and controlled-Live remain separate future decisions.
+
+## 2026-08-12 - SR5 next-lineage C2 tag contract
+
+- Added a post-tag verifier that dynamically validates the v3 annotated tag, local/origin raw object parity, peeled/target commit, canonical message, final whole-tree bundle, sealed v2 receipt, and empty v3 evidence namespace.
+- Avoided embedding the future tag object ID or final bundle SHA inside the covered Agent tree, preventing pre-creation and source-hash circularity.
+- Pre-tag focused `21/21` (`31 expect()`), Agent full `1575/1575` (`25319 expect()`, `198 files`), typecheck/lint passed; Provider/credential/evidence/business writes remain zero.
+- Closeout is feature push, `--no-ff` merge/push `main`, create/push v3 annotated tag on that exact commit, then run actual post-tag verifier without a later commit moving `main` past the tag.

@@ -316,3 +316,5 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
 ## Current execution override (2026-08-12)
 
 SR5 next-lineage D0/C1 is implemented, pushed as `87dd1e24`, merged with `--no-ff` as `001770ff`, and pushed to `main`. Merged-main Git admission plus focused/full/typecheck/lint parity passed. Do not create the future v3 tag or request Live authorization in this task; those remain separate next-lineage decisions.
+
+C2 now freezes the annotated-tag contract and post-tag verifier on `drb/phase-6-9-8-sr5-next-lineage-tag-contract`. Required closeout: feature commit/push -> `--no-ff` merge/push final `main` -> compute bundle -> create/push v3 tag -> actual local/origin tag parity. No commit follows the tag in C2, and no Live authorization is requested.

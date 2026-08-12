@@ -671,3 +671,5 @@ V9 R5 evidence/journal/marker 已按 run `c530ca02...` 封存；V1--V8 evidence 
 ## Current SR5 checkpoint
 
 The next task is limited to independent next-lineage D0/C1 zero-provider source admission on `drb/phase-6-9-8-sr5-next-lineage-admission`. The future v3 tag is absent and no real-model Live run is authorized. See `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-next-lineage-admission-zero-provider.md`.
+
+C2 adds the standalone annotated-tag parity contract on `drb/phase-6-9-8-sr5-next-lineage-tag-contract`. It verifies local/remote tag identity and final source bundle after merge; it still performs no model call or product acceptance.

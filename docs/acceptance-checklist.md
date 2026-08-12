@@ -2792,3 +2792,12 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Push feature commit `87dd1e24` and merge with `--no-ff` as `001770ff`; push `main`.
 - [x] Repeat focused/full/typecheck/lint/Git-admission zero-provider validation on `main`.
 - [ ] Future tag and controlled-Live decision (separate authorization).
+
+### C2 annotated tag contract
+
+- [x] Canonical message and dynamic whole-tree bundle contract.
+- [x] Annotated kind, target/peeled commit, local/origin raw object parity.
+- [x] Sealed v2 receipt and empty v3 evidence namespace.
+- [x] Focused `21/21`, Agent full `1575/1575`, typecheck/lint, zero-provider boundary.
+- [ ] Push feature, merge/push final `main`, create/push v3 tag, run actual post-tag parity.
+- [ ] Fresh data boundary and exact Live authorization remain separate.
