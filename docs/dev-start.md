@@ -2161,3 +2161,5 @@ docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker
 ## SR5 next-lineage checkpoint
 
 Run the focused admission tests on `drb/phase-6-9-8-sr5-next-lineage-admission`; do not use the Live CLI or load `.env`. The future v3 tag is intentionally absent. Push the branch, merge with `--no-ff` to `main`, push `main`, then rerun zero-provider checks on `main`.
+
+For C2 use `drb/phase-6-9-8-sr5-next-lineage-tag-contract`. The tag is created only after its final merge commit is pushed. Run the post-tag verifier from clean `main`; do not load `.env`, invoke Live scripts, or create a documentation commit after tagging.

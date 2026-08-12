@@ -1195,3 +1195,5 @@ Phase 7.0 / 7.1 已完成知识库后台处理地基：
 ## Current checkpoint: SR5 next-lineage admission
 
 D0/C1 is implemented as independent zero-provider Git/source admission. The future v3 tag is not created and controlled-Live is not authorized. Old v1/v2 tags and sealed evidence are immutable. Merge and push `main`, then repeat zero-provider validation before any tag decision.
+
+C2 freezes the v3 annotated-tag message and post-tag parity verifier. After feature validation, merge/push final `main`, create/push the tag on exactly that commit, and verify local/remote identity. Live authorization remains a later task.

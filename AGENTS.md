@@ -1293,3 +1293,5 @@ mcp -> ai, fsrs, rag, types
 ## Current next-lineage checkpoint (2026-08-12)
 
 `drb/phase-6-9-8-sr5-next-lineage-admission` adds only independent SR5 D0/C1 zero-provider Git/source admission. The planned `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v3-approved` tag does not exist; no Live authorization, credential, Provider, or product acceptance is in scope. Old v2 run/tag/evidence remain immutable. Closeout order is feature push, `--no-ff` merge and push `main`, then merged-main zero-provider parity.
+
+C2 runs on `drb/phase-6-9-8-sr5-next-lineage-tag-contract`: it adds a post-tag verifier for annotated kind, local/origin raw tag parity, peeled/target commit, canonical message, dynamic source bundle, sealed v2 identity, and empty v3 evidence namespace. The v3 tag is created only after merge/push of final `main`; do not add a later parity commit that moves `main` beyond the tag. C2 remains zero-provider and defines no Live authorization.
