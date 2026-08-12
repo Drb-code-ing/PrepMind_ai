@@ -38,3 +38,11 @@ D3 deliberately does not issue Git authority or an executable capability. Its ou
 Credential reads, Provider calls, formal evidence, and business writes are all `0`. No `.env`, proxy probe, adapter, runner, reservation, marker, journal, artifact, Docker/API/browser, Trace, BackgroundJob, or Outbox was accessed.
 
 D3 does not consume user acceptance and does not create the v4 tag. Runner/durability and the final Git verifier must be completed before the one final source tag and any fresh authorization.
+
+## Git closeout
+
+- feature commit: `0943c4e4`
+- merge commit: `d553e545b33ca283b951b3c871e34c96dcf3d178`
+- at the implementation-merge checkpoint, `main == origin/main == d553e545b33ca283b951b3c871e34c96dcf3d178`
+- merged-main focused `19/19`, Agent full `1627/1627`, typecheck, and lint passed again
+- no v4 tag, Git authority capability, authorization receipt, formal evidence, or Provider call was created

@@ -2829,5 +2829,5 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Authorization commit/bundle/tag-object bound to the dynamic receipt.
 - [x] No Git authority, runner invocation, dispatch, credential, or evidence capability issued.
 - [x] Focused `19/19`, Agent full `1627/1627`, typecheck/lint/Prettier/diff check.
-- [ ] Feature push, `--no-ff` merge/push, and merged-main regression.
+- [x] Feature `0943c4e4` pushed; `--no-ff` merge `d553e545` pushed; merged-main focused/full/typecheck/lint passed.
 - [ ] Runner/durability, final Git verifier/tag, and fresh user acceptance remain separate.
