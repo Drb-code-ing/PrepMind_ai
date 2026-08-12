@@ -30,7 +30,11 @@ import {
   type Phase698RetrieverSchemaRecoverySr5LiveReport,
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-contract.ts';
 import {
+  cancelPhase698RetrieverSchemaRecoverySr5LiveFirstDispatchPermit,
+  consumePhase698RetrieverSchemaRecoverySr5LiveFirstDispatchCapability,
   consumePhase698RetrieverSchemaRecoverySr5LiveAdmissionCapability,
+  invokePhase698RetrieverSchemaRecoverySr5LiveFirstDispatchPermit,
+  revalidatePhase698RetrieverSchemaRecoverySr5LiveBeforeFirstDispatch,
   type Phase698RetrieverSchemaRecoverySr5LiveAdmissionCapability,
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-admission.ts';
 import { PHASE_6_9_8_TASK8_MANIFEST } from './phase-6-9-8-retriever-final-response-manifest.ts';
@@ -38,7 +42,10 @@ import { PHASE_6_9_8_TASK8_MANIFEST } from './phase-6-9-8-retriever-final-respon
 const UUID = z.string().uuid();
 const SAFE_CODE = z.string().regex(/^[a-z0-9_]{1,96}$/u);
 const USAGE_SCHEMA = z
-  .object({ inputTokens: z.number().int().positive(), outputTokens: z.number().int().nonnegative() })
+  .object({
+    inputTokens: z.number().int().positive(),
+    outputTokens: z.number().int().nonnegative(),
+  })
   .strict();
 const RETRIEVAL_RESULT_SCHEMA = z
   .object({
@@ -84,25 +91,35 @@ const FINAL_RESULT_SCHEMA = z
 
 export type Phase698RetrieverSchemaRecoverySr5LiveHarness = Readonly<{
   transportAuthority: 'external_provider' | 'synthetic_injected';
-  runGuard(testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.guardCases)[number], signal: AbortSignal): Promise<Phase698Task9GuardResult>;
-  invokeCall(input: Readonly<{
-    identity: Phase698Task9CallIdentity;
-    testCase:
-      | (typeof PHASE_6_9_8_TASK8_MANIFEST.rewriteCases)[number]
-      | (typeof PHASE_6_9_8_TASK8_MANIFEST.finalResponseCases)[number];
-    rewrittenQuery?: string;
-    signal: AbortSignal;
-  }>): Promise<Phase698Task9CallResult>;
+  runGuard(
+    testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.guardCases)[number],
+    signal: AbortSignal,
+  ): Promise<Phase698Task9GuardResult>;
+  invokeCall(
+    input: Readonly<{
+      identity: Phase698Task9CallIdentity;
+      testCase:
+        | (typeof PHASE_6_9_8_TASK8_MANIFEST.rewriteCases)[number]
+        | (typeof PHASE_6_9_8_TASK8_MANIFEST.finalResponseCases)[number];
+      rewrittenQuery?: string;
+      signal: AbortSignal;
+    }>,
+  ): Promise<Phase698Task9CallResult>;
 }>;
 
 export type Phase698RetrieverSchemaRecoverySr5LiveCallLifecycle = Readonly<{
-  appendWireStage(stage: 'dispatch_started' | 'response_received' | 'usage_verified', preparedSuccess?: Phase698Task9CallEntry): Promise<void>;
+  appendWireStage(
+    stage: 'dispatch_started' | 'response_received' | 'usage_verified',
+    preparedSuccess?: Phase698Task9CallEntry,
+  ): Promise<void>;
 }>;
 
 export type Phase698RetrieverSchemaRecoverySr5LiveLifecycle = Readonly<{
   runId: string;
   appendGuardTerminal(entry: Phase698RetrieverSchemaRecoverySr5LiveGuardEntry): Promise<void>;
-  reserveCall(identity: Phase698Task9CallIdentity): Promise<Phase698RetrieverSchemaRecoverySr5LiveCallLifecycle>;
+  reserveCall(
+    identity: Phase698Task9CallIdentity,
+  ): Promise<Phase698RetrieverSchemaRecoverySr5LiveCallLifecycle>;
   appendCallTerminal(entry: Phase698Task9CallEntry): Promise<void>;
   appendRewriteTerminal(entry: Phase698RetrieverSchemaRecoverySr5LiveRewriteEntry): Promise<void>;
   appendFinalTerminal(entry: Phase698RetrieverSchemaRecoverySr5LiveFinalEntry): Promise<void>;
@@ -118,6 +135,11 @@ export type RunPhase698RetrieverSchemaRecoverySr5LiveInput = Readonly<{
   lifecycle: Phase698RetrieverSchemaRecoverySr5LiveLifecycle;
   signal: AbortSignal;
 }>;
+type RunPhase698RetrieverSchemaRecoverySr5LiveTestInput =
+  RunPhase698RetrieverSchemaRecoverySr5LiveInput &
+    Readonly<{
+      beforeFirstDispatchCapabilityConsumeForTest?: () => void;
+    }>;
 
 export type Phase698RetrieverSchemaRecoverySr5LiveGuardEntry = Phase698Task9GuardEntry;
 export type Phase698RetrieverSchemaRecoverySr5LiveCallEntry = Phase698Task9CallEntry;
@@ -132,7 +154,7 @@ export function runPhase698RetrieverSchemaRecoverySr5ControlledLive(
 
 /** Synthetic harness seam: it never reads credentials or calls a Provider. */
 export function runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest(
-  input: RunPhase698RetrieverSchemaRecoverySr5LiveInput,
+  input: RunPhase698RetrieverSchemaRecoverySr5LiveTestInput,
 ): Promise<Readonly<Phase698RetrieverSchemaRecoverySr5LiveReport>> {
   return runEvaluation(input, true);
 }
@@ -208,7 +230,7 @@ export function createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessF
 }
 
 async function runEvaluation(
-  input: RunPhase698RetrieverSchemaRecoverySr5LiveInput,
+  input: RunPhase698RetrieverSchemaRecoverySr5LiveTestInput,
   allowSynthetic: boolean,
 ): Promise<Readonly<Phase698RetrieverSchemaRecoverySr5LiveReport>> {
   normalizeInput(input, allowSynthetic);
@@ -216,6 +238,7 @@ async function runEvaluation(
     input.admissionCapability,
     input.admissionAuthority,
     input.repositoryRoot,
+    input.runId,
   );
   const live = input.admissionAuthority === 'git_verified_live';
   const expectedTransportAuthority = live ? 'external_provider' : 'synthetic_injected';
@@ -247,6 +270,7 @@ async function runEvaluation(
       : null
     : 'case_guard';
   const budget = { inputTokens: 0, outputTokens: 0, costCny: 0 };
+  const dispatchGate = { validated: false };
 
   for (const testCase of PHASE_6_9_8_TASK8_MANIFEST.rewriteCases.slice(0, 6)) {
     const identities = [
@@ -265,7 +289,14 @@ async function runEvaluation(
       rewrites.push(incomplete);
       continue;
     }
-    const original = await executeCall(input, identities[0], testCase, undefined, budget);
+    const original = await executeCall(
+      input,
+      identities[0],
+      testCase,
+      undefined,
+      budget,
+      dispatchGate,
+    );
     calls.push(original.entry);
     if (!original.result) {
       breaker = breakerFrom(original.entry);
@@ -279,7 +310,14 @@ async function runEvaluation(
       rewrites.push(incomplete);
       continue;
     }
-    const candidate = await executeCall(input, identities[1], testCase, undefined, budget);
+    const candidate = await executeCall(
+      input,
+      identities[1],
+      testCase,
+      undefined,
+      budget,
+      dispatchGate,
+    );
     calls.push(candidate.entry);
     if (!candidate.result || candidate.result.phase !== 'rewrite_candidate_model') {
       breaker = breakerFrom(candidate.entry);
@@ -297,10 +335,16 @@ async function runEvaluation(
       testCase,
       candidate.result.executedQuery,
       budget,
+      dispatchGate,
     );
     calls.push(candidateRetrieval.entry);
     if (!candidateRetrieval.result) breaker = breakerFrom(candidateRetrieval.entry);
-    const rewrite = buildRewrite(testCase, original.result, candidate.result, candidateRetrieval.result);
+    const rewrite = buildRewrite(
+      testCase,
+      original.result,
+      candidate.result,
+      candidateRetrieval.result,
+    );
     await input.lifecycle.appendRewriteTerminal(rewrite);
     rewrites.push(rewrite);
   }
@@ -316,7 +360,7 @@ async function runEvaluation(
       finals.push(incomplete);
       continue;
     }
-    const executed = await executeCall(input, identity, testCase, undefined, budget);
+    const executed = await executeCall(input, identity, testCase, undefined, budget, dispatchGate);
     calls.push(executed.entry);
     if (!executed.result) breaker = breakerFrom(executed.entry);
     const final = buildFinal(testCase, executed.result, executed.entry.disposition);
@@ -340,7 +384,11 @@ async function runEvaluation(
   return report;
 }
 
-async function runGuard(testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.guardCases)[number], harness: Phase698RetrieverSchemaRecoverySr5LiveHarness, signal: AbortSignal) {
+async function runGuard(
+  testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.guardCases)[number],
+  harness: Phase698RetrieverSchemaRecoverySr5LiveHarness,
+  signal: AbortSignal,
+) {
   let value: Phase698Task9GuardResult;
   try {
     value = signal.aborted
@@ -402,29 +450,72 @@ async function runGuard(testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.guardCases)
 }
 
 async function executeCall(
-  input: RunPhase698RetrieverSchemaRecoverySr5LiveInput,
+  input: RunPhase698RetrieverSchemaRecoverySr5LiveTestInput,
   identity: Phase698Task9CallIdentity,
   testCase:
     | (typeof PHASE_6_9_8_TASK8_MANIFEST.rewriteCases)[number]
     | (typeof PHASE_6_9_8_TASK8_MANIFEST.finalResponseCases)[number],
   rewrittenQuery: string | undefined,
   budget: { inputTokens: number; outputTokens: number; costCny: number },
+  dispatchGate: { validated: boolean },
 ) {
   const lifecycle = await input.lifecycle.reserveCall(identity);
   const wire = { attempts: 1, dispatches: 0, responses: 0, verifiedUsage: 0 };
   const started = performance.now();
-  await lifecycle.appendWireStage('dispatch_started');
-  wire.dispatches = 1;
+  const firstDispatchCapability = !dispatchGate.validated
+    ? revalidatePhase698RetrieverSchemaRecoverySr5LiveBeforeFirstDispatch(
+        input.admissionCapability,
+        input.admissionAuthority,
+        input.repositoryRoot,
+        input.runId,
+      )
+    : null;
+  if (firstDispatchCapability !== null) {
+    if (
+      input.beforeFirstDispatchCapabilityConsumeForTest !== undefined &&
+      input.admissionAuthority !== 'synthetic_test_live'
+    )
+      throw new Error('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_TEST_HOOK_INVALID');
+    input.beforeFirstDispatchCapabilityConsumeForTest?.();
+  }
+  let firstDispatchPermit = null;
+  if (firstDispatchCapability !== null) {
+    firstDispatchPermit = consumePhase698RetrieverSchemaRecoverySr5LiveFirstDispatchCapability(
+      firstDispatchCapability,
+      input.admissionCapability,
+      input.admissionAuthority,
+      input.repositoryRoot,
+      input.runId,
+    );
+  }
+  try {
+    await lifecycle.appendWireStage('dispatch_started');
+    wire.dispatches = 1;
+  } catch (error) {
+    if (firstDispatchPermit !== null) {
+      cancelPhase698RetrieverSchemaRecoverySr5LiveFirstDispatchPermit(firstDispatchPermit);
+    }
+    throw error;
+  }
   let raw: unknown;
   try {
     raw = await withHardTimeout(
-      (signal) =>
-        input.harness.invokeCall({
-          identity,
-          testCase,
-          ...(rewrittenQuery === undefined ? {} : { rewrittenQuery }),
-          signal,
-        }),
+      (signal) => {
+        const invokeLoadedAdapter = () =>
+          input.harness.invokeCall({
+            identity,
+            testCase,
+            ...(rewrittenQuery === undefined ? {} : { rewrittenQuery }),
+            signal,
+          });
+        if (firstDispatchPermit === null) return invokeLoadedAdapter();
+        const invoked = invokePhase698RetrieverSchemaRecoverySr5LiveFirstDispatchPermit(
+          firstDispatchPermit,
+          invokeLoadedAdapter,
+        );
+        dispatchGate.validated = true;
+        return invoked;
+      },
       input.signal,
       timeoutFor(identity.phase),
     );
@@ -494,7 +585,10 @@ async function executeCall(
   }
 }
 
-function parseResult(phase: Phase698Task9CallIdentity['phase'], value: unknown): Phase698Task9CallResult {
+function parseResult(
+  phase: Phase698Task9CallIdentity['phase'],
+  value: unknown,
+): Phase698Task9CallResult {
   const schema =
     phase === 'rewrite_candidate_model'
       ? REWRITE_RESULT_SCHEMA
@@ -510,7 +604,12 @@ function parseResult(phase: Phase698Task9CallIdentity['phase'], value: unknown):
 
 function failureEntry(
   identity: Phase698Task9CallIdentity,
-  wire: Readonly<{ attempts: number; dispatches: number; responses: number; verifiedUsage: number }>,
+  wire: Readonly<{
+    attempts: number;
+    dispatches: number;
+    responses: number;
+    verifiedUsage: number;
+  }>,
   durationMs: number,
   error: unknown,
   transportAuthority: 'external_provider' | 'synthetic_injected',
@@ -529,12 +628,18 @@ function failureEntry(
   });
 }
 
-function buildRewrite(testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.rewriteCases)[number], original: Phase698Task9CallResult | null, candidate: Phase698Task9CallResult | null, retrieval: Phase698Task9CallResult | null) {
+function buildRewrite(
+  testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.rewriteCases)[number],
+  original: Phase698Task9CallResult | null,
+  candidate: Phase698Task9CallResult | null,
+  retrieval: Phase698Task9CallResult | null,
+) {
   if (
     original?.phase !== 'rewrite_original_retrieval' ||
     candidate?.phase !== 'rewrite_candidate_model' ||
     retrieval?.phase !== 'rewrite_candidate_retrieval'
-  ) return incompleteRewrite(testCase, original);
+  )
+    return incompleteRewrite(testCase, original);
   return PHASE_6_9_8_TASK9_REWRITE_ENTRY_SCHEMA.parse({
     kind: 'rewrite_pair',
     caseId: testCase.caseId,
@@ -554,7 +659,10 @@ function buildRewrite(testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.rewriteCases)
   });
 }
 
-function incompleteRewrite(testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.rewriteCases)[number], original: Phase698Task9CallResult | null = null) {
+function incompleteRewrite(
+  testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.rewriteCases)[number],
+  original: Phase698Task9CallResult | null = null,
+) {
   const retrieval = original?.phase === 'rewrite_original_retrieval' ? original : null;
   return PHASE_6_9_8_TASK9_REWRITE_ENTRY_SCHEMA.parse({
     kind: 'rewrite_pair',
@@ -575,7 +683,11 @@ function incompleteRewrite(testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.rewriteC
   });
 }
 
-function buildFinal(testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.finalResponseCases)[number], result: Phase698Task9CallResult | null, disposition: Phase698Task9CallEntry['disposition']) {
+function buildFinal(
+  testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.finalResponseCases)[number],
+  result: Phase698Task9CallResult | null,
+  disposition: Phase698Task9CallEntry['disposition'],
+) {
   if (result?.phase !== 'final_response_model') return incompleteFinal(testCase, disposition);
   return PHASE_6_9_8_TASK9_FINAL_ENTRY_SCHEMA.parse({
     kind: 'final_response',
@@ -600,7 +712,10 @@ function buildFinal(testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.finalResponseCa
   });
 }
 
-function incompleteFinal(testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.finalResponseCases)[number], disposition: Phase698Task9CallEntry['disposition']) {
+function incompleteFinal(
+  testCase: (typeof PHASE_6_9_8_TASK8_MANIFEST.finalResponseCases)[number],
+  disposition: Phase698Task9CallEntry['disposition'],
+) {
   const attempted = !disposition.startsWith('not_started_');
   return PHASE_6_9_8_TASK9_FINAL_ENTRY_SCHEMA.parse({
     kind: 'final_response',
@@ -640,7 +755,12 @@ function notStarted(
         : breaker === 'external_abort'
           ? 'not_started_external_abort'
           : 'not_started_quality_breaker',
-    failureReason: breaker === 'case_guard' ? 'case_guard' : breaker === 'external_abort' ? 'aborted' : 'quality_breaker',
+    failureReason:
+      breaker === 'case_guard'
+        ? 'case_guard'
+        : breaker === 'external_abort'
+          ? 'aborted'
+          : 'quality_breaker',
     wire: { attempts: 0, dispatches: 0, responses: 0, verifiedUsage: 0 },
     usage: null,
     verifiedCostCny: null,
@@ -648,7 +768,11 @@ function notStarted(
   });
 }
 
-async function withHardTimeout<T>(invoke: (signal: AbortSignal) => Promise<T>, parent: AbortSignal, timeoutMs: number): Promise<T> {
+async function withHardTimeout<T>(
+  invoke: (signal: AbortSignal) => Promise<T>,
+  parent: AbortSignal,
+  timeoutMs: number,
+): Promise<T> {
   if (parent.aborted) throw new Phase698Task9RuntimeError('aborted');
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) {
     throw new Phase698Task9RuntimeError('runtime_contract_invalid');
@@ -678,7 +802,10 @@ async function withHardTimeout<T>(invoke: (signal: AbortSignal) => Promise<T>, p
   void invoked.catch(() => undefined);
   let outcome: Readonly<{ ok: true; value: T }> | Readonly<{ ok: false; error: unknown }>;
   try {
-    outcome = Object.freeze({ ok: true as const, value: await Promise.race([invoked, abortPromise]) });
+    outcome = Object.freeze({
+      ok: true as const,
+      value: await Promise.race([invoked, abortPromise]),
+    });
   } catch (error) {
     outcome = Object.freeze({ ok: false as const, error });
   }
@@ -695,8 +822,10 @@ async function withHardTimeout<T>(invoke: (signal: AbortSignal) => Promise<T>, p
 }
 
 function timeoutFor(phase: Phase698Task9CallIdentity['phase']) {
-  if (phase === 'rewrite_candidate_model') return PHASE_6_9_8_TASK9_EVAL_POLICY.deepseek.rewrite.hardTimeoutMs;
-  if (phase === 'final_response_model') return PHASE_6_9_8_TASK9_EVAL_POLICY.deepseek.finalResponse.hardTimeoutMs;
+  if (phase === 'rewrite_candidate_model')
+    return PHASE_6_9_8_TASK9_EVAL_POLICY.deepseek.rewrite.hardTimeoutMs;
+  if (phase === 'final_response_model')
+    return PHASE_6_9_8_TASK9_EVAL_POLICY.deepseek.finalResponse.hardTimeoutMs;
   return PHASE_6_9_8_TASK9_EVAL_POLICY.qwen.hardTimeoutMs;
 }
 
@@ -718,7 +847,8 @@ function requireIdentity(callId: string, byId: ReadonlyMap<string, Phase698Task9
 }
 
 function duration(value: number) {
-  if (!Number.isFinite(value) || value < 0) throw new Phase698Task9RuntimeError('runtime_contract_invalid');
+  if (!Number.isFinite(value) || value < 0)
+    throw new Phase698Task9RuntimeError('runtime_contract_invalid');
   return Number(value.toFixed(3));
 }
 
@@ -730,7 +860,10 @@ function sha256(value: string) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function normalizeInput(input: RunPhase698RetrieverSchemaRecoverySr5LiveInput, allowSynthetic: boolean) {
+function normalizeInput(
+  input: RunPhase698RetrieverSchemaRecoverySr5LiveInput,
+  allowSynthetic: boolean,
+) {
   if (
     !input ||
     !UUID.safeParse(input.runId).success ||
@@ -739,7 +872,9 @@ function normalizeInput(input: RunPhase698RetrieverSchemaRecoverySr5LiveInput, a
     !(input.signal instanceof AbortSignal) ||
     !input.harness ||
     input.harness.transportAuthority !==
-      (input.admissionAuthority === 'git_verified_live' ? 'external_provider' : 'synthetic_injected') ||
+      (input.admissionAuthority === 'git_verified_live'
+        ? 'external_provider'
+        : 'synthetic_injected') ||
     typeof input.harness.runGuard !== 'function' ||
     typeof input.harness.invokeCall !== 'function' ||
     !input.lifecycle ||

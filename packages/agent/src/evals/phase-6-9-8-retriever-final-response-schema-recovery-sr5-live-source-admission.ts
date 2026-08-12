@@ -1,6 +1,19 @@
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { lstatSync, readdirSync, realpathSync } from 'node:fs';
+import {
+  closeSync,
+  constants as fsConstants,
+  fstatSync,
+  fsyncSync,
+  lstatSync,
+  opendirSync,
+  openSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  unlinkSync,
+  writeSync,
+} from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
 
@@ -23,6 +36,7 @@ import { computePhase698RetrieverSchemaRecoverySr5GitObjectBundleSha256 } from '
 import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_MANIFEST_SHA256,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_OBJECTS,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_BINDING_SCHEMA,
   createPhase698RetrieverSchemaRecoverySr5LiveSourceBinding,
   type Phase698RetrieverSchemaRecoverySr5LiveSourceBinding,
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-manifest.ts';
@@ -33,11 +47,17 @@ import {
   createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixture,
   type Phase698RetrieverSchemaRecoverySr5LiveSource,
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-schema.ts';
+import {
+  canonicalPhase698RetrieverSchemaRecoverySr5LiveJson,
+  sha256Phase698RetrieverSchemaRecoverySr5Live,
+} from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-contract.ts';
+import { PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_JOURNAL_RECORD_SCHEMA } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-journal-contract.ts';
 
 const GIT_TIMEOUT_MS = 10_000;
 const GIT_MAX_BUFFER_BYTES = 32 * 1024 * 1024;
 const COMMIT = z.string().regex(/^[0-9a-f]{40}$/u);
 const SHA256_REF = z.string().regex(/^sha256:[0-9a-f]{64}$/u);
+const UUID = z.string().uuid();
 const LIVE_FORMAL_BASENAME =
   /^phase-6-9-8-retriever-final-response-schema-recovery-sr5-live(?:\.marker|-[0-9a-f-]{36}\.(?:journal\.jsonl|report\.json|recovery\.claim|json)|-[0-9a-f-]{36}\.report\.json\.tmp\.[0-9a-f-]{36})$/u;
 
@@ -46,6 +66,12 @@ export type Phase698RetrieverSchemaRecoverySr5LiveAdmissionCapability = Readonly
 }>;
 export type Phase698RetrieverSchemaRecoverySr5LiveReservationCapability = Readonly<{
   version: 'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-reservation-capability-v1';
+}>;
+export type Phase698RetrieverSchemaRecoverySr5LiveFirstDispatchCapability = Readonly<{
+  version: 'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-first-dispatch-capability-v1';
+}>;
+export type Phase698RetrieverSchemaRecoverySr5LiveFirstDispatchPermit = Readonly<{
+  version: 'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-first-dispatch-permit-v1';
 }>;
 
 export type Phase698RetrieverSchemaRecoverySr5LiveBoundaryAdmissionRecord = Readonly<{
@@ -126,6 +152,20 @@ const issuedAdmissions = new WeakMap<object, IssuedLiveAdmission>();
 const issuedReservations = new WeakMap<object, IssuedLiveAdmission>();
 const consumedAdmissions = new WeakSet<object>();
 const consumedReservations = new WeakSet<object>();
+type RunBinding = { runId: string | null };
+const issuedRunBindings = new WeakMap<object, RunBinding>();
+type FirstDispatchBinding = Readonly<{
+  admissionCapability: Phase698RetrieverSchemaRecoverySr5LiveAdmissionCapability;
+  admission: IssuedLiveAdmission;
+  repositoryRoot: string;
+  runId: string;
+  expectedJournalEvents: readonly RunBoundJournalEvent[];
+  lease: RunBoundDispatchLease;
+}>;
+const issuedFirstDispatches = new WeakMap<object, FirstDispatchBinding>();
+const consumedFirstDispatches = new WeakSet<object>();
+const issuedFirstDispatchPermits = new WeakMap<object, FirstDispatchBinding>();
+const consumedFirstDispatchPermits = new WeakSet<object>();
 
 export function admitPhase698RetrieverSchemaRecoverySr5ControlledLive(
   input: Readonly<{
@@ -211,6 +251,7 @@ export function consumePhase698RetrieverSchemaRecoverySr5LiveAdmissionCapability
   capability: Phase698RetrieverSchemaRecoverySr5LiveAdmissionCapability,
   expectedAuthority: IssuedLiveAdmission['authority'],
   repositoryRoot: string,
+  runId: string,
 ): IssuedLiveAdmission {
   const issued = consumeCapability(
     capability,
@@ -219,17 +260,209 @@ export function consumePhase698RetrieverSchemaRecoverySr5LiveAdmissionCapability
     consumedAdmissions,
     'ADMISSION',
   );
+  const binding = issuedRunBindings.get(capability);
+  if (!binding || binding.runId !== UUID.parse(runId)) {
+    throw new Error('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RUN_BINDING_INVALID');
+  }
   if (issued.authority === 'git_verified_live') {
-    assertLiveSourceStillMatches(issued.source, issued.sourceBinding, repositoryRoot);
+    assertLiveRunBoundSourceStillMatches(
+      issued.source,
+      issued.sourceBinding,
+      repositoryRoot,
+      runId,
+    );
+  } else {
+    assertRunBoundSourceAndDurablePrefix(
+      repositoryRoot,
+      runId,
+      issued.source,
+      issued.sourceBinding,
+      issued.authority,
+      ['attempt_reserved'],
+    );
   }
   return issued;
+}
+
+export function revalidatePhase698RetrieverSchemaRecoverySr5LiveBeforeFirstDispatch(
+  capability: Phase698RetrieverSchemaRecoverySr5LiveAdmissionCapability,
+  expectedAuthority: IssuedLiveAdmission['authority'],
+  repositoryRoot: string,
+  runId: string,
+): Phase698RetrieverSchemaRecoverySr5LiveFirstDispatchCapability {
+  const issued = issuedAdmissions.get(capability);
+  const binding = issuedRunBindings.get(capability);
+  if (
+    !issued ||
+    issued.authority !== expectedAuthority ||
+    !consumedAdmissions.has(capability) ||
+    !binding ||
+    binding.runId !== UUID.parse(runId)
+  ) {
+    throw new Error('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RUN_BINDING_INVALID');
+  }
+  const observedJournalEvents = [
+    'attempt_reserved',
+    ...Array.from({ length: 8 }, () => 'guard_terminal' as const),
+    'call_reserved',
+  ] as const;
+  if (issued.authority === 'git_verified_live') {
+    assertLiveRunBoundSourceStillMatches(
+      issued.source,
+      issued.sourceBinding,
+      repositoryRoot,
+      runId,
+      observedJournalEvents,
+    );
+  } else {
+    assertRunBoundSourceAndDurablePrefix(
+      repositoryRoot,
+      runId,
+      issued.source,
+      issued.sourceBinding,
+      issued.authority,
+      observedJournalEvents,
+    );
+  }
+  const lease = acquireRunBoundDispatchLease(repositoryRoot, runId);
+  const dispatchCapability = Object.freeze({
+    version:
+      'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-first-dispatch-capability-v1' as const,
+  });
+  issuedFirstDispatches.set(dispatchCapability, {
+    admissionCapability: capability,
+    admission: issued,
+    repositoryRoot: resolve(repositoryRoot),
+    runId,
+    expectedJournalEvents: observedJournalEvents,
+    lease,
+  });
+  return dispatchCapability;
+}
+
+export function consumePhase698RetrieverSchemaRecoverySr5LiveFirstDispatchCapability(
+  capability: Phase698RetrieverSchemaRecoverySr5LiveFirstDispatchCapability,
+  admissionCapability: Phase698RetrieverSchemaRecoverySr5LiveAdmissionCapability,
+  expectedAuthority: IssuedLiveAdmission['authority'],
+  repositoryRoot: string,
+  runId: string,
+): Phase698RetrieverSchemaRecoverySr5LiveFirstDispatchPermit {
+  const binding = issuedFirstDispatches.get(capability);
+  if (
+    !binding ||
+    consumedFirstDispatches.has(capability) ||
+    binding.admissionCapability !== admissionCapability ||
+    binding.admission.authority !== expectedAuthority ||
+    binding.repositoryRoot !== resolve(repositoryRoot) ||
+    binding.runId !== UUID.parse(runId)
+  ) {
+    throw new Error(
+      'PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_FIRST_DISPATCH_CAPABILITY_INVALID',
+    );
+  }
+  consumedFirstDispatches.add(capability);
+  try {
+    assertRunBoundDispatchLease(binding.lease);
+    if (binding.admission.authority === 'git_verified_live') {
+      assertLiveRunBoundSourceStillMatches(
+        binding.admission.source,
+        binding.admission.sourceBinding,
+        binding.repositoryRoot,
+        binding.runId,
+        binding.expectedJournalEvents,
+      );
+    } else {
+      assertRunBoundSourceAndDurablePrefix(
+        binding.repositoryRoot,
+        binding.runId,
+        binding.admission.source,
+        binding.admission.sourceBinding,
+        binding.admission.authority,
+        binding.expectedJournalEvents,
+      );
+    }
+    const permit = Object.freeze({
+      version:
+        'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-first-dispatch-permit-v1' as const,
+    });
+    issuedFirstDispatchPermits.set(permit, binding);
+    return permit;
+  } catch (error) {
+    releaseRunBoundDispatchLease(binding.lease);
+    throw error;
+  }
+}
+
+export function invokePhase698RetrieverSchemaRecoverySr5LiveFirstDispatchPermit<T>(
+  permit: Phase698RetrieverSchemaRecoverySr5LiveFirstDispatchPermit,
+  invokeLoadedAdapter: () => Promise<T>,
+): Promise<T> {
+  const binding = issuedFirstDispatchPermits.get(permit);
+  if (!binding || consumedFirstDispatchPermits.has(permit)) {
+    throw new Error('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_FIRST_DISPATCH_PERMIT_INVALID');
+  }
+  consumedFirstDispatchPermits.add(permit);
+  try {
+    assertRunBoundDispatchLease(binding.lease);
+    const expectedJournalEvents = [...binding.expectedJournalEvents, 'wire_stage' as const];
+    if (binding.admission.authority === 'git_verified_live') {
+      assertLiveRunBoundSourceStillMatches(
+        binding.admission.source,
+        binding.admission.sourceBinding,
+        binding.repositoryRoot,
+        binding.runId,
+        expectedJournalEvents,
+      );
+    } else {
+      assertRunBoundSourceAndDurablePrefix(
+        binding.repositoryRoot,
+        binding.runId,
+        binding.admission.source,
+        binding.admission.sourceBinding,
+        binding.admission.authority,
+        expectedJournalEvents,
+      );
+    }
+    return Promise.resolve(invokeLoadedAdapter()).finally(() =>
+      releaseRunBoundDispatchLease(binding.lease),
+    );
+  } catch (error) {
+    releaseRunBoundDispatchLease(binding.lease);
+    throw error;
+  }
+}
+
+export function cancelPhase698RetrieverSchemaRecoverySr5LiveFirstDispatchPermit(
+  permit: Phase698RetrieverSchemaRecoverySr5LiveFirstDispatchPermit,
+) {
+  const binding = issuedFirstDispatchPermits.get(permit);
+  if (!binding || consumedFirstDispatchPermits.has(permit)) {
+    throw new Error('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_FIRST_DISPATCH_PERMIT_INVALID');
+  }
+  consumedFirstDispatchPermits.add(permit);
+  releaseRunBoundDispatchLease(binding.lease);
+}
+
+export function cancelPhase698RetrieverSchemaRecoverySr5LiveFirstDispatchCapability(
+  capability: Phase698RetrieverSchemaRecoverySr5LiveFirstDispatchCapability,
+) {
+  const binding = issuedFirstDispatches.get(capability);
+  if (!binding || consumedFirstDispatches.has(capability)) {
+    throw new Error(
+      'PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_FIRST_DISPATCH_CAPABILITY_INVALID',
+    );
+  }
+  consumedFirstDispatches.add(capability);
+  releaseRunBoundDispatchLease(binding.lease);
 }
 
 export function consumePhase698RetrieverSchemaRecoverySr5LiveReservationCapability(
   capability: Phase698RetrieverSchemaRecoverySr5LiveReservationCapability,
   expectedAuthority: IssuedLiveAdmission['authority'],
   repositoryRoot: string,
+  runId: string,
 ): IssuedLiveAdmission {
+  const parsedRunId = UUID.parse(runId);
   const issued = consumeCapability(
     capability,
     expectedAuthority,
@@ -239,6 +472,11 @@ export function consumePhase698RetrieverSchemaRecoverySr5LiveReservationCapabili
   );
   if (issued.authority === 'git_verified_live')
     assertLiveSourceStillMatches(issued.source, issued.sourceBinding, repositoryRoot);
+  const binding = issuedRunBindings.get(capability);
+  if (!binding || binding.runId !== null) {
+    throw new Error('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RUN_BINDING_INVALID');
+  }
+  binding.runId = parsedRunId;
   return issued;
 }
 
@@ -289,6 +527,13 @@ export function validatePhase698RetrieverSchemaRecoverySr5LiveObservationForTest
   return validateLiveRepositoryObservation(observation);
 }
 
+export function validatePhase698RetrieverSchemaRecoverySr5LiveRunBoundObservationForTest(
+  observation: Phase698RetrieverSchemaRecoverySr5LiveRepositoryObservation,
+  runId: string,
+) {
+  return validateLiveRunBoundRepositoryObservation(observation, UUID.parse(runId));
+}
+
 function validateLiveRepositoryObservation(
   observation: Phase698RetrieverSchemaRecoverySr5LiveRepositoryObservation | null,
 ):
@@ -331,6 +576,32 @@ function validateLiveRepositoryObservation(
   return parsed.success
     ? Object.freeze({ ok: true as const, source: deepFreeze(parsed.data) })
     : Object.freeze({ ok: false as const, reasonCode: 'source_admission_invalid' as const });
+}
+
+function validateLiveRunBoundRepositoryObservation(
+  observation: Phase698RetrieverSchemaRecoverySr5LiveRepositoryObservation | null,
+  runId: string,
+) {
+  const expected = [
+    '.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker',
+    `.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${runId}.journal.jsonl`,
+  ].sort();
+  const observedPaths = observation === null ? [] : [...observation.formalEvidencePaths].sort();
+  if (
+    observation === null ||
+    observedPaths.length !== expected.length ||
+    !observedPaths.every((path, index) => path === expected[index])
+  ) {
+    return Object.freeze({ ok: false as const, reasonCode: 'source_admission_invalid' as const });
+  }
+  return validateLiveRepositoryObservation({ ...observation, formalEvidencePaths: [] });
+}
+
+function expectedRunBoundFormalPaths(runId: string) {
+  return [
+    '.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker',
+    `.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${runId}.journal.jsonl`,
+  ].sort();
 }
 
 function inspectLiveRepository(
@@ -508,6 +779,305 @@ function assertLiveSourceStillMatches(
   }
 }
 
+function assertLiveRunBoundSourceStillMatches(
+  source: Phase698RetrieverSchemaRecoverySr5LiveSource,
+  sourceBinding: Phase698RetrieverSchemaRecoverySr5LiveSourceBinding,
+  repositoryRoot: string,
+  runId: string,
+  expectedJournalEvents: readonly RunBoundJournalEvent[] = ['attempt_reserved'],
+) {
+  const current = inspectLiveRepository(repositoryRoot);
+  const validated = validateLiveRunBoundRepositoryObservation(current, runId);
+  if (
+    !validated.ok ||
+    validated.source.branch !== source.branch ||
+    validated.source.head !== source.head ||
+    validated.source.upstream !== source.upstream ||
+    validated.source.origin !== source.origin ||
+    validated.source.approvedTag.objectId !== source.approvedTag.objectId ||
+    validated.source.sourceBundleSha256 !== source.sourceBundleSha256
+  ) {
+    throw new Error('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_DRIFT');
+  }
+  assertRunBoundSourceAndDurablePrefix(
+    repositoryRoot,
+    runId,
+    source,
+    sourceBinding,
+    'git_verified_live',
+    expectedJournalEvents,
+  );
+}
+
+const RUN_BOUND_MARKER_SCHEMA = z
+  .object({
+    markerVersion: z.literal(
+      'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-marker-v1',
+    ),
+    durabilityVersion: z.literal(
+      'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-durability-v1',
+    ),
+    lineage: z.literal(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE),
+    runId: UUID,
+    runScope: z.literal('branch'),
+    authority: z.enum([
+      'synthetic_test_retriever_final_response_schema_recovery_sr5',
+      'controlled_live_retriever_final_response_schema_recovery_sr5',
+    ]),
+    credentialReads: z.union([z.literal(0), z.literal(3)]),
+    createdAt: z.string().datetime({ offset: true }),
+    creatorPid: z.number().int().positive(),
+    source: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA,
+    sourceBinding: PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_BINDING_SCHEMA,
+  })
+  .strict();
+
+type RunBoundJournalEvent = 'attempt_reserved' | 'guard_terminal' | 'call_reserved' | 'wire_stage';
+
+function assertRunBoundSourceAndDurablePrefix(
+  repositoryRoot: string,
+  runId: string,
+  source: Phase698RetrieverSchemaRecoverySr5LiveSource,
+  sourceBinding: Phase698RetrieverSchemaRecoverySr5LiveSourceBinding,
+  admissionAuthority: IssuedLiveAdmission['authority'],
+  expectedJournalEvents: readonly RunBoundJournalEvent[],
+) {
+  try {
+    const namespace = openTrustedRunBoundNamespace(repositoryRoot, runId);
+    let markerBytes: string;
+    let journalBytes: string;
+    try {
+      markerBytes = readTrustedRegularFile(
+        namespace,
+        '.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker',
+      );
+      journalBytes = readTrustedRegularFile(
+        namespace,
+        `.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${runId}.journal.jsonl`,
+      );
+      assertTrustedRunBoundNamespace(namespace, runId);
+    } finally {
+      closeSync(namespace.tmpHandle);
+      closeSync(namespace.rootHandle);
+    }
+    const marker = RUN_BOUND_MARKER_SCHEMA.parse(JSON.parse(markerBytes.trim()));
+    const expectedMarkerAuthority =
+      admissionAuthority === 'git_verified_live'
+        ? 'controlled_live_retriever_final_response_schema_recovery_sr5'
+        : 'synthetic_test_retriever_final_response_schema_recovery_sr5';
+    const expectedCredentialReads = admissionAuthority === 'git_verified_live' ? 3 : 0;
+    if (
+      marker.runId !== runId ||
+      marker.authority !== expectedMarkerAuthority ||
+      marker.credentialReads !== expectedCredentialReads ||
+      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(marker.source) !==
+        canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(source) ||
+      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(marker.sourceBinding) !==
+        canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(sourceBinding)
+    ) {
+      throw new Error('marker_binding_invalid');
+    }
+    const lines = journalBytes.split(/\r?\n/u).filter((line) => line.length > 0);
+    if (lines.length !== expectedJournalEvents.length) throw new Error('journal_prefix_invalid');
+    let previousHash: string | null = null;
+    for (const [index, line] of lines.entries()) {
+      const parsed = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_JOURNAL_RECORD_SCHEMA.parse(
+        JSON.parse(line),
+      );
+      const recordHash = parsed.recordHash;
+      const record = Object.fromEntries(
+        Object.entries(parsed).filter(([key]) => key !== 'recordHash'),
+      );
+      if (
+        parsed.recordVersion !==
+          'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-journal-record-v1' ||
+        parsed.lineage !== PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE ||
+        parsed.runId !== runId ||
+        parsed.sequence !== index + 1 ||
+        parsed.event !== expectedJournalEvents[index] ||
+        parsed.markerSha256 !== sha256Phase698RetrieverSchemaRecoverySr5Live(markerBytes) ||
+        parsed.previousHash !== previousHash ||
+        recordHash !==
+          sha256Phase698RetrieverSchemaRecoverySr5Live(
+            canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(record),
+          )
+      ) {
+        throw new Error('journal_binding_invalid');
+      }
+      previousHash = recordHash;
+    }
+  } catch {
+    throw new Error('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_DRIFT');
+  }
+}
+
+type TrustedRunBoundNamespace = Readonly<{
+  root: string;
+  tmp: string;
+  rootHandle: number;
+  tmpHandle: number;
+  rootIdentity: ReturnType<typeof fstatSync>;
+  tmpIdentity: ReturnType<typeof fstatSync>;
+}>;
+type RunBoundDispatchLease = Readonly<{
+  path: string;
+  handle: number;
+  identity: ReturnType<typeof fstatSync>;
+}>;
+
+function openTrustedRunBoundNamespace(
+  repositoryRoot: string,
+  runId: string,
+): TrustedRunBoundNamespace {
+  const root = resolve(repositoryRoot);
+  const tmp = resolve(root, '.tmp');
+  const rootHandle = openSync(root, fsConstants.O_RDONLY);
+  let tmpHandle: number | null = null;
+  try {
+    tmpHandle = openSync(tmp, fsConstants.O_RDONLY);
+    const namespace = {
+      root,
+      tmp,
+      rootHandle,
+      tmpHandle,
+      rootIdentity: fstatSync(rootHandle),
+      tmpIdentity: fstatSync(tmpHandle),
+    };
+    assertTrustedRunBoundNamespace(namespace, runId);
+    return namespace;
+  } catch (error) {
+    if (tmpHandle !== null) closeSync(tmpHandle);
+    closeSync(rootHandle);
+    throw error;
+  }
+}
+
+function assertTrustedRunBoundNamespace(namespace: TrustedRunBoundNamespace, runId: string) {
+  assertPathMatchesHandle(namespace.root, namespace.rootHandle, namespace.rootIdentity, true);
+  assertPathMatchesHandle(namespace.tmp, namespace.tmpHandle, namespace.tmpIdentity, true);
+  const observed = [
+    ...readDirectoryEntriesFromOpenedDirectory(namespace.tmp)
+      .filter((entry) => LIVE_FORMAL_BASENAME.test(entry.name))
+      .map((entry) => `.tmp/${entry.name}`),
+    ...readDirectoryEntriesFromOpenedDirectory(namespace.root)
+      .filter((entry) => LIVE_FORMAL_BASENAME.test(entry.name))
+      .map((entry) => entry.name),
+  ].sort();
+  const expected = expectedRunBoundFormalPaths(runId);
+  if (
+    observed.length !== expected.length ||
+    !observed.every((path, index) => path === expected[index])
+  ) {
+    throw new Error('namespace_invalid');
+  }
+  assertPathMatchesHandle(namespace.root, namespace.rootHandle, namespace.rootIdentity, true);
+  assertPathMatchesHandle(namespace.tmp, namespace.tmpHandle, namespace.tmpIdentity, true);
+}
+
+function readDirectoryEntriesFromOpenedDirectory(path: string) {
+  const directory = opendirSync(path);
+  const entries: NonNullable<ReturnType<typeof directory.readSync>>[] = [];
+  try {
+    for (;;) {
+      const entry = directory.readSync();
+      if (entry === null) break;
+      entries.push(entry);
+    }
+  } finally {
+    directory.closeSync();
+  }
+  return entries;
+}
+
+function acquireRunBoundDispatchLease(
+  repositoryRoot: string,
+  runId: string,
+): RunBoundDispatchLease {
+  const path = resolve(
+    repositoryRoot,
+    '.tmp',
+    `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${UUID.parse(runId)}.dispatch.lock`,
+  );
+  const handle = openSync(
+    path,
+    fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY,
+    0o600,
+  );
+  try {
+    writeSync(handle, `${runId}\n`, undefined, 'utf8');
+    fsyncSync(handle);
+    const lease = { path, handle, identity: fstatSync(handle) };
+    assertRunBoundDispatchLease(lease);
+    return lease;
+  } catch (error) {
+    closeSync(handle);
+    try {
+      unlinkSync(path);
+    } catch {
+      // Preserve the original fail-closed error.
+    }
+    throw error;
+  }
+}
+
+function assertRunBoundDispatchLease(lease: RunBoundDispatchLease) {
+  assertPathMatchesHandle(lease.path, lease.handle, lease.identity, false);
+}
+
+function releaseRunBoundDispatchLease(lease: RunBoundDispatchLease) {
+  let owned = false;
+  try {
+    assertRunBoundDispatchLease(lease);
+    owned = true;
+  } finally {
+    closeSync(lease.handle);
+    if (owned) unlinkSync(lease.path);
+  }
+}
+
+function readTrustedRegularFile(namespace: TrustedRunBoundNamespace, relativePath: string) {
+  const path = resolve(namespace.root, relativePath);
+  const flags =
+    process.platform === 'win32'
+      ? fsConstants.O_RDONLY
+      : fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW;
+  const handle = openSync(path, flags);
+  try {
+    const identity = fstatSync(handle);
+    assertPathMatchesHandle(path, handle, identity, false);
+    assertPathMatchesHandle(namespace.tmp, namespace.tmpHandle, namespace.tmpIdentity, true);
+    const bytes = readFileSync(handle);
+    if (bytes.byteLength === 0 || bytes.byteLength > 1024 * 1024) throw new Error('invalid_size');
+    assertPathMatchesHandle(path, handle, identity, false);
+    assertPathMatchesHandle(namespace.tmp, namespace.tmpHandle, namespace.tmpIdentity, true);
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } finally {
+    closeSync(handle);
+  }
+}
+
+function assertPathMatchesHandle(
+  path: string,
+  handle: number,
+  identity: ReturnType<typeof fstatSync>,
+  directory: boolean,
+) {
+  const opened = fstatSync(handle);
+  const current = lstatSync(path);
+  if (
+    (directory
+      ? !opened.isDirectory() || !current.isDirectory()
+      : !opened.isFile() || !current.isFile()) ||
+    current.isSymbolicLink() ||
+    opened.dev !== identity.dev ||
+    opened.ino !== identity.ino ||
+    opened.dev !== current.dev ||
+    opened.ino !== current.ino
+  ) {
+    throw new Error('untrusted_path');
+  }
+}
+
 function issuePair(issued: IssuedLiveAdmission) {
   const capability = Object.freeze({
     version:
@@ -519,6 +1089,9 @@ function issuePair(issued: IssuedLiveAdmission) {
   });
   issuedAdmissions.set(capability, issued);
   issuedReservations.set(reservationCapability, issued);
+  const runBinding: RunBinding = { runId: null };
+  issuedRunBindings.set(capability, runBinding);
+  issuedRunBindings.set(reservationCapability, runBinding);
   return Object.freeze({ capability, reservationCapability });
 }
 

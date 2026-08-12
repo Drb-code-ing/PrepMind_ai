@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, rename, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,14 +12,19 @@ import {
 
 import {
   buildPhase698RetrieverSchemaRecoverySr5LiveReport,
+  canonicalPhase698RetrieverSchemaRecoverySr5LiveJson,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_AUTHORITY,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SYNTHETIC_AUTHORITY,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RUN_ARGUMENT,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_VALIDATE_ARGUMENT,
+  sha256Phase698RetrieverSchemaRecoverySr5Live,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-contract.ts';
 import {
+  consumePhase698RetrieverSchemaRecoverySr5LiveAdmissionCapability,
+  consumePhase698RetrieverSchemaRecoverySr5LiveReservationCapability,
   createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest,
   validatePhase698RetrieverSchemaRecoverySr5LiveObservationForTest,
+  validatePhase698RetrieverSchemaRecoverySr5LiveRunBoundObservationForTest,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-admission.ts';
 import {
   createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest,
@@ -189,6 +195,242 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         },
       },
     });
+  });
+
+  it('accepts only the active run marker and initial journal during run-bound revalidation', () => {
+    const source = createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixture();
+    const runId = crypto.randomUUID();
+    const marker = '.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker';
+    const journal = journalRelativePath(runId);
+    const observation = {
+      branch: source.branch,
+      head: source.head,
+      upstream: source.upstream,
+      origin: source.origin,
+      approvedTag: source.approvedTag,
+      clean: true,
+      formalEvidencePaths: [marker, journal],
+      sourceBundleSha256: source.sourceBundleSha256,
+    } as const;
+
+    expect(
+      validatePhase698RetrieverSchemaRecoverySr5LiveRunBoundObservationForTest(observation, runId),
+    ).toMatchObject({ ok: true, source: { formalEvidencePaths: [] } });
+    expect(
+      validatePhase698RetrieverSchemaRecoverySr5LiveRunBoundObservationForTest(
+        { ...observation, formalEvidencePaths: [marker, journalRelativePath(crypto.randomUUID())] },
+        runId,
+      ),
+    ).toEqual({ ok: false, reasonCode: 'source_admission_invalid' });
+    expect(
+      validatePhase698RetrieverSchemaRecoverySr5LiveRunBoundObservationForTest(
+        {
+          ...observation,
+          formalEvidencePaths: [marker, journal, artifactRelativePath(runId)],
+        },
+        runId,
+      ),
+    ).toEqual({ ok: false, reasonCode: 'source_admission_invalid' });
+  });
+
+  it('binds the reservation and admission capabilities to the same run exactly once', async () => {
+    const bound = createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest();
+    const runId = crypto.randomUUID();
+    const otherRunId = crypto.randomUUID();
+
+    expect(
+      consumePhase698RetrieverSchemaRecoverySr5LiveReservationCapability(
+        bound.reservationCapability,
+        'synthetic_test_live',
+        'synthetic-root',
+        runId,
+      ).authority,
+    ).toBe('synthetic_test_live');
+    expect(() =>
+      consumePhase698RetrieverSchemaRecoverySr5LiveAdmissionCapability(
+        bound.capability,
+        'synthetic_test_live',
+        'synthetic-root',
+        otherRunId,
+      ),
+    ).toThrow('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RUN_BINDING_INVALID');
+    expect(() =>
+      consumePhase698RetrieverSchemaRecoverySr5LiveAdmissionCapability(
+        bound.capability,
+        'synthetic_test_live',
+        'synthetic-root',
+        runId,
+      ),
+    ).toThrow('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_ADMISSION_CAPABILITY_INVALID');
+  });
+
+  it('rejects an extra formal path before the first guard', async () => {
+    const { root, runId, reservation, bound } = await createReservation();
+    await Bun.write(join(root, artifactRelativePath(runId)), '{}\n');
+    await expect(
+      runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest({
+        runId,
+        repositoryRoot: root,
+        admissionAuthority: 'synthetic_test_live',
+        admissionCapability: bound.capability,
+        harness: createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest(),
+        lifecycle: reservation.lifecycle,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_DRIFT');
+  });
+
+  it('rejects a marker identity mismatch before the first guard', async () => {
+    const { root, runId, reservation, bound } = await createReservation();
+    const markerPath = join(
+      root,
+      '.tmp',
+      'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker',
+    );
+    const marker = await Bun.file(markerPath).json();
+    await Bun.write(markerPath, `${JSON.stringify({ ...marker, runId: crypto.randomUUID() })}\n`);
+    await expect(
+      runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest({
+        runId,
+        repositoryRoot: root,
+        admissionAuthority: 'synthetic_test_live',
+        admissionCapability: bound.capability,
+        harness: createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest(),
+        lifecycle: reservation.lifecycle,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_DRIFT');
+  });
+
+  it('rejects an initial journal identity mismatch before the first guard', async () => {
+    const { root, runId, reservation, bound } = await createReservation();
+    const journalPath = join(root, journalRelativePath(runId));
+    const attempt = JSON.parse((await Bun.file(journalPath).text()).trim());
+    await Bun.write(
+      journalPath,
+      `${JSON.stringify({ ...attempt, previousHash: '0'.repeat(64) })}\n`,
+    );
+    await expect(
+      runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest({
+        runId,
+        repositoryRoot: root,
+        admissionAuthority: 'synthetic_test_live',
+        admissionCapability: bound.capability,
+        harness: createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest(),
+        lifecycle: reservation.lifecycle,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_DRIFT');
+  });
+
+  it('rejects a hash-valid journal prefix with an unknown field', async () => {
+    const { root, runId, reservation, bound } = await createReservation();
+    const journalPath = join(root, journalRelativePath(runId));
+    const attempt = JSON.parse((await Bun.file(journalPath).text()).trim());
+    const withUnknown = { ...attempt, unexpected: true };
+    delete withUnknown.recordHash;
+    const recordHash = sha256Phase698RetrieverSchemaRecoverySr5Live(
+      canonicalPhase698RetrieverSchemaRecoverySr5LiveJson(withUnknown),
+    );
+    await Bun.write(journalPath, `${JSON.stringify({ ...withUnknown, recordHash })}\n`);
+    await expect(
+      runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest({
+        runId,
+        repositoryRoot: root,
+        admissionAuthority: 'synthetic_test_live',
+        admissionCapability: bound.capability,
+        harness: createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest(),
+        lifecycle: reservation.lifecycle,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_DRIFT');
+  });
+
+  it('rejects a replaced temp directory before the first guard', async () => {
+    const { root, runId, reservation, bound } = await createReservation();
+    const trustedTmp = join(root, '.tmp');
+    const displacedTmp = join(root, '.tmp-original');
+    await rename(trustedTmp, displacedTmp);
+    await symlink(displacedTmp, trustedTmp, process.platform === 'win32' ? 'junction' : 'dir');
+    await expect(
+      runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest({
+        runId,
+        repositoryRoot: root,
+        admissionAuthority: 'synthetic_test_live',
+        admissionCapability: bound.capability,
+        harness: createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest(),
+        lifecycle: reservation.lifecycle,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_DRIFT');
+  });
+
+  it('revalidates after guards and rejects new formal evidence before first dispatch', async () => {
+    const { root, runId, reservation, bound } = await createReservation();
+    const base = createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest();
+    let guards = 0;
+    let invocations = 0;
+    const harness = {
+      ...base,
+      async runGuard(testCase: Parameters<typeof base.runGuard>[0], signal: AbortSignal) {
+        const result = await base.runGuard(testCase, signal);
+        guards += 1;
+        if (guards === 8) await Bun.write(join(root, artifactRelativePath(runId)), '{}\n');
+        return result;
+      },
+      async invokeCall(input: Parameters<typeof base.invokeCall>[0]) {
+        invocations += 1;
+        return base.invokeCall(input);
+      },
+    } as const;
+
+    await expect(
+      runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest({
+        runId,
+        repositoryRoot: root,
+        admissionAuthority: 'synthetic_test_live',
+        admissionCapability: bound.capability,
+        harness,
+        lifecycle: reservation.lifecycle,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toThrow('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_DRIFT');
+    expect(guards).toBe(8);
+    expect(invocations).toBe(0);
+  });
+
+  it('consumes a one-shot gate immediately before the loaded adapter and rejects late mutation', async () => {
+    const { root, runId, reservation, bound } = await createReservation();
+    const base = createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest();
+    let invocations = 0;
+    const harness = {
+      ...base,
+      async invokeCall(input: Parameters<typeof base.invokeCall>[0]) {
+        invocations += 1;
+        return base.invokeCall(input);
+      },
+    } as const;
+
+    await expect(
+      runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest({
+        runId,
+        repositoryRoot: root,
+        admissionAuthority: 'synthetic_test_live',
+        admissionCapability: bound.capability,
+        harness,
+        lifecycle: reservation.lifecycle,
+        signal: new AbortController().signal,
+        beforeFirstDispatchCapabilityConsumeForTest: () => {
+          writeFileSync(join(root, artifactRelativePath(runId)), '{}\n', 'utf8');
+        },
+      }),
+    ).rejects.toThrow('PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_DRIFT');
+    expect(invocations).toBe(0);
+    const journal = (await Bun.file(join(root, journalRelativePath(runId))).text())
+      .trim()
+      .split(/\r?\n/u)
+      .map((line) => JSON.parse(line));
+    expect(journal.filter((record) => record.event === 'wire_stage')).toHaveLength(0);
   });
 
   it('stops before dispatch when the parent signal is already aborted', async () => {

@@ -3,6 +3,19 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
+## 当前 SR5 run-bound recovery（zero-provider，2026-08-12）
+
+本任务只运行测试与只读 sealed validator，不运行 Live/recover/产品 API，不读取根 `.env`，也不启动或清理 Docker：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/agent lint
+bun --filter @repo/agent eval:phase-6-9-8:schema-recovery:sr5:live:validate
+```
+
+旧 v2 evidence 不得删除、移动或改写。本 recovery 合并后也不自动获得新 Live 权限；未来必须另立 source/tag/lineage 决策。
+
 ## 当前 SR5 Live recovery seal（2026-08-12）
 
 唯一 v2 controlled-Live run `9eb57600-97e2-4513-8654-8686b38e856e` 已消费并 crash-only seal。只允许使用下面的

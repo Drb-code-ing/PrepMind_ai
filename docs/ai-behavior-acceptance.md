@@ -2,6 +2,13 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
+## Phase 6.9.8 SR5 run-bound recovery（当前，zero-provider，2026-08-12）
+
+本阶段仅证明正式 runner 的 source/durability 门禁时序不再被自身 marker 拒绝，并能在 late drift 时保持
+`invokeCall=0 / wire.dispatches=0`。reviewed Mock 的 24 次 synthetic transport 不是 DeepSeek/Qwen 调用，不能形成
+semantic、usage/cost、P95 或产品 authority。旧 v2 Live 继续 sealed；未来真实运行必须另立 lineage/source/tag 并重新
+授权，当前 SR6 Docker/API/浏览器仍阻断。
+
 ## Phase 6.9.8 SR5 唯一 Live recovery seal（当前，2026-08-12）
 
 唯一 v2 controlled-Live run `9eb57600-97e2-4513-8654-8686b38e856e` 已消费。正式入口读取三项模块 credential 后，
