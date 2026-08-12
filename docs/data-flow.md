@@ -2247,3 +2247,6 @@ Phase 3 已将 OCR 识别链路从 Markdown-first 升级为 structured output：
 4. 保存错题优先使用结构化字段，多题按 `sourceGroupId:questionId` 生成独立防重 key。
 5. 旧 OCR 历史继续通过 legacy adapter 和 `parseOcrResult()` 兜底。
 6. `createWrongQuestion`、`searchKnowledge`、`createReviewTask` 已保留为 tool action proposal 边界，暂不自动写库。
+## SR5 next-lineage boundary
+
+Git parity and source-object bundle produce an immutable predecessor receipt and a single-use zero-provider capability. The flow stops before credentials, providers, formal evidence, business writes, Trace, BackgroundJob, and Outbox. The planned v3 evidence namespace is isolated from sealed v1/v2 namespaces.

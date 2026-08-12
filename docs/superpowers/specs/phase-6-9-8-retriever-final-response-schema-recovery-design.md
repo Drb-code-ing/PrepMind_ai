@@ -490,3 +490,6 @@ credential reader 为 0，不把该结果写成未来 Provider health。最小�
 - 为什么 query unchanged/protected-term drift 属于 local authority，不应伪装成 Provider schema failure？
 - 为什么 SR3 要单独验证 PID reuse、signal prefix、claim/event 单边崩溃和 existing artifact 冲突？
 - 为什么 SR4 Mock 通过仍不能解锁 Docker/API/browser，SR5 还需要新的数据边界和精确授权？
+## Current D0/C1 override (2026-08-12)
+
+The next atomic task is independent source admission only. It does not modify sealed SR5 v1/v2 contracts or evidence. The future v3 tag remains absent until branch push, `--no-ff` merge, `main` parity, and a fresh decision. No credential, Provider, formal evidence, or product acceptance is in scope.

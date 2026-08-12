@@ -2783,3 +2783,12 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
+## SR5 next-lineage admission checklist
+
+- [x] Independent lineage/source manifest and immutable v2 predecessor receipt.
+- [x] Parity, absent future tag, and isolated empty v3 evidence namespace contract.
+- [x] Single-use zero-provider capability; no credential/provider/evidence access.
+- [x] Focused `16/16`, typecheck, and ESLint validation on feature branch.
+- [ ] Push branch and merge with `--no-ff` to `main`.
+- [ ] Repeat zero-provider validation on `main`.
+- [ ] Future tag and controlled-Live decision (separate authorization).
