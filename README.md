@@ -677,3 +677,5 @@ C2 adds the standalone annotated-tag parity contract on `drb/phase-6-9-8-sr5-nex
 D1 adds a zero-provider authorization vocabulary contract bound to the v3 source identity. It does not accept CLI authorization, read credentials, or call models. Future executable source must use a later immutable tag that includes D1 and its runner.
 
 D2 adds the independent runner-preflight composition: C2 tag parity + D1 source-bound authorization + strict zero-call proxy attestation. Its capability remains preflight-only (`runnerInvocationAllowed=false`, `providerDispatchAllowed=false`) and cannot reach credentials, reservation, evidence, or the historical Live runner.
+
+D3 removes the final-source self-reference trap: commit, source-bundle SHA, and annotated-tag object are no longer planned as constants inside the covered Agent tree. A future v4 Git verifier will supply them as a strict runtime receipt; the contract binds authorization to that receipt while explicitly issuing no Git or runner authority.

@@ -1201,3 +1201,5 @@ C2 freezes the v3 annotated-tag message and post-tag parity verifier. After feat
 D1 freezes source-bound boundary/authorization vocabulary without consuming approval or exposing Live execution. Next source work must build a separate runner/preflight composition and later tag the complete source; Provider execution remains blocked.
 
 D2 builds that independent preflight composition while keeping both runner invocation and Provider dispatch disabled. The next implementation task is a new-lineage runner/durability design and zero-provider test boundary; it must not reuse sealed v1/v2 evidence or authorization.
+
+D3 first removes the source-identity fixed point: future final Git values are dynamic verifier output rather than tracked constants. After D3 closes, implement new-lineage runner/durability and the final Git verifier; only then merge, create one final v4 tag, verify remote parity, and request fresh authorization.

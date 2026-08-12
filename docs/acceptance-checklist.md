@@ -2820,3 +2820,14 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Focused `13/13`, Agent full `1608/1608`, typecheck/lint/Prettier/diff check.
 - [x] Feature `33ddbd14` pushed; `--no-ff` merge `3c93f11e` pushed; merged-main focused/full/typecheck/lint passed.
 - [ ] Complete-source tag, executable runner/durability, and fresh user acceptance remain separate.
+
+### D3 runtime source binding
+
+- [x] Final commit/bundle/tag-object removed from tracked constant design.
+- [x] Stable v4 tag/manifest/source-object scope and sealed predecessor frozen.
+- [x] Dynamic main/upstream/origin/annotated-tag receipt strictly validated.
+- [x] Authorization commit/bundle/tag-object bound to the dynamic receipt.
+- [x] No Git authority, runner invocation, dispatch, credential, or evidence capability issued.
+- [x] Focused `19/19`, Agent full `1627/1627`, typecheck/lint/Prettier/diff check.
+- [ ] Feature push, `--no-ff` merge/push, and merged-main regression.
+- [ ] Runner/durability, final Git verifier/tag, and fresh user acceptance remain separate.
