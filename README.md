@@ -1,6 +1,21 @@
 # PrepMind AI 智能备考助手
 
-## 当前工作回执：Schema Recovery SR5 production proxy port recovery（2026-08-11）
+## 当前工作回执：Schema Recovery SR5 Live recovery seal（2026-08-12）
+
+绑定 v2 source/tag 的唯一 controlled-Live run `9eb57600-97e2-4513-8654-8686b38e856e` 已消费，并由 crash-only recovery
+封存为 `schema_recovery_sr5_branch_quality_gate_failed / qualityAuthority=none`。本轮读取三项模块 credential，但在任何
+transport/Provider dispatch 前停止：DeepSeek/Qwen/external Provider calls 均为 `0`，business writes=`0`。validator
+`ok=true`，journal `49` 条、最终事件 `evidence_published`，artifact SHA=
+`a4ccb5063608d2f81cb0c7b9092b4e3610c7ea3bfee817daaec4b5a9c88bb98b`。
+
+根因不是模型、代理或账号：reservation 创建本 run marker 后，runner 消费 admission capability 时再次复用 namespace=0
+source check，把自己的 marker 当作 source drift。该名额不可重跑，也不得追加 Provider 探测。Docker/API/可见浏览器产品
+验收尚未执行；下一步是独立 zero-provider run-bound source revalidation recovery。完整验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-recovery-sealed.md`。
+
+## 历史工作回执：Schema Recovery SR5 production proxy port recovery（2026-08-11）
+
+以下“当前/下一步”均指 2026-08-11 checkpoint；v2 tag 与唯一 Live 此后已执行并封存，禁止按本段操作性文字重跑。
 
 正式 SR5 CLI 的 production `runProxyPreflight` 曾被 core 端口组装无条件覆盖，导致独立 preflight 已
 `loopback_proxy_ready` 时仍必然返回 `proxy_preflight_not_ready`。当前分支已恢复 override、保留默认 fail-closed，并将新
@@ -487,7 +502,7 @@ bun --cwd packages/fsrs test
 
 1. Phase 6.9.5 与 6.9.6 均已完成；各自 Live authority、失败 lineage、Docker/浏览器证据和 main default-off replay 保持不可变，生产 gate 默认关闭。
 2. Phase 6.9.7 已完成：V1--V9 Live 与 R3/L3 失败历史保持封存；Provider Canary V2、Small/Full Gate、Schema Recovery SR0--SR7 已按各自 authority 收口。唯一 SR5 run `63f8a76b...04cb` 形成分支语义门，SR6/SR7 完成 zero-provider 产品与 main/default-off 验收且不提升 SR5 语义 authority。
-3. Phase 6.9.8 Task 0--9B 已完成，唯一 Task 9C 已失败封存且不得补跑。Architecture Recovery R0--R4 随后完成独立设计、三链路 diagnostic/robustness、runner/durability/admission 与 reviewed Mock/static；唯一 R5 run `34eb99be...` 又在第二个 rewrite pair 的 DeepSeek `provider_dispatch / unknown` 后以 `architecture_recovery_quality_gate_failed / qualityAuthority=none` durable seal。该 run 仅有 `4` 次 external calls，rewrite strict `1/16`、FinalResponse `0/16`，正式 semantic/P95/verified aggregate 全为 `null`。R5 一次性名额已消费，禁止 retry/resume/replay/backfill、seal/recovery 或追加 Provider 探测。SR5 runner/durability 已以 `b2b5b9c9` 合并到 `main`，合并后二次 zero-provider 回放通过，但仍不形成真实语义或产品 authority；下一步必须先重新接受当次 DeepSeek/Qwen 数据边界并取得绑定新 source/tag 的 exact authorization，之后才可规划唯一 controlled-Live。全部 Agent 真正完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
+3. Phase 6.9.8 Task 0--9B 已完成，Task 9C、Architecture Recovery R5 与 P1 L2 的唯一 Live 均已按各自终态封存且不得补跑。Schema Recovery SR0--SR4、SR5 runner/durability、Live tag compatibility 与 proxy port recovery 随后完成 zero-provider 工程收口；绑定 v2 tag 的唯一 SR5 Live run `9eb57600...856e` 已消费并由 crash-only recovery 封存为 `schema_recovery_sr5_branch_quality_gate_failed / qualityAuthority=none`。该 run 在 reservation 后、首个 guard 前因 source revalidation 把本 run self-marker 误判为 drift，DeepSeek/Qwen/external Provider calls 均为 `0`；这不是模型、代理、账号、schema 或语义质量失败。下一步只能从最新 `main` 新开独立 zero-provider run-bound source revalidation recovery，补齐 `admit -> reserve self-marker -> consume -> first guard` 回归；SR6 Docker/API/Trace/可见浏览器产品验收继续阻断。全部 Agent 真正完成后才进入 Phase 6.10 分层记忆，并分别编写《多 Agent 架构》和《记忆系统》两篇面试学习博客。
 
 回顾时可以问：“TutorAgent 为什么不是最终回答模型？”“为什么明确教学指令和高置信错题字段保持 zero-call？”“为什么 Organizer 模型只能返回 ordinal，而不能直接写 deck？”“为什么 executor、dispatch、response、verified usage 要拆成四个计数？”“为什么 recovery 只能 seal durable prefix，不能 resume/replay/retry？”“为什么 transport subtype 不直接回填 V9 Trace/evidence？”“为什么 `1/1/0/0` 不能证明 Provider 收到请求或产生费用？”“为什么 L1 的 `1/1/1/1` 仍是 `qualityAuthority=none`？”“Provider health canary 与 Agent semantic acceptance 为什么必须拆开？”
 

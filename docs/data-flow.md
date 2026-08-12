@@ -1,6 +1,28 @@
 # PrepMind AI 数据流
 
-## 当前 SR5 production proxy port recovery flow（zero-provider，2026-08-11）
+## 当前 SR5 Live recovery-seal flow（2026-08-12）
+
+```text
+v2 source/tag parity
+  -> exact data boundary + authorization
+  -> proxy ready
+  -> credential reads = 3
+  -> admission capability + reservation capability
+  -> reservation creates current-run marker
+  -> runner consumes admission capability
+  -> full namespace=0 source recheck sees self-marker
+  -> source drift exception before first guard/provider dispatch
+  -> crash-only recovery
+  -> 49-record hash-chain journal
+  -> evidence_published / validator ok
+```
+
+唯一 run=`9eb57600-97e2-4513-8654-8686b38e856e`，Provider calls=`0`，business writes=`0`，artifact SHA=
+`a4ccb506...bb98b`，qualityAuthority=`none`。该流只证明 reservation 后 source revalidation 的 self-marker 缺陷与
+recovery durability，不证明模型、RAG、FinalResponse、Trace 或产品链路。run 不可重跑，SR6 产品验收继续阻断。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-recovery-sealed.md`。
+
+## 历史 SR5 production proxy port recovery flow（zero-provider，2026-08-11）
 
 生产 wrapper 的共享 `runProxyPreflight` 曾在 core `createPorts` 中被默认抛错桩覆盖，因此正式入口在实际 proxy
 ready 时仍停在 `proxy_preflight_not_ready`。修复后 port flow 为：

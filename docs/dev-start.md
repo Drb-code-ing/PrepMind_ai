@@ -3,7 +3,23 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
-## 当前 SR5 production proxy port recovery（zero-provider，2026-08-11）
+## 当前 SR5 Live recovery seal（2026-08-12）
+
+唯一 v2 controlled-Live run `9eb57600-97e2-4513-8654-8686b38e856e` 已消费并 crash-only seal。只允许使用下面的
+只读 validator 检查已封存 bundle：
+
+```powershell
+bun --filter @repo/agent eval:phase-6-9-8:schema-recovery:sr5:live:validate
+```
+
+禁止再次运行 Live 或 recovery script，禁止删除、移动、格式化或改写 `.tmp` 内本 run 的 marker、journal、recovery
+claim 和 report。封存值为 credential reads=`3`、Provider calls=`0`、business writes=`0`、journal=`49`、final event=
+`evidence_published`、artifact SHA=`a4ccb506...bb98b`。根因是 reservation 创建 self-marker 后，runner 再次使用
+namespace=0 source check 而自拒绝；不是 Provider、proxy 或账号问题。Docker/API/browser 产品验收未执行，禁止据此启动
+SR6。完整记录见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-recovery-sealed.md`。
+
+## 历史 SR5 production proxy port recovery（zero-provider，2026-08-11）
 
 生产 `runProxyPreflight` port 丢失问题已修复；新的 source-bound contract 预留的待创建 tag 为
 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`，旧 `live-v1` tag 不移动、不覆盖。当前只允许

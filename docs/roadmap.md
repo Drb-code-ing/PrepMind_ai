@@ -1,6 +1,19 @@
 # PrepMind AI 学习与开发路线图
 
-## 当前原子阶段：Phase 6.9.8 SR5 production proxy port recovery（2026-08-11）
+## 当前原子阶段：Phase 6.9.8 SR5 Live recovery seal（2026-08-12）
+
+唯一 v2 controlled-Live run `9eb57600-97e2-4513-8654-8686b38e856e` 已消费并 crash-only seal。终态为
+`schema_recovery_sr5_branch_quality_gate_failed / qualityAuthority=none / completionMode=recovery`；credential reads=`3`，
+transport/DeepSeek/Qwen/external Provider calls=`0`，business writes=`0`。validator `ok=true`，journal `49` 条并以
+`evidence_published` 收口，artifact SHA=`a4ccb506...bb98b`。
+
+根因是 reservation 后的 source revalidation 仍要求 formal namespace=0，从而把本 run 刚创建的 marker 当作 source drift。
+这不是模型、代理、账号、schema 或语义质量证据。该 run 禁止重跑、再次 seal/recovery 或追加 Provider 探测；SR6
+Docker/API/Trace/可见浏览器产品验收继续阻断。下一原子任务是从最新 `main` 新开独立 zero-provider architecture recovery，
+冻结 run-bound self-marker contract 并补 production-shaped 顺序回归。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-recovery-sealed.md`。
+
+## 历史原子阶段：Phase 6.9.8 SR5 production proxy port recovery（2026-08-11）
 
 上一轮 SR5 唯一入口在 proxy 前门返回 `proxy_preflight_not_ready`，但独立 preflight 为
 `loopback_proxy_ready`。根因已定位为 production `runProxyPreflight` 被 `createPorts` 无条件丢弃，随后由默认抛错桩触发

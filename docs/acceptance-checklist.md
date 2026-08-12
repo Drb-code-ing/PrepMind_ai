@@ -5,7 +5,31 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0K-Live-v2. Phase 6.9.8 SR5 production proxy port recovery（当前，zero-provider）
+## 0K-Live-v2-sealed. Phase 6.9.8 SR5 唯一 Live recovery seal（当前）
+
+- [x] v2 source/tag、branch/main/origin parity 通过
+- [x] 用户重新接受 DeepSeek/Qwen 数据边界并给出 exact one-shot authorization
+- [x] 唯一 run `9eb57600-97e2-4513-8654-8686b38e856e` 已消费
+- [x] credential reads=`3`，transport/DeepSeek/Qwen/external Provider calls=`0`
+- [x] crash-only recovery 已封存，禁止重跑或再次 recovery
+- [x] validator `ok=true`，journal `49`，final=`evidence_published`
+- [x] logical report SHA=`5912a563...e087d`
+- [x] physical artifact SHA=`a4ccb506...bb98b`
+- [x] 根因定位为 reservation self-marker 被 namespace=0 recheck 拒绝
+- [x] Docker/PostgreSQL/Redis/MinIO 保持原状；无 Trace/BackgroundJob/Outbox/业务写入
+- [ ] SR6 Docker/API/Trace/可见浏览器产品验收：被语义门失败阻断
+
+只读验收命令：
+
+```powershell
+bun --filter @repo/agent eval:phase-6-9-8:schema-recovery:sr5:live:validate
+```
+
+不得再次执行 Live/recover、curl、单 case或产品 API 追加 Provider 探测，不得改写正式 evidence。下一步只能新开独立
+zero-provider run-bound source revalidation recovery。验收：
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-recovery-sealed.md`。
+
+## 0K-Live-v2. Phase 6.9.8 SR5 production proxy port recovery（历史，zero-provider）
 
 当前 source contract 预留待创建的 immutable
 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`，旧 `live-v1` tag 保持不动。生产
