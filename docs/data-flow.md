@@ -2254,3 +2254,5 @@ Git parity and source-object bundle produce an immutable predecessor receipt and
 C2 flow: final merged `main` -> computed whole-tree bundle -> canonical annotated tag -> push remote tag -> local/origin raw object and peeled commit verification -> single-use zero-provider tag-binding capability. No provider path is reachable.
 
 D1 flow: exact v3 source identity + exact boundary receipt + exact one-shot authorization object -> strict cross-field verification -> confirmation SHA-only record -> single-use zero-provider capability. It stops before env, credentials, proxy, reservation, runner, and evidence.
+
+D2 flow: C2 tag capability -> D1 authorization capability -> exact source identity cross-check -> strict zero-call proxy attestation -> preflight-only capability. The flow stops with runner invocation and Provider dispatch both disabled; no credential or evidence port exists.

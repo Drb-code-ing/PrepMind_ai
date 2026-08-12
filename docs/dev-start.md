@@ -2165,3 +2165,5 @@ Run the focused admission tests on `drb/phase-6-9-8-sr5-next-lineage-admission`;
 For C2 use `drb/phase-6-9-8-sr5-next-lineage-tag-contract`. The tag is created only after its final merge commit is pushed. Run the post-tag verifier from clean `main`; do not load `.env`, invoke Live scripts, or create a documentation commit after tagging.
 
 For D1 use `drb/phase-6-9-8-sr5-next-lineage-authorization-contract`. Run the focused contract tests, Agent full suite, typecheck, and lint; do not enter the exact confirmation strings as CLI commands, load `.env`, or invoke historical Live scripts.
+
+For D2 use `drb/phase-6-9-8-sr5-next-lineage-runner-preflight`. Run its focused test, Agent full suite, typecheck, lint, and Prettier. Do not load `.env`, invoke a Provider, reserve evidence, or reuse historical SR5 Live CLI/runner/durability.

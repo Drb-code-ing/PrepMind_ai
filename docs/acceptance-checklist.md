@@ -2810,3 +2810,13 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Focused `20/20`, Agent full `1595/1595`, typecheck/lint, zero-provider boundary.
 - [x] Feature `54cf3e7f` pushed; `--no-ff` merge `31d4144d` pushed to `main`; merged-main focused/full/typecheck/lint passed.
 - [ ] Later complete-source tag and explicit user acceptance remain separate.
+
+### D2 runner preflight
+
+- [x] C2 tag capability and D1 authorization capability consumed exactly once.
+- [x] Exact source/tag/manifest/bundle/object cross-binding.
+- [x] Direct/loopback zero-call proxy attestation with exact probe counts.
+- [x] Runner invocation, Provider dispatch, credential and evidence paths remain disabled.
+- [x] Focused `13/13`, Agent full `1608/1608`, typecheck/lint/Prettier/diff check.
+- [ ] Feature push, `--no-ff` merge/push, and merged-main regression.
+- [ ] Complete-source tag, executable runner/durability, and fresh user acceptance remain separate.
