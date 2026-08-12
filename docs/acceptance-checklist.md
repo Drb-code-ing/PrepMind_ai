@@ -2789,6 +2789,6 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Parity, absent future tag, and isolated empty v3 evidence namespace contract.
 - [x] Single-use zero-provider capability; no credential/provider/evidence access.
 - [x] Focused `16/16`, typecheck, and ESLint validation on feature branch.
-- [ ] Push branch and merge with `--no-ff` to `main`.
-- [ ] Repeat zero-provider validation on `main`.
+- [x] Push feature commit `87dd1e24` and merge with `--no-ff` as `001770ff`; push `main`.
+- [x] Repeat focused/full/typecheck/lint/Git-admission zero-provider validation on `main`.
 - [ ] Future tag and controlled-Live decision (separate authorization).

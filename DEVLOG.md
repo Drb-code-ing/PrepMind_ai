@@ -6278,4 +6278,4 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Added an independent source-admission contract and single-use zero-provider capability.
 - Preserved sealed v2 tag/run/report/artifact identity; planned v3 tag is intentionally absent.
 - Focused `16/16` (`39 expect()`), Agent full `1554/1554` (`25286 expect()`, `197 files`), typecheck, and ESLint pass. No `.env`, credential, Provider, evidence, Docker/API/browser, Trace, BackgroundJob, or Outbox access.
-- Next closeout: push branch, `--no-ff` merge and push `main`, then rerun zero-provider parity on `main`. Tag and controlled-Live remain separate future decisions.
+- Feature `87dd1e24` was pushed and merged with `--no-ff` as `001770ff`; `main` was pushed. Merged-main Git admission produced bundle `sha256:047ca220...3821f` with future tag absent and all zero-provider counters at zero; focused/full/typecheck/lint/parity passed again. Tag and controlled-Live remain separate future decisions.

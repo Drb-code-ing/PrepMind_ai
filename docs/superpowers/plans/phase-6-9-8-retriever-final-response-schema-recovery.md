@@ -315,4 +315,4 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
 - 历史 P1 spec/plan 与 Agents 设计计划只更新“当前状态/下一步”指针，不改写已封存事实。
 ## Current execution override (2026-08-12)
 
-SR5 next-lineage D0/C1 is implemented as a standalone zero-provider source admission module and focused test. Remaining closeout is branch commit/push, `--no-ff` merge and push to `main`, then merged-main zero-provider parity. Do not create the future v3 tag or request Live authorization in this task.
+SR5 next-lineage D0/C1 is implemented, pushed as `87dd1e24`, merged with `--no-ff` as `001770ff`, and pushed to `main`. Merged-main Git admission plus focused/full/typecheck/lint parity passed. Do not create the future v3 tag or request Live authorization in this task; those remain separate next-lineage decisions.
