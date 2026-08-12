@@ -2256,3 +2256,5 @@ C2 flow: final merged `main` -> computed whole-tree bundle -> canonical annotate
 D1 flow: exact v3 source identity + exact boundary receipt + exact one-shot authorization object -> strict cross-field verification -> confirmation SHA-only record -> single-use zero-provider capability. It stops before env, credentials, proxy, reservation, runner, and evidence.
 
 D2 flow: C2 tag capability -> D1 authorization capability -> exact source identity cross-check -> strict zero-call proxy attestation -> preflight-only capability. The flow stops with runner invocation and Provider dispatch both disabled; no credential or evidence port exists.
+
+D3 future flow: complete runner merge -> v4 annotated tag -> Git verifier dynamic receipt -> D3 structural parity + exact authorization binding -> zero-provider contract record. D3 itself stops with `gitAuthorityIssued=false`; verifier capability, credentials, reservation, and execution are later boundaries.

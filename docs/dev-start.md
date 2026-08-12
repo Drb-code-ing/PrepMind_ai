@@ -2167,3 +2167,5 @@ For C2 use `drb/phase-6-9-8-sr5-next-lineage-tag-contract`. The tag is created o
 For D1 use `drb/phase-6-9-8-sr5-next-lineage-authorization-contract`. Run the focused contract tests, Agent full suite, typecheck, and lint; do not enter the exact confirmation strings as CLI commands, load `.env`, or invoke historical Live scripts.
 
 For D2 use `drb/phase-6-9-8-sr5-next-lineage-runner-preflight`. Run its focused test, Agent full suite, typecheck, lint, and Prettier. Do not load `.env`, invoke a Provider, reserve evidence, or reuse historical SR5 Live CLI/runner/durability.
+
+For D3 use `drb/phase-6-9-8-sr5-next-lineage-runtime-source-binding`. Validate only the pure runtime-source contract; do not create v4, supply real authorization, inspect credentials, or treat a plain receipt object as Git authority.

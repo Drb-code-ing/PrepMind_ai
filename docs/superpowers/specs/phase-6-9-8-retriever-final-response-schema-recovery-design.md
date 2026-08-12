@@ -499,3 +499,5 @@ C2 uses a two-stage tag contract: pre-tag code freezes the canonical message and
 D1 is an independent authorization-contract layer: exact v3 source identity, strict DeepSeek/Qwen receipt, exact one-shot authorization, SHA-only confirmation record, and opaque capability. It must not import historical Live CLI/runner or expose authorization as an executable argument.
 
 D2 is a composition-only preflight layer. It consumes C2 and D1 capabilities, requires exact source identity parity and bounded zero-call proxy readiness, then emits only a single-use preflight capability with runner/provider dispatch disabled. It has no credential, reservation, evidence, adapter, or historical Live-runner port.
+
+D3 resolves source self-reference by separating stable contract identity from post-merge Git identity. Stable source contains the v4 tag/ref, manifest/object scope, predecessor, and authorization vocabulary; a future verifier owns the dynamic commit/bundle/tag object receipt and Git capability. The pure D3 binder checks parity and exact authorization matching but must keep `gitAuthorityIssued=false`.

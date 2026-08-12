@@ -1906,3 +1906,5 @@ C2 tag parity is also model-zero-call. An approved source tag is only source aut
 D1 only defines future acceptance vocabulary and records confirmation hashes in synthetic tests. It does not mean the user accepted data processing or authorized a Provider call, and it gives no semantic or product authority.
 
 D2 evaluates no model behavior. It proves only that immutable source, bounded authorization vocabulary, and zero-call proxy readiness can be composed without exposing a runner or Provider dispatch capability.
+
+D3 evaluates no model behavior and grants no Git authority. It only proves that a future verifier's dynamic source/tag receipt can be structurally checked and matched to exact authorization fields without hard-coding post-merge identities into the signed source tree.

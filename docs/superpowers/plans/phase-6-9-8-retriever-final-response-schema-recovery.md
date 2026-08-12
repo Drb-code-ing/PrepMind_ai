@@ -322,3 +322,5 @@ C2 now freezes the annotated-tag contract and post-tag verifier on `drb/phase-6-
 D1 freezes v3-bound boundary/authorization schemas on `drb/phase-6-9-8-sr5-next-lineage-authorization-contract`; focused zero-provider checks pass. Closeout is feature push, `--no-ff` merge/push, and merged-main regression. No user authorization is requested in D1; later runner composition and a new complete-source tag are separate tasks.
 
 D2 composes C2/D1/proxy zero-call gates on `drb/phase-6-9-8-sr5-next-lineage-runner-preflight`. It ends at a dispatch-disabled preflight capability and creates no durability state. Closeout requires focused/full/typecheck/lint/Prettier, feature push, `--no-ff` merge/push, and merged-main regression before any runner/durability task.
+
+D3 freezes a non-self-referential v4 runtime-source contract. Final commit/bundle/tag-object are supplied after complete-source tagging by a future Git verifier, then matched to exact authorization fields. D3 issues no Git authority or execution capability. After D3 closeout, runner/durability and final verifier remain separate zero-provider tasks before tag creation or authorization.

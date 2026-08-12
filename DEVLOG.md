@@ -6302,3 +6302,10 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Focused `13/13` (`29 expect()`), Agent full `1608/1608` (`25383 expect()`, `200 files`), typecheck/lint/Prettier/diff check passed. Runner invocation and Provider dispatch stay disabled; credential/evidence/business access remains zero.
 - D2 imports no historical Live CLI/runner/durability and creates no run id, reservation, marker, journal, report, artifact, or recovery claim.
 - Feature `33ddbd14` was pushed and merged with `--no-ff` as `3c93f11e`; merged-main focused/full/typecheck/lint passed and `main == origin/main` at the implementation checkpoint.
+
+## 2026-08-12 - SR5 D3 runtime source binding contract
+
+- Replaced the planned hard-coded final commit/bundle/tag-object approach with a dynamic runtime receipt contract, avoiding an in-tree source-hash fixed point.
+- Stable code freezes only v4 tag name/ref, manifest/object scope, sealed predecessor, and exact boundary/authorization vocabulary; post-merge Git identities remain runtime values.
+- Strictly rejects all source/tag/remote/peeled/target/evidence drift and authorization commit/bundle/tag-object mismatch. Output remains `gitAuthorityIssued=false`, runner/dispatch disabled, and all access counters zero.
+- Focused `19/19` (`30 expect()`), Agent full `1627/1627` (`25415 expect()`, `201 files`), typecheck/lint/Prettier/diff check passed; no v3 identity constants, `.env`, Provider, evidence, product, Trace, BackgroundJob, or Outbox access.
