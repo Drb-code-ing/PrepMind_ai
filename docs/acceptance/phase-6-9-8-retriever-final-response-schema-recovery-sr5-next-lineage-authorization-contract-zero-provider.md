@@ -41,6 +41,6 @@ D1 does not unlock Provider calls, controlled-Live, product acceptance, P95/SLA,
 
 - feature commit: `54cf3e7f`
 - merge commit: `31d4144df04eaae75096a83b87edbd598bddf7c4`
-- `main == origin/main == 31d4144df04eaae75096a83b87edbd598bddf7c4`
+- at the implementation-merge checkpoint, `main == origin/main == 31d4144df04eaae75096a83b87edbd598bddf7c4`
 - merged-main focused `20/20`, Agent full `1595/1595`, typecheck, and lint passed again
 - v3 tag was not moved; no later complete-source tag was created
