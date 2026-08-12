@@ -6293,3 +6293,4 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Rejected old authorization strings, v4 placeholders, all source/authorization drift, extra fields, forged/hostile capability, hostile accessors, and authorization-shaped CLI args.
 - Focused `20/20` (`32 expect()`), Agent full `1595/1595` (`25352 expect()`, `199 files`), typecheck/lint passed; no `.env`, credential, Provider, evidence, product, Trace, BackgroundJob, or Outbox access.
 - D1 consumes no user approval. Since D1 code is newer than v3, future execution requires a later monotonic source tag containing D1 and the final runner; v3 remains immutable.
+- Feature `54cf3e7f` was pushed and merged with `--no-ff` as `31d4144d`; `main == origin/main`. Merged-main focused/full/typecheck/lint passed again, still with zero Provider and credential access.

@@ -2808,5 +2808,5 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] DeepSeek/Qwen current-account boundary and one-shot authorization schemas.
 - [x] Old/v4 strings, source/auth drift, hostile inputs/capabilities, and CLI execution rejected.
 - [x] Focused `20/20`, Agent full `1595/1595`, typecheck/lint, zero-provider boundary.
-- [ ] Feature push, `--no-ff` merge/push, merged-main regression.
+- [x] Feature `54cf3e7f` pushed; `--no-ff` merge `31d4144d` pushed to `main`; merged-main focused/full/typecheck/lint passed.
 - [ ] Later complete-source tag and explicit user acceptance remain separate.

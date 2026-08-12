@@ -36,3 +36,11 @@ No user data-boundary acceptance or Live authorization was requested or consumed
 The v3 tag is an immutable source checkpoint created before D1. D1 must not move or overwrite it. Once D1 and any future runner are merged, that newer whole-tree source requires a new monotonic approved tag before any controlled-Live can execute. Therefore v3 remains source authority for the values frozen here, while future execution must bind a later tag that actually contains the execution entrypoint.
 
 D1 does not unlock Provider calls, controlled-Live, product acceptance, P95/SLA, or blog completion.
+
+## Git closeout
+
+- feature commit: `54cf3e7f`
+- merge commit: `31d4144df04eaae75096a83b87edbd598bddf7c4`
+- `main == origin/main == 31d4144df04eaae75096a83b87edbd598bddf7c4`
+- merged-main focused `20/20`, Agent full `1595/1595`, typecheck, and lint passed again
+- v3 tag was not moved; no later complete-source tag was created
