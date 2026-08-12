@@ -6301,3 +6301,4 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Cross-checks all source identities and rejects forged/reused capabilities, hostile inputs, source drift, malformed proxy results, provider-call/probe drift, extra fields, abort, and executable authorization argv.
 - Focused `13/13` (`29 expect()`), Agent full `1608/1608` (`25383 expect()`, `200 files`), typecheck/lint/Prettier/diff check passed. Runner invocation and Provider dispatch stay disabled; credential/evidence/business access remains zero.
 - D2 imports no historical Live CLI/runner/durability and creates no run id, reservation, marker, journal, report, artifact, or recovery claim.
+- Feature `33ddbd14` was pushed and merged with `--no-ff` as `3c93f11e`; merged-main focused/full/typecheck/lint passed and `main == origin/main` at the implementation checkpoint.

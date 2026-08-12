@@ -2818,5 +2818,5 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Direct/loopback zero-call proxy attestation with exact probe counts.
 - [x] Runner invocation, Provider dispatch, credential and evidence paths remain disabled.
 - [x] Focused `13/13`, Agent full `1608/1608`, typecheck/lint/Prettier/diff check.
-- [ ] Feature push, `--no-ff` merge/push, and merged-main regression.
+- [x] Feature `33ddbd14` pushed; `--no-ff` merge `3c93f11e` pushed; merged-main focused/full/typecheck/lint passed.
 - [ ] Complete-source tag, executable runner/durability, and fresh user acceptance remain separate.
