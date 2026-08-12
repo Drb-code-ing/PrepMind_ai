@@ -1,5 +1,12 @@
 # Phase 6.9.8 Retriever / FinalResponse Schema Recovery 实施计划
 
+> 2026-08-12 current override：SR5 唯一 v2 controlled-Live run
+> `9eb57600-97e2-4513-8654-8686b38e856e` 已在 reservation 后、首个 guard/Provider dispatch 前异常退出，并由
+> crash-only recovery 封存为 `schema_recovery_sr5_branch_quality_gate_failed / qualityAuthority=none`。根因是
+> reservation 创建的 current-run marker 被后续 namespace=0 source revalidation 当作 drift。该 run 禁止重跑或追加
+> Provider 探测；下述 SR6/SR7 保持阻断。下一任务必须另立 zero-provider run-bound source revalidation recovery，详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-recovery-sealed.md`。
+
 日期：2026-08-09
 
 当前状态：SR4 reviewed Mock/static、SR5 zero-provider admission/runner/durability、Live implementation、proxy snapshot fix 与

@@ -2,7 +2,19 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## Phase 6.9.8 SR5 production proxy port recovery（当前，zero-provider）
+## Phase 6.9.8 SR5 唯一 Live recovery seal（当前，2026-08-12）
+
+唯一 v2 controlled-Live run `9eb57600-97e2-4513-8654-8686b38e856e` 已消费。正式入口读取三项模块 credential 后，
+在首个 guard 与任何 transport/Provider dispatch 前异常退出；crash-only recovery 已封存固定分母。终态是
+`schema_recovery_sr5_branch_quality_gate_failed / qualityAuthority=none / completionMode=recovery`，DeepSeek/Qwen/
+external Provider calls=`0`，semantic/P95/verified usage/cost 全为 `null`。validator `ok=true` 只证明 49 条 journal 与
+artifact 的结构/哈希一致，不代表质量通过。
+
+根因是 reservation self-marker 被随后的 namespace=0 source revalidation 当作 drift，不是模型、proxy、账号、schema
+或语义质量。唯一名额不可重跑；不得追加 Provider 探测。Docker/API/Trace/可见浏览器产品验收未执行且继续阻断。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-recovery-sealed.md`。
+
+## 历史 Phase 6.9.8 SR5 production proxy port recovery（zero-provider）
 
 生产 `runProxyPreflight` override 被 core 丢弃的缺陷已修复，缺失 override 时仍 fail-closed。新 source contract 预留的待创建 tag 为
 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`，历史 `live-v1` tag 保持不可变；focused

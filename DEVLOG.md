@@ -1,5 +1,24 @@
 # PrepMind AI 开发日志
 
+> 2026-08-12 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 唯一 v2 controlled-Live 已 recovery seal：
+>
+> 用户接受绑定 v2 source/tag 的 DeepSeek/Qwen 数据边界并授权唯一运行。run
+> `9eb57600-97e2-4513-8654-8686b38e856e` 在 source、proxy、credential 与 reservation 前门后，以
+> `live_runtime_or_evidence_io` 停止；credential reads=`3`，但 transport/DeepSeek/Qwen/external Provider calls 均为
+> `0`，business writes=`0`。随后只执行 crash-only recovery，终态为
+> `schema_recovery_sr5_branch_quality_gate_failed / qualityAuthority=none / completionMode=recovery`。strict validator
+> `ok=true`，journal `49` 条并以 `evidence_published` 收口；report logical SHA=`5912a563...e087d`，physical artifact
+> SHA=`a4ccb506...bb98b`。
+>
+> 正式 journal 在 `attempt_reserved` 后没有 guard/call/wire 事件。源码复核确认根因是 reservation 创建本 run marker 后，
+> runner 消费 admission capability 又复用完整 namespace=0 source check，把自己的 marker 当作 source drift。这不是
+> DeepSeek/Qwen、proxy、账号、schema 或语义质量失败。唯一名额已消费，禁止 retry/resume/replay/backfill、再次
+> seal/recovery、curl、单 case或产品 API 追加 Provider 探测；正式 marker/journal/claim/report/artifact 不得改写。
+>
+> 本轮未启动 Docker/API/browser，未写 Trace、BackgroundJob、Outbox 或业务数据。SR6 产品验收继续阻断；下一任务仅为
+> 独立 zero-provider run-bound source revalidation architecture recovery。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-recovery-sealed.md`。
+
 > 2026-08-11 — Phase 6.9.8 SR5 production proxy port recovery（当前分支，zero-provider）：
 >
 > 定位到上一轮 `proxy_preflight_not_ready` 的确定性根因：生产 wrapper 已注入共享 `runProxyPreflight`，但
