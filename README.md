@@ -675,3 +675,5 @@ The next task is limited to independent next-lineage D0/C1 zero-provider source 
 C2 adds the standalone annotated-tag parity contract on `drb/phase-6-9-8-sr5-next-lineage-tag-contract`. It verifies local/remote tag identity and final source bundle after merge; it still performs no model call or product acceptance.
 
 D1 adds a zero-provider authorization vocabulary contract bound to the v3 source identity. It does not accept CLI authorization, read credentials, or call models. Future executable source must use a later immutable tag that includes D1 and its runner.
+
+D2 adds the independent runner-preflight composition: C2 tag parity + D1 source-bound authorization + strict zero-call proxy attestation. Its capability remains preflight-only (`runnerInvocationAllowed=false`, `providerDispatchAllowed=false`) and cannot reach credentials, reservation, evidence, or the historical Live runner.

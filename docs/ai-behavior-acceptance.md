@@ -1904,3 +1904,5 @@ This checkpoint evaluates no model behavior: `providerDispatchAllowed=false`, pr
 C2 tag parity is also model-zero-call. An approved source tag is only source authority; it cannot be reported as schema, semantic, transport, usage, cost, product, or SLA authority.
 
 D1 only defines future acceptance vocabulary and records confirmation hashes in synthetic tests. It does not mean the user accepted data processing or authorized a Provider call, and it gives no semantic or product authority.
+
+D2 evaluates no model behavior. It proves only that immutable source, bounded authorization vocabulary, and zero-call proxy readiness can be composed without exposing a runner or Provider dispatch capability.

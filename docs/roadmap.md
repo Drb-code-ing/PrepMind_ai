@@ -1199,3 +1199,5 @@ D0/C1 is implemented as independent zero-provider Git/source admission. The futu
 C2 freezes the v3 annotated-tag message and post-tag parity verifier. After feature validation, merge/push final `main`, create/push the tag on exactly that commit, and verify local/remote identity. Live authorization remains a later task.
 
 D1 freezes source-bound boundary/authorization vocabulary without consuming approval or exposing Live execution. Next source work must build a separate runner/preflight composition and later tag the complete source; Provider execution remains blocked.
+
+D2 builds that independent preflight composition while keeping both runner invocation and Provider dispatch disabled. The next implementation task is a new-lineage runner/durability design and zero-provider test boundary; it must not reuse sealed v1/v2 evidence or authorization.

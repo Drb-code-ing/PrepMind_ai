@@ -6294,3 +6294,10 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Focused `20/20` (`32 expect()`), Agent full `1595/1595` (`25352 expect()`, `199 files`), typecheck/lint passed; no `.env`, credential, Provider, evidence, product, Trace, BackgroundJob, or Outbox access.
 - D1 consumes no user approval. Since D1 code is newer than v3, future execution requires a later monotonic source tag containing D1 and the final runner; v3 remains immutable.
 - Feature `54cf3e7f` was pushed and merged with `--no-ff` as `31d4144d`; `main == origin/main`. Merged-main focused/full/typecheck/lint passed again, still with zero Provider and credential access.
+
+## 2026-08-12 - SR5 next-lineage D2 runner preflight
+
+- Added an independent composition of C2 annotated-tag parity, D1 exact source-bound authorization, and strict zero-call proxy attestation.
+- Cross-checks all source identities and rejects forged/reused capabilities, hostile inputs, source drift, malformed proxy results, provider-call/probe drift, extra fields, abort, and executable authorization argv.
+- Focused `13/13` (`29 expect()`), Agent full `1608/1608` (`25383 expect()`, `200 files`), typecheck/lint/Prettier/diff check passed. Runner invocation and Provider dispatch stay disabled; credential/evidence/business access remains zero.
+- D2 imports no historical Live CLI/runner/durability and creates no run id, reservation, marker, journal, report, artifact, or recovery claim.
