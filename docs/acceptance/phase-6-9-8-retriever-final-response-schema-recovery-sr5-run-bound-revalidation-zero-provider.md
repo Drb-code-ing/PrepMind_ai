@@ -30,7 +30,7 @@ Docker/API/browser 或写入 Trace、BackgroundJob、Outbox、业务数据。
 实现最终收口前已通过：
 
 - focused Live：`25/25`，`80 expect()`；
-- SR5 六文件组合：`50/50`，`163 expect()`；
+- SR5 六文件组合：`50/50`，`162 expect()`；
 - Agent full：`1538/1538`，`25245 expect()`，`196 files`；
 - Agent typecheck、lint、`git diff --check`；
 - 旧 sealed bundle 只读 validator：`ok=true`，runId 与 logical/physical SHA 均未变化。

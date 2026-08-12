@@ -12,7 +12,7 @@
 - [x] marker/source binding与共享 strict journal/hash-chain validation
 - [x] guards 后首调度前二次门禁与 one-shot capability/permit
 - [x] late mutation 在 `invokeCall=0 / wire.dispatches=0` 前停止
-- [x] focused `25/25`、SR5 六文件 `50/50`、typecheck/lint/diff check
+- [x] focused `25/25`、SR5 六文件 `50/50`（162 assertions）、typecheck/lint/diff check
 - [ ] 分支提交/推送、`main --no-ff` 合并/推送、main 二次 parity
 - [ ] 新 lineage/source/tag/Live：不属于本任务，未授权
 - [ ] SR6 Docker/API/Trace/可见浏览器：继续阻断

@@ -7,7 +7,7 @@
 > binding 和打开文件身份校验。8 guards 后到首个 adapter 前增加一次性 dispatch capability/permit；late mutation 在
 > `invokeCall=0 / wire.dispatches=0` 前停止。独占 lease 只作为遵守合同进程间的互斥，不冒充 Windows OS 全局锁。
 >
-> focused Live `25/25`（80 assertions），SR5 六文件 `50/50`（163 assertions）；全程未读 credential/根 `.env`，未调用
+> focused Live `25/25`（80 assertions），SR5 六文件 `50/50`（162 assertions）；全程未读 credential/根 `.env`，未调用
 > Provider，未创建正式 evidence 或业务写入，未启动 Docker/API/browser。旧 v2 run/tag/evidence 保持 sealed，禁止重跑；
 > 本任务不创建 tag、不取得授权、不执行 Live，SR6 继续阻断。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-run-bound-revalidation-zero-provider.md`。

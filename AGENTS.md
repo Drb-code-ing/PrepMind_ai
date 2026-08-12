@@ -9,7 +9,7 @@ dispatch capability/permit；任何额外 evidence、marker/journal 篡改、目
 `wire.dispatches=0` 前 fail-closed。dispatch lease 只协调遵守合同的进程，不宣称阻止同用户恶意本地进程；Node/Windows
 缺少 portable `openat`/descriptor-relative enumeration，路径、目录流和已打开句柄身份校验用于缩小而非消灭该平台竞态。
 
-focused Live `25/25`（80 assertions），SR5 六文件组合 `50/50`（163 assertions），Agent full `1538/1538`
+focused Live `25/25`（80 assertions），SR5 六文件组合 `50/50`（162 assertions），Agent full `1538/1538`
 （25245 expect()，196 files），typecheck/lint/diff check 通过。全程 Provider/credential/正式 evidence/business writes=`0`，
 未读取根 `.env`，未启动 Docker/API/browser，未写
 Trace/BackgroundJob/Outbox。旧 run `9eb57600-97e2-4513-8654-8686b38e856e` 与 v2 tag 仍永久封存且禁止重跑；本 recovery
