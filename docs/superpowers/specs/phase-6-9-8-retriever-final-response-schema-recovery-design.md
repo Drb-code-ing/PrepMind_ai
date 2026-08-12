@@ -495,3 +495,5 @@ credential reader 为 0，不把该结果写成未来 Provider health。最小�
 The next atomic task is independent source admission only. It does not modify sealed SR5 v1/v2 contracts or evidence. The future v3 tag remains absent until branch push, `--no-ff` merge, `main` parity, and a fresh decision. No credential, Provider, formal evidence, or product acceptance is in scope.
 
 C2 uses a two-stage tag contract: pre-tag code freezes the canonical message and verification rules; post-merge runtime reads the dynamic tag object ID and recomputes the bundle from the peeled commit. This avoids embedding self-referential final identities in the covered tree.
+
+D1 is an independent authorization-contract layer: exact v3 source identity, strict DeepSeek/Qwen receipt, exact one-shot authorization, SHA-only confirmation record, and opaque capability. It must not import historical Live CLI/runner or expose authorization as an executable argument.

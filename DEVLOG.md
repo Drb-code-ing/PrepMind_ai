@@ -6286,3 +6286,10 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Avoided embedding the future tag object ID or final bundle SHA inside the covered Agent tree, preventing pre-creation and source-hash circularity.
 - Pre-tag focused `21/21` (`31 expect()`), Agent full `1575/1575` (`25319 expect()`, `198 files`), typecheck/lint passed; Provider/credential/evidence/business writes remain zero.
 - Closeout is feature push, `--no-ff` merge/push `main`, create/push v3 annotated tag on that exact commit, then run actual post-tag verifier without a later commit moving `main` past the tag.
+
+## 2026-08-12 - SR5 next-lineage D1 authorization contract
+
+- Froze the DeepSeek/Qwen current-account boundary and one-shot authorization vocabulary against exact v3 tag/source identities.
+- Rejected old authorization strings, v4 placeholders, all source/authorization drift, extra fields, forged/hostile capability, hostile accessors, and authorization-shaped CLI args.
+- Focused `20/20` (`32 expect()`), Agent full `1595/1595` (`25352 expect()`, `199 files`), typecheck/lint passed; no `.env`, credential, Provider, evidence, product, Trace, BackgroundJob, or Outbox access.
+- D1 consumes no user approval. Since D1 code is newer than v3, future execution requires a later monotonic source tag containing D1 and the final runner; v3 remains immutable.

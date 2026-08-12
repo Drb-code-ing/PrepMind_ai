@@ -2163,3 +2163,5 @@ docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker
 Run the focused admission tests on `drb/phase-6-9-8-sr5-next-lineage-admission`; do not use the Live CLI or load `.env`. The future v3 tag is intentionally absent. Push the branch, merge with `--no-ff` to `main`, push `main`, then rerun zero-provider checks on `main`.
 
 For C2 use `drb/phase-6-9-8-sr5-next-lineage-tag-contract`. The tag is created only after its final merge commit is pushed. Run the post-tag verifier from clean `main`; do not load `.env`, invoke Live scripts, or create a documentation commit after tagging.
+
+For D1 use `drb/phase-6-9-8-sr5-next-lineage-authorization-contract`. Run the focused contract tests, Agent full suite, typecheck, and lint; do not enter the exact confirmation strings as CLI commands, load `.env`, or invoke historical Live scripts.
