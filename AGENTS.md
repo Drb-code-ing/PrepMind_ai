@@ -1,5 +1,21 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 run-bound source revalidation recovery（2026-08-12）
+
+普通分支 `drb/phase-6-9-8-sr5-run-bound-source-revalidation` 已完成 zero-provider architecture recovery：reservation 与
+admission capability 共享一次性 runId binding；reservation 后只允许本 run marker/journal；marker、严格 journal schema、
+hash chain、source binding 与文件身份均在首 guard 前校验。8 个 guard 后、首个 Provider adapter 前再签发并消费一次性
+dispatch capability/permit；任何额外 evidence、marker/journal 篡改、目录替换或 late mutation 都在 `invokeCall=0`、
+`wire.dispatches=0` 前 fail-closed。dispatch lease 只协调遵守合同的进程，不宣称阻止同用户恶意本地进程；Node/Windows
+缺少 portable `openat`/descriptor-relative enumeration，路径、目录流和已打开句柄身份校验用于缩小而非消灭该平台竞态。
+
+focused Live `25/25`（80 assertions），SR5 六文件组合 `50/50`（163 assertions），Agent full `1538/1538`
+（25245 expect()，196 files），typecheck/lint/diff check 通过。全程 Provider/credential/正式 evidence/business writes=`0`，
+未读取根 `.env`，未启动 Docker/API/browser，未写
+Trace/BackgroundJob/Outbox。旧 run `9eb57600-97e2-4513-8654-8686b38e856e` 与 v2 tag 仍永久封存且禁止重跑；本 recovery
+不创建新 tag、不接受授权、不执行 Live。未来真实运行必须另立 lineage/source/tag 决策；SR6 产品验收继续阻断。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-run-bound-revalidation-zero-provider.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 Live 已 recovery seal（2026-08-12）
 
 绑定 v2 source/tag 的唯一 controlled-Live run `9eb57600-97e2-4513-8654-8686b38e856e` 已消费并由
@@ -29,9 +45,9 @@ revalidation，并补 production-shaped `admit -> reserve self-marker -> consume
 `loopback_proxy_ready`。只读调用链确认根因是 `createPorts` 无条件丢弃 production `runProxyPreflight` override，
 并安装 `PROXY_PREFLIGHT_PORT_NOT_BOUND` 抛错桩；不是代理、Bun dotenv、cwd、账号或 Provider 根因。
 
-当前普通 git 分支 `drb/phase-6-9-8-sr5-proxy-port-recovery` 已修复为
+当时普通 git 分支 `drb/phase-6-9-8-sr5-proxy-port-recovery` 已修复为
 `overrides?.runProxyPreflight ?? default fail-closed stub`，并新增 ready/not-ready 双向 zero-provider 回归。
-当前 source contract 预留的待创建 immutable tag identity 为
+当时 source contract 预留的 immutable tag identity 为
 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`，保留已推送的 `live-v1` tag 不动；source
 manifest=`sha256:61afe007...fa2829`，Live manifest=`372abb46...df67a4`。focused SR5 Live 为 `16/16`（63 assertions），
 SR5 + Task 9B boundary 为 `54/54`（191 assertions），Agent full 为 `1529/1529`（25224 expect()，196 files），
@@ -39,10 +55,8 @@ typecheck/lint/diff check 通过；`providerCalls=0`、`credentialReads=0`、`fo
 完整记录见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
 
-源码已改变，历史 SR5 tag 与旧授权不可复用；此前 proxy fail-closed 没有消费一次性名额，formal namespace 仍为 `0`。
-该 v2 Git tag 目前尚未创建。必须先提交/推送分支、`--no-ff` 合并并推送 `main`、在 `main` 做二次 zero-provider 回归，再创建新的 annotated tag，
-核对 tag/source parity，并重新接受当次 DeepSeek/Qwen 数据边界和两行 exact authorization，才可执行唯一一次新的
-controlled-Live。成功只形成语义 authority；失败必须 durable seal 后停止。不得 retry/replay/curl/单 case/追加 Provider
+源码改变后，历史 SR5 tag 与旧授权不可复用；当时 proxy fail-closed 没有消费一次性名额，formal namespace 仍为 `0`。
+随后 v2 tag 已创建、唯一 Live 已执行并封存；本段历史顺序不可再次执行。不得 retry/replay/curl/单 case/追加 Provider
 探测，也不得清空或重建 Docker、PostgreSQL、Redis、MinIO。
 
 controlled-Live 语义门通过后，才在独立 SR6 授权下进行 Docker/API/Trace/可见浏览器产品验收；截至当前尚未完成该产品验收，

@@ -1,5 +1,22 @@
 # PrepMind AI 数据流
 
+## 当前 SR5 run-bound revalidation flow（zero-provider，2026-08-12）
+
+```text
+admit(namespace=0) -> issue paired capabilities
+  -> reserve UUID + bind reservation capability + durable marker/attempt_reserved
+  -> consume admission capability(runId exact)
+  -> allow only current marker/journal + strict source/durable-prefix validation
+  -> 8 guard_terminal -> call_reserved
+  -> issue one-shot dispatch capability + cooperative lease
+  -> consume capability; late drift => invokeCall=0, wire.dispatches=0
+  -> append dispatch_started
+  -> consume permit + final full-prefix/source check -> loaded adapter
+```
+
+共享 strict journal schema 防止 durability 与 revalidation 规则漂移。路径、目录流与句柄身份校验缩小 Windows pathname race；
+lease 仅协调遵守协议的进程，不声称抵御同用户恶意文件系统进程。该 flow 目前只由 synthetic reviewed Mock 覆盖。
+
 ## 当前 SR5 Live recovery-seal flow（2026-08-12）
 
 ```text

@@ -1,5 +1,12 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 SR5 run-bound revalidation recovery（2026-08-12）
+
+zero-provider architecture recovery 已关闭 self-marker 自拒绝：runId-bound capability、当前 run namespace allowlist、共享
+strict journal schema、首 guard 前门禁、guard 后首 dispatch capability/permit 与 late-mutation fail-closed 已落地。
+本阶段不恢复旧 v2 名额，不创建新 tag/授权/Live，也不解锁 SR6。分支提交推送、`--no-ff` 合并推送 `main` 与 main 二次
+zero-provider parity 完成后，本原子任务才收口；未来是否真实运行必须另立 lineage/source/tag 决策。
+
 ## 当前原子阶段：Phase 6.9.8 SR5 Live recovery seal（2026-08-12）
 
 唯一 v2 controlled-Live run `9eb57600-97e2-4513-8654-8686b38e856e` 已消费并 crash-only seal。终态为

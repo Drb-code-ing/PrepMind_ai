@@ -1,5 +1,10 @@
 # Phase 6.9.8 Retriever / FinalResponse Schema Recovery 实施计划
 
+> 2026-08-12 current override 2：独立普通分支已完成 zero-provider run-bound source revalidation recovery。self-marker
+> allowlist、runId-bound capabilities、共享 strict journal schema、guard 后首 dispatch capability/permit 与 late-mutation
+> `invokeCall=0 / wire.dispatches=0` 已实现。旧 v2 run/tag 不变且禁止重跑；本任务不创建新 tag、不接受授权、不执行 Live，
+> SR6 保持阻断。完成分支/main 推送及 main parity 后，是否开展新真实运行必须另立 lineage/source/tag 决策。
+
 > 2026-08-12 current override：SR5 唯一 v2 controlled-Live run
 > `9eb57600-97e2-4513-8654-8686b38e856e` 已在 reservation 后、首个 guard/Provider dispatch 前异常退出，并由
 > crash-only recovery 封存为 `schema_recovery_sr5_branch_quality_gate_failed / qualityAuthority=none`。根因是

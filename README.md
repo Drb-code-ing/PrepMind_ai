@@ -1,5 +1,13 @@
 # PrepMind AI 智能备考助手
 
+## 当前工作回执：SR5 run-bound source revalidation（zero-provider，2026-08-12）
+
+SR5 已修复 `admit -> reserve self-marker -> consume` 的自拒绝：reservation/admission capability 绑定同一 runId，运行中只
+允许当前 marker/journal，并在首 guard 前及 8 guards 后到首个 adapter 之间使用严格 source/durability 校验和一次性
+dispatch permit。late mutation 回归确认 `invokeCall=0 / wire.dispatches=0`。这只是 architecture recovery，不是新的 Live、
+模型质量或产品验收；旧 v2 run/tag/evidence 保持不可变，未来真实运行需另立 lineage/source/tag 决策。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-run-bound-revalidation-zero-provider.md`。
+
 ## 当前工作回执：Schema Recovery SR5 Live recovery seal（2026-08-12）
 
 绑定 v2 source/tag 的唯一 controlled-Live run `9eb57600-97e2-4513-8654-8686b38e856e` 已消费，并由 crash-only recovery
@@ -18,8 +26,8 @@ source check，把自己的 marker 当作 source drift。该名额不可重跑�
 以下“当前/下一步”均指 2026-08-11 checkpoint；v2 tag 与唯一 Live 此后已执行并封存，禁止按本段操作性文字重跑。
 
 正式 SR5 CLI 的 production `runProxyPreflight` 曾被 core 端口组装无条件覆盖，导致独立 preflight 已
-`loopback_proxy_ready` 时仍必然返回 `proxy_preflight_not_ready`。当前分支已恢复 override、保留默认 fail-closed，并将新
-source contract 预留到待创建的 immutable
+`loopback_proxy_ready` 时仍必然返回 `proxy_preflight_not_ready`。当时分支已恢复 override、保留默认 fail-closed，并将新
+source contract 预留到 immutable
 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`；已推送的 `live-v1` tag 保持不动。
 
 ```text
@@ -30,9 +38,8 @@ Agent full        1529/1529 tests, 25224 assertions, 196 files
 provider/env     0 / 0; formal evidence 0; business writes 0
 ```
 
-该 v2 Git tag 目前尚未创建。本分支仍须推送、`--no-ff` 合并并推送 `main`、main 二次 zero-provider、创建/核对 `live-v2` annotated tag，再由用户
-重新接受该 source 的 DeepSeek/Qwen 数据边界与 exact authorization，才可执行唯一一次 controlled-Live。语义门通过后才
-另行授权启动 Docker/API/Trace/可见浏览器产品验收；当前不能宣称产品链路已可用。验收见
+随后 v2 tag 已创建、唯一 Live 已执行并封存；不得按该历史路线再次授权或运行。Docker/API/Trace/可见浏览器产品验收未执行，
+仍不能宣称产品链路已可用。验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
 
 ## 历史工作回执：Schema Recovery SR5 Live tag compatibility（2026-08-10）

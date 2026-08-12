@@ -1,5 +1,17 @@
 # PrepMind AI 开发日志
 
+> 2026-08-12 — Phase 6.9.8 SR5 run-bound source revalidation architecture recovery（zero-provider）：
+>
+> 修复 reservation 创建 self-marker 后 admission 再要求 namespace=0 的自拒绝。两个 capability 通过私有 runId binding
+> 配对；运行中 namespace 只允许本 run marker/journal，marker 与 journal 使用共享 strict schema、hash chain、source
+> binding 和打开文件身份校验。8 guards 后到首个 adapter 前增加一次性 dispatch capability/permit；late mutation 在
+> `invokeCall=0 / wire.dispatches=0` 前停止。独占 lease 只作为遵守合同进程间的互斥，不冒充 Windows OS 全局锁。
+>
+> focused Live `25/25`（80 assertions），SR5 六文件 `50/50`（163 assertions）；全程未读 credential/根 `.env`，未调用
+> Provider，未创建正式 evidence 或业务写入，未启动 Docker/API/browser。旧 v2 run/tag/evidence 保持 sealed，禁止重跑；
+> 本任务不创建 tag、不取得授权、不执行 Live，SR6 继续阻断。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-run-bound-revalidation-zero-provider.md`。
+
 > 2026-08-12 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 唯一 v2 controlled-Live 已 recovery seal：
 >
 > 用户接受绑定 v2 source/tag 的 DeepSeek/Qwen 数据边界并授权唯一运行。run
