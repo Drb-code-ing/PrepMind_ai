@@ -2801,3 +2801,12 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Focused `21/21`, Agent full `1575/1575`, typecheck/lint, zero-provider boundary.
 - [ ] Push feature, merge/push final `main`, create/push v3 tag, run actual post-tag parity.
 - [ ] Fresh data boundary and exact Live authorization remain separate.
+
+### D1 authorization contract
+
+- [x] Exact v3 tag object, source commit, manifest, and bundle binding.
+- [x] DeepSeek/Qwen current-account boundary and one-shot authorization schemas.
+- [x] Old/v4 strings, source/auth drift, hostile inputs/capabilities, and CLI execution rejected.
+- [x] Focused `20/20`, Agent full `1595/1595`, typecheck/lint, zero-provider boundary.
+- [ ] Feature push, `--no-ff` merge/push, merged-main regression.
+- [ ] Later complete-source tag and explicit user acceptance remain separate.
