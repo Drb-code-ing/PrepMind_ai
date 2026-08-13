@@ -1908,3 +1908,10 @@ D1 only defines future acceptance vocabulary and records confirmation hashes in 
 D2 evaluates no model behavior. It proves only that immutable source, bounded authorization vocabulary, and zero-call proxy readiness can be composed without exposing a runner or Provider dispatch capability.
 
 D3 evaluates no model behavior and grants no Git authority. It only proves that a future verifier's dynamic source/tag receipt can be structurally checked and matched to exact authorization fields without hard-coding post-merge identities into the signed source tree.
+# Phase 6.9.8 SR5 D4 runtime runner/durability boundary
+
+D4 carries no model-quality authority. Its synthetic runner proves only one-shot v4 source consumption, fixed `8/12` accounting,
+zero dispatch, durable journal/report/artifact publication, and strict tamper rejection. `runnerInvocationAllowed=false`,
+`providerDispatchAllowed=false`, `qualityAuthority=none`, Provider/credential/formal evidence/business writes=`0` are mandatory.
+The final Git verifier, v4 tag, fresh DeepSeek/Qwen data-boundary acceptance, exact authorization, and controlled-Live are separate
+future gates. A D4 pass must never be displayed or documented as Agent quality or product availability.

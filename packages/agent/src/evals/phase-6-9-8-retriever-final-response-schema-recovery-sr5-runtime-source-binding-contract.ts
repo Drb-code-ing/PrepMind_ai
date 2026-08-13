@@ -118,7 +118,6 @@ export type Phase698Sr5RuntimeSourceBindingRecord = Readonly<{
   formalEvidence: 0;
   businessWrites: 0;
 }>;
-
 export function bindPhase698Sr5RuntimeSourceAuthorizationZeroProvider(
   input: Readonly<{
     sourceReceipt: unknown;

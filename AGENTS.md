@@ -1,5 +1,20 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 D4 runtime runner/durability（2026-08-13）
+
+普通分支 `drb/phase-6-9-8-sr5-runtime-runner-durability` 正在完成 v4-native zero-provider runner/durability：D3
+动态 source binding capability 只能消费一次；synthetic run 固定 `8/8` guards、`12/12` reserved lanes，
+dispatch/response/verified usage=`0/0/0`。marker、5 条 canonical hash-chain journal、strict report 与 hard-link artifact
+均可重算，crash-only seal 不重放 lane，活动 owner、第二次运行/恢复与篡改均 fail-closed。D3 不签发执行 capability，
+D4 只暴露 test-only synthetic capability。focused D3+D4 为 `26/26`（`47 expect()`）；Agent full 使用
+`--timeout 30000` 为 `1634/1634`（`25433 expect()`，`202 files`）。默认 5 秒全量首次回放只有 8 个历史 fsync-heavy
+测试超时，相关 6 文件以同一 30 秒阈值独立回放 `48/48` 后，最终全量延长阈值回放零失败。
+
+本任务未读取 `.env`/credential、未调用 DeepSeek/Qwen、未创建正式 evidence、未启动 Docker/API/browser，未写
+Trace/BackgroundJob/Outbox 或业务数据，`qualityAuthority=none`。最终 Git verifier、v4 tag/remote parity、fresh
+authorization 与 controlled-Live 仍是独立后续停止门；旧 v1/v2/v3 tag、授权及 sealed evidence 禁止复用或改写。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runtime-runner-durability-zero-provider.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 run-bound source revalidation recovery（2026-08-12）
 
 普通分支 `drb/phase-6-9-8-sr5-run-bound-source-revalidation` 已完成 zero-provider architecture recovery：reservation 与

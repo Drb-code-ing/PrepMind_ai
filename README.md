@@ -8,6 +8,19 @@ dispatch permit。late mutation 回归确认 `invokeCall=0 / wire.dispatches=0`�
 模型质量或产品验收；旧 v2 run/tag/evidence 保持不可变，未来真实运行需另立 lineage/source/tag 决策。详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-run-bound-revalidation-zero-provider.md`。
 
+## 当前工作回执：SR5 D4 runtime runner/durability（zero-provider，2026-08-13）
+
+D4 已在当前 v4 runtime-source contract 之上新增独立 runner/durability 边界：D3 保持 record-only；D4 test-only
+synthetic source capability 只消费一次，
+synthetic run 固定完成 `8/8` guards、预留 `12/12` lanes，但 `dispatch/response/verified usage=0/0/0`；marker、5 条
+hash-chain journal、canonical report 与 hard-link artifact 均可严格重算；crash-only seal 不重放 lane，活动 owner、篡改、
+第二次运行/恢复 fail-closed。D4 不读取 `.env`、
+不调用 DeepSeek/Qwen、不创建正式 evidence、不启动 Docker/API/browser，也不形成模型质量或产品 authority。
+验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runtime-runner-durability-zero-provider.md`。
+
+D4 完成后仍有一个独立停止门：最终 Git verifier 必须在完整源码合并后生成动态 source receipt，并完成最终 v4 tag/远程 parity；
+只有之后才能重新取得精确授权。旧 tag、授权和 sealed evidence 不复用。
+
 ## 当前工作回执：Schema Recovery SR5 Live recovery seal（2026-08-12）
 
 绑定 v2 source/tag 的唯一 controlled-Live run `9eb57600-97e2-4513-8654-8686b38e856e` 已消费，并由 crash-only recovery
