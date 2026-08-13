@@ -47,3 +47,10 @@ boundary acceptance and exact authorization remain separate; no controlled-Live 
 Feature commit: `7a2dfced` (pushed on `drb/phase-6-9-8-sr5-final-git-verifier`).
 Merge commit: `31b17fe9` (`--no-ff`, pushed to `main`). Merged-main parity is `main == origin/main`.
 Merged-main focused D5+D3+D4 validation passed `48/48` (`85 expect()` calls), with typecheck, lint, and diff checks passing.
+
+## Post-tag recovery note
+
+The immutable v4 tag later passed this verifier's real Git inspection. The immediate focused replay nevertheless passed `21/22`
+because one unit test incorrectly required the real repository to remain pre-tag. v4 is not eligible for authorization or Live.
+The current final tag contract is v5 and the lifecycle test is isolated; see
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-v4-post-tag-test-recovery-zero-provider.md`.

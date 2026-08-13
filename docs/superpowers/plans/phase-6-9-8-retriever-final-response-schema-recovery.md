@@ -334,3 +334,10 @@ merge/tag parity and can issue a single-use Git/source-only capability. It does 
 request authorization, call Providers, invoke the runner, or write evidence. The feature must be merged and revalidated on `main`
 before a separate Git-operation task creates/pushes v4; only afterward may D5 inspect the real tag.
 The D5 feature commit `7a2dfced` is merged/pushed as `31b17fe9`; merged-main focused D5+D3+D4 validation passed `48/48`.
+
+### v4 post-tag test recovery (2026-08-13)
+
+The immutable v4 tag passed real D5 Git inspection, but the immediate tagged-source replay exposed one repository-lifecycle test
+assumption and passed `21/22`. v4 is Git-valid but blocked from authorization/Live. Recovery moves the final approved tag and exact
+boundary/authorization vocabulary to v5, replaces the real-checkout pre-tag assertion with isolated temporary-root coverage, and
+requires feature merge/push plus merged-main validation before a separate v5 tag operation. The v4 tag is never moved or deleted.

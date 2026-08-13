@@ -1,4 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   PHASE_6_9_8_SR5_FINAL_GIT_VERIFIER_AUTHORITY,
@@ -16,7 +19,7 @@ import {
 describe('Phase 6.9.8 SR5 D5 final Git verifier', () => {
   test('creates the exact v4 annotated tag message without Live authority', () => {
     const message = createPhase698Sr5FinalGitTagMessage(`sha256:${'a'.repeat(64)}`);
-    expect(message).toContain('Phase 6.9.8 SR5 runtime v4 approved source');
+    expect(message).toContain('Phase 6.9.8 SR5 runtime v5 approved source');
     expect(message).toContain(`sourceBundleSha256=sha256:${'a'.repeat(64)}`);
     expect(message).toContain('qualityAuthority:none');
     expect(() => createPhase698Sr5FinalGitTagMessage('invalid')).toThrow(
@@ -145,10 +148,15 @@ describe('Phase 6.9.8 SR5 D5 final Git verifier', () => {
     }
   });
 
-  test('the current pre-tag repository fails closed without issuing authority', () => {
-    expect(verifyPhase698Sr5FinalGitSourceZeroProvider(process.cwd())).toEqual({
-      ok: false,
-      reasonCode: 'final_git_source_invalid',
-    });
-  }, 30_000);
+  test('a non-repository root fails closed without depending on the real tag lifecycle', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'prepmind-sr5-final-git-invalid-'));
+    try {
+      expect(verifyPhase698Sr5FinalGitSourceZeroProvider(root)).toEqual({
+        ok: false,
+        reasonCode: 'final_git_source_invalid',
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });

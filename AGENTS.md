@@ -1328,3 +1328,13 @@ capability is Git/source-only: `gitAuthorityIssued=true`, while runner/provider 
 fresh DeepSeek/Qwen boundary acceptance, authorization, and controlled-Live remain future tasks. Acceptance:
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-final-git-verifier-zero-provider.md`.
 Feature commit `7a2dfced` was merged with `--no-ff` as `31b17fe9` and pushed; merged-main D5+D3+D4 validation passed `48/48`.
+## Current checkpoint: Phase 6.9.8 SR5 v4 post-tag test recovery (2026-08-13)
+
+The immutable v4 annotated tag points to `5d1d2997`, with tag object `6523ae12` and source bundle
+`sha256:e702a81a...084e2a`. D5 real read-only Git verification succeeded, but the tagged-source focused replay
+passed only `21/22`: one test incorrectly required the real checkout to remain forever pre-tag. v4 is therefore
+sealed as Git-valid but test-parity-ineligible and must not receive authorization or controlled-Live execution.
+Recovery branch `drb/phase-6-9-8-sr5-final-tag-test-recovery` moves the final contract and exact confirmation
+vocabulary to v5 and replaces the repository-lifecycle assertion with an isolated temporary-root fail-closed test.
+Focused D5+D3+D4 now passes `48/48`; no `.env`, credential, Provider, Docker, evidence, or business write is used.
+Do not move/delete v4. Merge/push recovery and revalidate `main` before creating the one final v5 tag.

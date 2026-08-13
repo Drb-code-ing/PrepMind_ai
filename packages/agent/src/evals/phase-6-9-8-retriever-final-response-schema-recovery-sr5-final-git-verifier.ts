@@ -31,7 +31,7 @@ export const PHASE_6_9_8_SR5_FINAL_GIT_VERIFIER_AUTHORITY =
 export const PHASE_6_9_8_SR5_FINAL_GIT_VERIFIER_GATE =
   'sr5_final_git_source_verified_zero_provider' as const;
 export const PHASE_6_9_8_SR5_FINAL_GIT_TAG_TITLE =
-  'Phase 6.9.8 SR5 runtime v4 approved source' as const;
+  'Phase 6.9.8 SR5 runtime v5 approved source' as const;
 
 export type Phase698Sr5FinalGitObservation = Readonly<{
   branch: string;

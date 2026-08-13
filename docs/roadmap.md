@@ -1205,10 +1205,10 @@ D2 builds that independent preflight composition while keeping both runner invoc
 
 D3 first removes the source-identity fixed point: future final Git values are dynamic verifier output rather than tracked constants. D4 now implements a v4-native zero-provider runner/durability boundary: single-use source capability, fixed `8` guards and `12` reserved lanes, zero dispatch, canonical hash-chain journal, hard-link artifact, and strict tamper rejection. The final Git verifier remains separate; only after it is complete may the full source be merged, one final v4 tag created, remote parity verified, and fresh authorization requested.
 
-## Phase 6.9.8 SR5 D5 status
+## Phase 6.9.8 SR5 v5 recovery status
 
-D5 final Git verifier is implemented as zero-provider, read-only source verification. It is intentionally separate from tag creation,
-authorization, Provider execution, and product acceptance. Remaining order is: merge/push and merged-main revalidation; create/push
-the final v4 annotated tag on the complete source; run the verifier to obtain the dynamic receipt; then make a separate decision on
-fresh DeepSeek/Qwen boundary acceptance and any controlled-Live.
-Feature `7a2dfced` is merged/pushed as `31b17fe9`; merged-main D5+D3+D4 validation is complete.
+The v4 tag passed real D5 Git inspection but the immediate focused replay passed `21/22` because one unit test depended on the real
+repository being permanently pre-tag. v4 remains immutable and blocked. The recovery moves the final source contract to v5 and
+isolates fail-closed unit coverage from the repository lifecycle. Remaining order is: merge/push recovery and merged-main revalidation;
+create/push final v5; run real D5 inspection and tagged-source focused replay; only then make a separate decision on fresh
+DeepSeek/Qwen boundary acceptance and any controlled-Live.

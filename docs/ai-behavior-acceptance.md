@@ -1921,4 +1921,5 @@ future gates. A D4 pass must never be displayed or documented as Agent quality o
 - It may issue only a module-private, single-use Git authority containing the D3 runtime source receipt.
 - `runnerInvocationAllowed=false`, `providerDispatchAllowed=false`, and `qualityAuthority=none` remain fixed.
 - It must not read `.env` or credentials, request/consume authorization, call DeepSeek/Qwen, create formal evidence, or write business data.
-- Before the final v4 annotated tag exists and matches local/remote `main` parity, verification must fail closed.
+- The real v4 tag is immutable but blocked after a post-tag test-lifecycle failure; it cannot receive authorization or Live execution.
+- Before the final v5 annotated tag exists and matches local/remote `main` parity, verification must fail closed.
