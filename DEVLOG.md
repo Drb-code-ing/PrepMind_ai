@@ -59,7 +59,7 @@
 >
 > SR5 contract/source/Live focused `26/26`（102 assertions），Agent full `1527/1527`（25213 expect()，196 files），
 > typecheck/lint、源文件 Prettier 与 diff check 全部通过。全程 `providerCalls=0 / credentialReads=0 / formalEvidence=0 /
-> businessWrites=0`，未读取真实 `.env`、未调用 DeepSeek/Qwen、未创建正式 evidence、未启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。
+businessWrites=0`，未读取真实 `.env`、未调用 DeepSeek/Qwen、未创建正式 evidence、未启动或清理 Docker/PostgreSQL/Redis/MinIO/API/browser。
 >
 > 当前仍在 `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5` 功能分支，尚未消费本轮授权；下一步是提交/推送、合并并推送
 > `main`、合并后二次 zero-provider 回归，再在最终 parity commit 创建并推送独立 Live annotated tag，随后重新接受绑定该 tag/source
@@ -114,7 +114,7 @@
 >
 > `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5` 已以 `--no-ff` 合并到 `main`，merge=`1d0f798d`。
 > 合并后在 main 完成 Agent 全量 `1523/1523`（25189 assertions，196 files）、SR5 + Task 9B boundary `48/48`
->（164 assertions）、Agent typecheck/lint、Live CLI help/validate/recover 与 `git diff --check`；help=`0`，无 bundle 的
+> （164 assertions）、Agent typecheck/lint、Live CLI help/validate/recover 与 `git diff --check`；help=`0`，无 bundle 的
 > validate/recover 按预期 fail-closed（`1/1`）。
 >
 > 当前 main 仍保持 `approved tag=0 / providerCalls=0 / credentialReads=0 / formalEvidence=0 / businessWrites=0`；没有读取真实
@@ -131,7 +131,7 @@
 > retry/resume/replay/backfill。
 >
 > Live CLI 使用 `bun --no-env-file`，并按 `exact argv -> data-boundary/exact authorization -> current-namespace/source/tag -> proxy
-> preflight -> selective root .env projection -> single-use reservation -> marker/journal -> runtime -> validator`
+preflight -> selective root .env projection -> single-use reservation -> marker/journal -> runtime -> validator`
 > 顺序执行。只有三项 SR5 credential 在所有前门通过后才会被读取；credential、prompt、Provider 原文不写入 evidence。
 > 旧 admission manifest SHA 保持不可变，Live source bundle SHA=
 > `sha256:4aa3c6e8b6f66ad0c74dcaab932cbfa9bb04202f3219e38005a2571ae60853ef`，Live manifest SHA=
@@ -140,7 +140,7 @@
 >
 > focused Live `10/10`（36 assertions）、SR5 + Task 9B boundary 组合 `48/48`（164 assertions）、Agent typecheck/lint 与 `git diff --check`
 > 已通过。此提交仍是 implementation checkpoint：`providerCalls=0 / credentialReads=0 / formalEvidence=0 /
-> businessWrites=0`，未创建 approved tag，未启动 Docker/API/browser，未读取真实 `.env`，未调用 DeepSeek/Qwen。
+businessWrites=0`，未创建 approved tag，未启动 Docker/API/browser，未读取真实 `.env`，未调用 DeepSeek/Qwen。
 > 文档、main merge、远程推送与二次回归完成后，必须重新接受绑定最终 source 的两行 exact authorization，才可执行唯一
 > controlled-Live；成功也只形成分支 semantic authority。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`。
@@ -196,8 +196,8 @@
 > 复用 SR3 runtime error 分类，避免把 schema/usage/transport/timeout/abort/cross-owner 混成 transport。
 >
 > 生产形状链路为 `Retriever original -> query-rewrite candidate -> bounded raw-content parser -> synthetic Qwen search
-> port -> evidence projector -> FinalResponse stream -> local merger -> SR3 runner`。固定 `8 guards + 6 rewrite + 6
-> FinalResponse = 20 report entries / 12 candidate invocations`、最大并发 `1`、single dispatch、no retry/replay；默认结果
+port -> evidence projector -> FinalResponse stream -> local merger -> SR3 runner`。固定 `8 guards + 6 rewrite + 6
+FinalResponse = 20 report entries / 12 candidate invocations`、最大并发 `1`、single dispatch、no retry/replay；默认结果
 > 为 guards `8/8`、runtime `12/12/12/12`、schema `4 canonical + 2 extension discarded + 0 rejected`、FinalResponse
 > strict `6`、节点计数 `18/6/6/6/6`、synthetic Qwen port `18`，gate=
 > `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。
@@ -366,7 +366,7 @@
 > diagnostic，不改写 G1/G2 authority。
 >
 > S2 focused `4/4`（73 assertions）、G1+G2 focused `10/10`（50 assertions）、Agent full `1423/1423`
->（24241 expect()，177 files）、typecheck/lint/Prettier/diff check 全通过。全程 `providerCalls=0`、
+> （24241 expect()，177 files）、typecheck/lint/Prettier/diff check 全通过。全程 `providerCalls=0`、
 > `credentialReads=0`、formal marker/journal/artifact/recovery claim=`0`，未读取根 `.env`、未启动 Docker/API/browser、
 > 未写 Trace/BackgroundJob/Outbox 或业务数据。完整验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-s2-reviewed-mock-static.md`。
@@ -6273,6 +6273,7 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
   browser, API, provider, synthetic account, trace or test data was executed
   or created. The offline gates and independent contract/operations reviews
   are complete; the next required step is fresh, explicit user authorization.
+
 ## 2026-08-12 - SR5 next-lineage admission D0/C1
 
 - Added an independent source-admission contract and single-use zero-provider capability.
@@ -6318,6 +6319,7 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Focused D4 + D3 regression: `26/26` tests, `47` expect() calls. Final Agent full with `--timeout 30000` passed `1634/1634`, `25433 expect()` calls, `202 files`; typecheck, lint, Prettier, and diff check passed. The first default-5s full run only timed out 8 historical fsync-heavy tests; those 6 files passed `48/48` independently with the 30s threshold before the final extended full run passed. D3 remains record-only; only a test-only synthetic capability reaches D4. Coverage includes single-use source/reservation, fixed accounting, crash-only sealing without replay, active-owner/second-seal refusal, canonical recovery-claim validation, tamper rejection, hard-link publication, and Live/authorization-shaped argv rejection. No `.env`, Provider, Docker/API/browser, Trace, BackgroundJob, or Outbox access.
 - This is engineering authority only (`qualityAuthority=none`); the final Git verifier, v4 tag, remote parity, fresh authorization, and any controlled-Live remain blocked and are the next independent task.
 - Feature `e5e3150d` was pushed and merged with `--no-ff` as `5efe506f`; merged-main focused `26/26`, typecheck, lint, and diff check passed, then `main` was pushed to origin. No v4 tag or authorization was created.
+
 ## 2026-08-13 — Phase 6.9.8 SR5 D5 final Git verifier
 
 - Added a post-tag, read-only verifier that derives the v4 D3 source receipt from live Git state.
@@ -6327,3 +6329,4 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Added 22 focused tests / 38 assertions. Current repository inspection fails closed because the v4 tag is intentionally absent.
 - No credentials, `.env`, Providers, Docker/API/browser, formal evidence, Trace, BackgroundJob, Outbox, or business writes were used.
 - Next: push/merge D5 and revalidate merged `main`; only then create/push the final v4 tag in a separate Git-operation task.
+- Closeout: feature `7a2dfced` merged/pushed as `31b17fe9`; merged-main D5+D3+D4 passed `48/48` (85 assertions), typecheck/lint/diff check passed.

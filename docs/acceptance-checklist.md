@@ -2783,6 +2783,7 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r3-runner-durability-admission.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r4-reviewed-mock-static.md` 与
 `docs/acceptance/phase-6-9-8-retriever-final-response-architecture-recovery-r5-controlled-live.md`。
+
 ## SR5 next-lineage admission checklist
 
 - [x] Independent lineage/source manifest and immutable v2 predecessor receipt.
@@ -2831,6 +2832,7 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Focused `19/19`, Agent full `1627/1627`, typecheck/lint/Prettier/diff check.
 - [x] Feature `0943c4e4` pushed; `--no-ff` merge `d553e545` pushed; merged-main focused/full/typecheck/lint passed.
 - [ ] Runner/durability, final Git verifier/tag, and fresh user acceptance remain separate.
+
 # Phase 6.9.8 SR5 D4 runtime runner/durability（2026-08-13）
 
 - [x] D3 保持 record-only、不签发执行 authority；D4 仅 test-only synthetic capability module-owned、single-consume
@@ -2841,6 +2843,7 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Agent full `1634/1634`（`25433 expect()`，`202 files`，`--timeout 30000`）、typecheck/lint/Prettier/diff check
 - [x] 功能 `e5e3150d` push、`main --no-ff` merge=`5efe506f`/push、merged-main focused/typecheck/lint/diff replay
 - [ ] final Git verifier、v4 annotated tag/remote parity、fresh authorization 与 controlled-Live（独立后续任务）
+
 ## Phase 6.9.8 SR5 D5 final Git verifier
 
 - [x] Read-only verifier derives the dynamic D3 receipt from Git.
@@ -2849,5 +2852,6 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Capability is module-private and single-use; runner/provider dispatch remain false.
 - [x] Focused `22/22` and 38 assertions; typecheck, formatting, and diff check pass.
 - [ ] Merge/push D5 and repeat validation on merged `main`.
+- [x] Feature `7a2dfced` merged/pushed as `31b17fe9`; merged-main D5+D3+D4 `48/48`.
 - [ ] Create/push final v4 tag in a separate task; then perform read-only post-tag inspection.
 - [ ] Fresh data-boundary acceptance and controlled-Live (not part of D5).

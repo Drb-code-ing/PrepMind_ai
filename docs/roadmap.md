@@ -100,7 +100,7 @@ SR3 的 runner/source admission/durability 已合并到上述基线，旧 author
 > `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2` 的 lineage=
 > `phase-6.9.8-retriever-final-response-schema-recovery-v1`。SR1 与 SR2 已完成 zero-provider parser/projection 与
 > Provider-like robustness；SR2 authority=`zero_provider_retriever_final_response_schema_recovery_robustness /
-> qualityAuthority=none`；diagnostic 只在 candidate outcome sidecar，Retriever node 边界丢弃。SR2 只解锁从该 main
+qualityAuthority=none`；diagnostic 只在 candidate outcome sidecar，Retriever node 边界丢弃。SR2 只解锁从该 main
 > 新开的 SR3，不形成 Provider、产品或 main 产品 authority。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr1-zero-provider-tdd.md` 与
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr2-zero-provider-robustness.md` 与
@@ -210,23 +210,23 @@ PrepMind AI 的目标是做成移动端优先的 AI 学习产品，而不只是�
 
 ## 总体路线
 
-| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                               |
-| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                             |
-| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                             |
-| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                             |
-| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                             |
-| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                             |
-| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                             |
-| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                             |
-| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                     |
-| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成      |
-| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | P1 L2 唯一 Live 已 schema 失败封存；semantic/product gate 继续阻断       |
-| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                          |
-| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成              |
-| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                             |
-| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                             |
-| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                             |
+| 阶段       | 主题              | 核心技术                                                                                                                                                 | 状态                                                               |
+| ---------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Phase 0    | 架构设计          | Monorepo, Prisma, Docker                                                                                                                                 | 已完成                                                             |
+| Phase 1    | 前端 MVP          | Next.js, Dexie, AI SDK, OCR                                                                                                                              | 已完成                                                             |
+| Phase 2.1  | 后端基础与鉴权    | Bun, NestJS, Prisma, PostgreSQL, JWT                                                                                                                     | 已完成                                                             |
+| Phase 2.2  | 前端接入后端 Auth | apiClient, TanStack Query, AuthGuard 迁移                                                                                                                | 已完成                                                             |
+| Phase 2.3  | 业务 API 迁移     | REST API, server state, Dexie 离线缓存                                                                                                                   | 已完成                                                             |
+| Phase 2.5  | 产品体验补全      | Chat-first UI, Auth UI, 个人中心, 今日任务, 视觉系统                                                                                                     | 已完成                                                             |
+| Phase 3    | AI 讲题系统       | OCR structured output, Prompt, 多题保存, Tool Action Boundary                                                                                            | 已完成                                                             |
+| Phase 4    | FSRS 记忆系统     | Card, ReviewLog, ReviewTask, ReviewPreference                                                                                                            | 已完成主线，后续可扩展提醒调度                                     |
+| Phase 5    | RAG 知识库        | Qwen Embedding, pgvector cosine, PostgreSQL full-text, Hybrid Search                                                                                     | 主线已完成；Phase 7.8.5 runtime parity 已完成                      |
+| Phase 6    | 多 Agent 系统     | LangGraph, Router, Retriever, Tutor, Verifier, Planner, MemoryAgent, Orchestrator, Agent Eval                                                            | P1 L2 唯一 Live 已 schema 失败封存；semantic/product gate 继续阻断 |
+| Phase 6.10 | 分层记忆系统      | 结构化长期记忆注入、Episodic Memory、embedding、混合召回、过期、查看、删除与遗忘                                                                         | 全部 Agent 架构验收后启动                                          |
+| Phase 7    | 工程化增强        | BullMQ, BackgroundJob, RAG SafetyGuard, EventBus, Swagger, Docker, Worker Observability, Durable Outbox, Worker Readiness, Operator Audit, Admin Console | 核心里程碑至 7.23.8；7.8.5 补强已完成                              |
+| Phase 8    | 高性能优化        | Web Worker, 虚拟列表, PWA, IndexedDB                                                                                                                     | 规划中                                                             |
+| Phase 9    | MCP Tool 体系     | JSON-RPC, Tool Registry, Tool Calling                                                                                                                    | 规划中                                                             |
+| Phase 10   | 生产级部署        | OpenTelemetry, Sentry, Prometheus, k6                                                                                                                    | 规划中                                                             |
 
 ## 已完成阶段
 
@@ -1192,6 +1192,7 @@ Phase 7.0 / 7.1 已完成知识库后台处理地基：
 ### Phase 10 — 生产级部署
 
 - OpenTelemetry、Sentry、Prometheus / Grafana、k6、CI/CD。
+
 ## Current checkpoint: SR5 next-lineage admission
 
 D0/C1 is implemented as independent zero-provider Git/source admission. The future v3 tag is not created and controlled-Live is not authorized. Old v1/v2 tags and sealed evidence are immutable. Merge and push `main`, then repeat zero-provider validation before any tag decision.
@@ -1203,9 +1204,11 @@ D1 freezes source-bound boundary/authorization vocabulary without consuming appr
 D2 builds that independent preflight composition while keeping both runner invocation and Provider dispatch disabled. The next implementation task is a new-lineage runner/durability design and zero-provider test boundary; it must not reuse sealed v1/v2 evidence or authorization.
 
 D3 first removes the source-identity fixed point: future final Git values are dynamic verifier output rather than tracked constants. D4 now implements a v4-native zero-provider runner/durability boundary: single-use source capability, fixed `8` guards and `12` reserved lanes, zero dispatch, canonical hash-chain journal, hard-link artifact, and strict tamper rejection. The final Git verifier remains separate; only after it is complete may the full source be merged, one final v4 tag created, remote parity verified, and fresh authorization requested.
+
 ## Phase 6.9.8 SR5 D5 status
 
 D5 final Git verifier is implemented as zero-provider, read-only source verification. It is intentionally separate from tag creation,
 authorization, Provider execution, and product acceptance. Remaining order is: merge/push and merged-main revalidation; create/push
 the final v4 annotated tag on the complete source; run the verifier to obtain the dynamic receipt; then make a separate decision on
 fresh DeepSeek/Qwen boundary acceptance and any controlled-Live.
+Feature `7a2dfced` is merged/pushed as `31b17fe9`; merged-main D5+D3+D4 validation is complete.

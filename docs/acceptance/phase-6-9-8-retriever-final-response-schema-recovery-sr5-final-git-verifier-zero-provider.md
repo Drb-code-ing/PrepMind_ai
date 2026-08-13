@@ -41,3 +41,9 @@ D5 must be merged and pushed to `main`, then merged-main zero-provider validatio
 later independent Git-operation task may create and push the final v4 annotated tag on that complete
 source. A later read-only D5 invocation may then produce the dynamic receipt. Fresh DeepSeek/Qwen data
 boundary acceptance and exact authorization remain separate; no controlled-Live is part of D5.
+
+## Git closeout
+
+Feature commit: `7a2dfced` (pushed on `drb/phase-6-9-8-sr5-final-git-verifier`).
+Merge commit: `31b17fe9` (`--no-ff`, pushed to `main`). Merged-main parity is `main == origin/main`.
+Merged-main focused D5+D3+D4 validation passed `48/48` (`85 expect()` calls), with typecheck, lint, and diff checks passing.

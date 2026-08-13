@@ -39,7 +39,8 @@ SR3 identity：manifest SHA=`d14c08455126fad492f9f01ed07a1a4fd911241c62384fbd075
 
 SR4 identity：factory SHA=`sha256:7bc32c8ed68c3c8d76c9c983b40e771f24c0181cda7976cbc97ab1fb4c26d157`；固定结果
 `8/8` guards、`12/12/12/12` reservations/dispatches/responses/verifiedUsage、schema `4 canonical + 2 extension discarded
-+ 0 rejected`、FinalResponse strict `6`、节点路径 `18/6/6/6/6`、synthetic Qwen port `18`；gate=
+
+- 0 rejected`、FinalResponse strict `6`、节点路径 `18/6/6/6/6`、synthetic Qwen port `18`；gate=
 `schema_recovery_mock_quality_not_evidence / qualityAuthority=none`。
 
 ## 1. 执行纪律
@@ -157,13 +158,13 @@ SR3 GREEN：focused `15/15`（49 assertions，5 files）；SR1+SR2+SR3+Task 9B �
 ## 6. SR4：Reviewed Mock/static
 
 - [x] 实际穿过 recovery parser、Retriever original/query-rewrite node、synthetic Qwen port、evidence projector、
-  FinalResponse stream、local authority/merger 和 SR3 runner；
+      FinalResponse stream、local authority/merger 和 SR3 runner；
 - [x] responder 只消费实际 bounded prompt；expected/oracle/caseId/baseline/credential/provider 不可见；
 - [x] extension 只记录 bounded `extension_fields_discarded` 计数并丢弃 raw content/hash；
 - [x] 固定 `8/6/6/12/20` 分母、最大并发 `1`、single dispatch、首错 breaker 与 schema/usage/transport/timeout/abort/
-  cross-owner fail-closed fault matrix；
+      cross-owner fail-closed fault matrix；
 - [x] 固定结果 `8/8` guards、`12/12/12/12` wire、schema `4/2/0`、FinalResponse strict `6`、节点路径 `18/6/6/6/6`，
-  gate=`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；
+      gate=`schema_recovery_mock_quality_not_evidence / qualityAuthority=none`；
 - [x] 临时 evidence `1` 创建后精确清理为 `0`，正式 SR5 namespace/tag/marker/journal/artifact/claim 保持 `0`；
 - [x] 完成 Agent/AI/Types/Server/Web 与 historical validator/SHA parity 的最终回放；SR4 提交/推送、`main --no-ff` 合并、合并后二次 focused/static/typecheck 回放与 `origin/main` 推送已完成（历史 merge=`d5029f90`）。
 
@@ -178,7 +179,7 @@ SR3 GREEN：focused `15/15`（49 assertions，5 files）；SR1+SR2+SR3+Task 9B �
 - [x] 固定 DeepSeek/Qwen data-boundary receipt、source-bound exact authorization 与 confirmation SHA-only record；
 - [x] 固定 12 次候选调用、37,600/8,800 token、0.176 CNY、最大并发 1 与 no retry/resume/replay/backfill；
 - [x] source-bound API 将 source、boundary、authorization、budget 组合为 module-owned single-use
-  admission/reservation capability，并在 reservation 时重查 source drift；
+      admission/reservation capability，并在 reservation 时重查 source drift；
 - [x] zero-provider admission CLI 只开放 source-only help/admission/validate；live/seal/recover/replay/credential 参数关闭；
 - [x] focused `12/12`（50 assertions）、typecheck/lint、CLI help smoke 与 diff check 通过。
 
@@ -189,16 +190,16 @@ authority=`zero_provider_retriever_final_response_schema_recovery_sr5_admission`
 ### 7.2 Runner/durability checkpoint（已完成，zero-provider）
 
 - [x] 固定 `8 guards + 6 rewrite + 6 FinalResponse`、`20` report entries、`12` candidate invocations、最大并发 `1`、
-  pair serial、single dispatch、预算 `37,600/8,800/0.176 CNY`；
+      pair serial、single dispatch、预算 `37,600/8,800/0.176 CNY`；
 - [x] runner 在运行时核对 admission budget 与 runner policy，首错 breaker 保留 suffix denominator，不重试、不复制 sibling；
 - [x] 独立 marker/journal/report/recovery/artifact namespace，reservation/fsync-before-dispatch、fsynced hash-chain、
-  hard-link publication、strict recomputing validator 与 crash-only recovery；
+      hard-link publication、strict recomputing validator 与 crash-only recovery；
 - [x] fail-closed 覆盖 tamper、CRLF、foreign artifact、publication prefix、二次 seal、PID/start identity 与 capability
-  二次消费；recovery 不创建 executor、不重放 Provider call；
+      二次消费；recovery 不创建 executor、不重放 Provider call；
 - [x] CLI 只开放 synthetic reviewed Mock、validate、crash-only recover；focused `25/25`（82 assertions）、typecheck/lint、
-  CLI help/run smoke 与 `git diff --check` 通过，runtime `12/12/12/12` wire、`12/0/0` succeeded/failed/notStarted；
+      CLI help/run smoke 与 `git diff --check` 通过，runtime `12/12/12/12` wire、`12/0/0` succeeded/failed/notStarted；
 - [x] runner manifest SHA=`d50e27729d873833fc857efe648ba8a56fda19a4d70212a22aa01dbe02b53ea3`，policy SHA=
-  `ff05b647a4c00a3943c18c70d02650aad3d4b880209ac35f04e60d1d9e31f803`；正式 evidence=`0`。
+      `ff05b647a4c00a3943c18c70d02650aad3d4b880209ac35f04e60d1d9e31f803`；正式 evidence=`0`。
 
 authority=`zero_provider_retriever_final_response_schema_recovery_sr5_runner_durability`、gate=
 `schema_recovery_mock_quality_not_evidence`、`qualityAuthority=none`。验收见
@@ -207,16 +208,16 @@ authority=`zero_provider_retriever_final_response_schema_recovery_sr5_runner_dur
 ### 7.3 Live implementation（已完成，zero-provider）
 
 - [x] 新增独立 Live Git-object source manifest，绑定根 `package.json`、`bun.lock` 与 `packages/agent`、`packages/ai`、
-  `packages/types`；最终 source bundle 在 parity commit 上重算，不沿用 proxy 修复前的 SHA；
-  历史 admission manifest 保持 `sha256:f71bdee19cf4509395566d8bf54d85ad1f37cf867ca2cbf37211b1daef8fa38b` 不变；
+      `packages/types`；最终 source bundle 在 parity commit 上重算，不沿用 proxy 修复前的 SHA；
+      历史 admission manifest 保持 `sha256:f71bdee19cf4509395566d8bf54d85ad1f37cf867ca2cbf37211b1daef8fa38b` 不变；
 - [x] 新增 production-shaped Live CLI/core，显式 `bun --no-env-file`，执行 exact argv/data-boundary/authorization/formal
-  namespace/source/tag/proxy 前门，credential 只在前门通过后 selective-read；
+      namespace/source/tag/proxy 前门，credential 只在前门通过后 selective-read；
 - [x] 固定 `8 guards + 6 rewrite pairs + 6 FinalResponse`、DeepSeek `12` + Qwen `12`、最大并发 `1`、pair-serial、预算
-  `37600/8800/0.176 CNY` 与 no retry/resume/replay/backfill；
+      `37600/8800/0.176 CNY` 与 no retry/resume/replay/backfill；
 - [x] 接入 exclusive marker、fsynced hash-chain journal、hard-link artifact、strict validator 与 crash-only recovery；
 - [x] 原实现 focused Live `10/10`（36 assertions）、SR5 + Task 9B boundary 组合 `48/48`（164 assertions）；proxy 快照修复后 focused
-  `11/11`（39 assertions），Agent typecheck/lint/Prettier/diff check 通过；当前 `providerCalls=0 / credentialReads=0 / formalEvidence=0 /
-  businessWrites=0`；
+      `11/11`（39 assertions），Agent typecheck/lint/Prettier/diff check 通过；当前 `providerCalls=0 / credentialReads=0 / formalEvidence=0 /
+businessWrites=0`；
 - [x] 新增 implementation acceptance，并将 AGENTS/README/DEVLOG/roadmap/data-flow/dev-start/checklist/AI/spec/plan 纳入同步清单。
 
 这是 zero-provider implementation checkpoint（runtime authority 尚未产生，`qualityAuthority=none`）；实现完成不形成
@@ -226,7 +227,7 @@ controlled-Live、semantic/product/main/P95/SLA authority。验收见
 ### 7.3.1 Proxy snapshot fix（已完成，zero-provider）
 
 - [x] 复现 Bun/Windows accessor-backed proxy environment 与 SR5 `proxy_preflight_not_ready` 前门停止；确认未读取 credential、未创建 marker、
-  未调用 Provider；
+      未调用 Provider；
 - [x] 将固定 proxy allowlist 通过 `Reflect.get` 物化为不可变 data-properties，getter 异常写入 `null` 并保持 shared preflight fail-closed；
 - [x] 新增 accessor-backed regression，proxy 修复后 focused Live `11/11`（39 assertions），typecheck/lint/Prettier/diff check 通过；
 - [x] 新增零 Provider 故障与修复 acceptance；旧 approved tag/source 不改写。
@@ -237,14 +238,14 @@ controlled-Live、semantic/product/main/P95/SLA authority。验收见
 ### 7.3.2 Live tag compatibility recovery（已完成，zero-provider）
 
 - [x] 保留历史 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved` tag 与 historical admission
-  manifest，不移动、不覆盖、不复用；
+      manifest，不移动、不覆盖、不复用；
 - [x] 新增 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved` tag/ref 合同与 strict Live
-  source schema；
+      source schema；
 - [x] Live Git observation/admission 重算独立 tree bundle，绑定 source-manifest SHA
-  `sha256:d1129b3caf414c5561df425f1a2ffdfcde7d29468a568845d1c110908559ccdd`；
+      `sha256:d1129b3caf414c5561df425f1a2ffdfcde7d29468a568845d1c110908559ccdd`；
 - [x] report、CLI、durability、synthetic reviewed Mock 均消费 Live source 类型；历史 source-admission 行为不改写；
 - [x] SR5 contract/source/Live focused `26/26`（102 assertions）、Agent full `1527/1527`（25213 expect()，196 files）、Agent typecheck/lint/Prettier/diff check 通过；
-  Provider/credential/formal evidence/business writes=`0`。
+      Provider/credential/formal evidence/business writes=`0`。
 
 验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-tag-compatibility-zero-provider.md`。
@@ -252,12 +253,12 @@ controlled-Live、semantic/product/main/P95/SLA authority。验收见
 ### 7.3.3 Environment and namespace fence hardening（已完成，zero-provider）
 
 - [x] 生产 CLI 将 Bun/Windows accessor-backed authorization entries 物化为不可变 data-properties；getter 异常生成 invalid
-  sentinel 并 fail-closed，不执行二次读取。
+      sentinel 并 fail-closed，不执行二次读取。
 - [x] Live source admission 对 root 与 `.tmp` 做 `lstat`/canonical-path 校验，symlink/junction、非目录与读取错误统一
-  fail-closed，避免 formal namespace fence 跟随链接到仓库外。
+      fail-closed，避免 formal namespace fence 跟随链接到仓库外。
 - [x] 增加 own-descriptor proxy/authorization regression、`.tmp` replacement durability fence；SR5 contract/source/Live focused
-  `26/26`（102 assertions），Agent full `1527/1527`（25213 expect()，196 files），typecheck/lint/Prettier/diff check 通过；
-  Provider/credential/formal evidence/business writes=`0`。
+      `26/26`（102 assertions），Agent full `1527/1527`（25213 expect()，196 files），typecheck/lint/Prettier/diff check 通过；
+      Provider/credential/formal evidence/business writes=`0`。
 
 本小步仍不创建 approved tag、不读取真实 `.env`、不调用 Provider；只在最终 main parity 后进入唯一 controlled-Live 停止门。
 
@@ -267,11 +268,11 @@ controlled-Live、semantic/product/main/P95/SLA authority。验收见
 - [x] 改为 `overrides?.runProxyPreflight ?? default fail-closed stub`，保留未绑定 port 的安全默认值；
 - [x] 新增 ready/not-ready 双向回归，确认 ready 后仅进入 synthetic credential stop，不 reservation、不运行 Provider；
 - [x] 保留已推送 `live-v1` tag 不动，将当前 source contract 预留到待创建的 immutable
-  `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`；source manifest=
-  `sha256:61afe007f588c62833a10d6c66934bcd90bd3061f4005d1b66e943088afa2829`，Live manifest=
-  `372abb4656885536a080cccc98226d41bce083a0fafc6ab54b104eed81df67a4`；
+      `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved`；source manifest=
+      `sha256:61afe007f588c62833a10d6c66934bcd90bd3061f4005d1b66e943088afa2829`，Live manifest=
+      `372abb4656885536a080cccc98226d41bce083a0fafc6ab54b104eed81df67a4`；
 - [x] focused SR5 Live `16/16`（63 assertions）、typecheck/lint/diff check 通过，Provider/credential/formal evidence/
-  business writes=`0`。
+      business writes=`0`。
 
 验收见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-proxy-port-recovery-zero-provider.md`。
@@ -313,6 +314,7 @@ transport、usage、timeout、abort 或 I/O failure 都 durable seal，禁止 re
 - [x] SR4 factory SHA、production-shaped node path、schema accounting、anti-oracle、fault matrix 与 zero-provider authority 已记录；
 - [x] SR4 Agent/AI/Types/Server/Web/historical validator parity、分支推送、`main --no-ff` 合并与合并后二次回归已完成；
 - 历史 P1 spec/plan 与 Agents 设计计划只更新“当前状态/下一步”指针，不改写已封存事实。
+
 ## Current execution override (2026-08-12)
 
 SR5 next-lineage D0/C1 is implemented, pushed as `87dd1e24`, merged with `--no-ff` as `001770ff`, and pushed to `main`. Merged-main Git admission plus focused/full/typecheck/lint parity passed. Do not create the future v3 tag or request Live authorization in this task; those remain separate next-lineage decisions.
@@ -324,9 +326,11 @@ D1 freezes v3-bound boundary/authorization schemas on `drb/phase-6-9-8-sr5-next-
 D2 composes C2/D1/proxy zero-call gates on `drb/phase-6-9-8-sr5-next-lineage-runner-preflight`. It ends at a dispatch-disabled preflight capability and creates no durability state. Closeout requires focused/full/typecheck/lint/Prettier, feature push, `--no-ff` merge/push, and merged-main regression before any runner/durability task.
 
 D3 freezes a non-self-referential v4 runtime-source contract. Final commit/bundle/tag-object are supplied after complete-source tagging by a future Git verifier, then matched to exact authorization fields. D3 issues no Git authority or execution capability. D4 now adds the v4-native zero-provider runner/durability boundary with one-shot source consumption, `8` guards, `12` reserved zero-dispatch lanes, strict journal/report/artifact validation, and no Live argv. The final Git verifier remains a separate zero-provider task before tag creation or authorization.
+
 ### D5 final Git verifier (implemented 2026-08-13)
 
 D5 adds a read-only verifier for the future v4 annotated tag. It computes the dynamic source receipt only after complete-source
 merge/tag parity and can issue a single-use Git/source-only capability. It does not create or push the tag, read credentials,
 request authorization, call Providers, invoke the runner, or write evidence. The feature must be merged and revalidated on `main`
 before a separate Git-operation task creates/pushes v4; only afterward may D5 inspect the real tag.
+The D5 feature commit `7a2dfced` is merged/pushed as `31b17fe9`; merged-main focused D5+D3+D4 validation passed `48/48`.
