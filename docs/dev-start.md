@@ -2169,3 +2169,14 @@ For D1 use `drb/phase-6-9-8-sr5-next-lineage-authorization-contract`. Run the fo
 For D2 use `drb/phase-6-9-8-sr5-next-lineage-runner-preflight`. Run its focused test, Agent full suite, typecheck, lint, and Prettier. Do not load `.env`, invoke a Provider, reserve evidence, or reuse historical SR5 Live CLI/runner/durability.
 
 For D3 use `drb/phase-6-9-8-sr5-next-lineage-runtime-source-binding`. Validate only the pure runtime-source contract; do not create v4, supply real authorization, inspect credentials, or treat a plain receipt object as Git authority.
+# Phase 6.9.8 SR5 D4 developer boundary
+
+D4 is validated only through Bun tests. There is no Live CLI, authorization argv, root `.env` load, Docker composition, or product
+startup step:
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runtime-source-binding-contract.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runtime-runner-durability.test.ts
+```
+
+The suite creates an OS temporary root and removes it. Do not create/move a v4 tag, reuse old authorization, inspect credentials,
+start Provider calls, or touch sealed SR5 evidence while validating D4.

@@ -2831,3 +2831,13 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Focused `19/19`, Agent full `1627/1627`, typecheck/lint/Prettier/diff check.
 - [x] Feature `0943c4e4` pushed; `--no-ff` merge `d553e545` pushed; merged-main focused/full/typecheck/lint passed.
 - [ ] Runner/durability, final Git verifier/tag, and fresh user acceptance remain separate.
+# Phase 6.9.8 SR5 D4 runtime runner/durability（2026-08-13）
+
+- [x] D3 保持 record-only、不签发执行 authority；D4 仅 test-only synthetic capability module-owned、single-consume
+- [x] synthetic-only fixed denominator：guards `8/8`、lanes reserved `12/12`、dispatch/response/verified usage `0/0/0`
+- [x] exclusive marker、5-record canonical hash-chain journal、strict report、hard-link artifact 与重算 validator
+- [x] second source consume、second run、crash-only seal、active owner、second seal、artifact/journal tamper、Live/authorization argv fail-closed
+- [x] focused D3+D4 `26/26`（`47 expect()`）；credential/Provider/formal evidence/business writes=`0`
+- [x] Agent full `1634/1634`（`25433 expect()`，`202 files`，`--timeout 30000`）、typecheck/lint/Prettier/diff check
+- [ ] 功能分支 push、`main --no-ff` merge/push 与 merged-main replay
+- [ ] final Git verifier、v4 annotated tag/remote parity、fresh authorization 与 controlled-Live（独立后续任务）
