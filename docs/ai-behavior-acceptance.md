@@ -1915,3 +1915,10 @@ zero dispatch, durable journal/report/artifact publication, and strict tamper re
 `providerDispatchAllowed=false`, `qualityAuthority=none`, Provider/credential/formal evidence/business writes=`0` are mandatory.
 The final Git verifier, v4 tag, fresh DeepSeek/Qwen data-boundary acceptance, exact authorization, and controlled-Live are separate
 future gates. A D4 pass must never be displayed or documented as Agent quality or product availability.
+## Phase 6.9.8 SR5 D5 final Git verifier
+
+- D5 is a read-only Git/source verifier, not an Agent model invocation or product entrypoint.
+- It may issue only a module-private, single-use Git authority containing the D3 runtime source receipt.
+- `runnerInvocationAllowed=false`, `providerDispatchAllowed=false`, and `qualityAuthority=none` remain fixed.
+- It must not read `.env` or credentials, request/consume authorization, call DeepSeek/Qwen, create formal evidence, or write business data.
+- Before the final v4 annotated tag exists and matches local/remote `main` parity, verification must fail closed.

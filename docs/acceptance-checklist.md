@@ -2851,7 +2851,7 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Current-lineage evidence must be empty; local and remote tag object IDs must match.
 - [x] Capability is module-private and single-use; runner/provider dispatch remain false.
 - [x] Focused `22/22` and 38 assertions; typecheck, formatting, and diff check pass.
-- [ ] Merge/push D5 and repeat validation on merged `main`.
+- [x] Merge/push D5 and repeat validation on merged `main`.
 - [x] Feature `7a2dfced` merged/pushed as `31b17fe9`; merged-main D5+D3+D4 `48/48`.
 - [ ] Create/push final v4 tag in a separate task; then perform read-only post-tag inspection.
 - [ ] Fresh data-boundary acceptance and controlled-Live (not part of D5).
