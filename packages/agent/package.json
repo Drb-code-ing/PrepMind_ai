@@ -52,6 +52,7 @@
     "./retriever-schema-recovery-sr5-next-lineage-runner-preflight": "./src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-next-lineage-runner-preflight.ts",
     "./retriever-schema-recovery-sr5-runtime-source-binding-contract": "./src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runtime-source-binding-contract.ts",
     "./retriever-schema-recovery-sr5-runtime-runner-durability": "./src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-runtime-runner-durability.ts",
+    "./retriever-schema-recovery-sr5-final-git-verifier": "./src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-final-git-verifier.ts",
     "./phase-6-9-8-p1-g2": "./src/evals/phase-6-9-8-retriever-final-response-p1-g2-runner.ts",
     "./phase-6-9-8-p1-g2-durability": "./src/evals/phase-6-9-8-retriever-final-response-p1-g2-durability.ts",
     "./phase-6-9-8-p1-l2-admission": "./src/evals/phase-6-9-8-retriever-final-response-p1-l2-admission.ts",

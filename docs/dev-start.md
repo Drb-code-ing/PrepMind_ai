@@ -2180,3 +2180,8 @@ bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recove
 
 The suite creates an OS temporary root and removes it. Do not create/move a v4 tag, reuse old authorization, inspect credentials,
 start Provider calls, or touch sealed SR5 evidence while validating D4.
+## SR5 D5 final Git verifier
+
+The D5 module is read-only. Its only supported operation is `inspect-zero-provider`; it performs bounded Git inspection and never
+loads `.env`, creates tags, requests authorization, or starts a model run. Before the future v4 tag exists, inspection must fail
+closed. Do not use D5 to replay any sealed run or to probe a Provider.

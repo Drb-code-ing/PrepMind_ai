@@ -6318,3 +6318,12 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Focused D4 + D3 regression: `26/26` tests, `47` expect() calls. Final Agent full with `--timeout 30000` passed `1634/1634`, `25433 expect()` calls, `202 files`; typecheck, lint, Prettier, and diff check passed. The first default-5s full run only timed out 8 historical fsync-heavy tests; those 6 files passed `48/48` independently with the 30s threshold before the final extended full run passed. D3 remains record-only; only a test-only synthetic capability reaches D4. Coverage includes single-use source/reservation, fixed accounting, crash-only sealing without replay, active-owner/second-seal refusal, canonical recovery-claim validation, tamper rejection, hard-link publication, and Live/authorization-shaped argv rejection. No `.env`, Provider, Docker/API/browser, Trace, BackgroundJob, or Outbox access.
 - This is engineering authority only (`qualityAuthority=none`); the final Git verifier, v4 tag, remote parity, fresh authorization, and any controlled-Live remain blocked and are the next independent task.
 - Feature `e5e3150d` was pushed and merged with `--no-ff` as `5efe506f`; merged-main focused `26/26`, typecheck, lint, and diff check passed, then `main` was pushed to origin. No v4 tag or authorization was created.
+## 2026-08-13 — Phase 6.9.8 SR5 D5 final Git verifier
+
+- Added a post-tag, read-only verifier that derives the v4 D3 source receipt from live Git state.
+- Enforced clean `main` parity, exact annotated tag message, local/remote tag object identity, peeled/target commit parity,
+  dynamic source-object bundle, sealed predecessor identity, and empty current-lineage evidence.
+- Added an opaque single-use Git/source capability. It cannot authorize the runner or Provider dispatch; quality authority remains none.
+- Added 22 focused tests / 38 assertions. Current repository inspection fails closed because the v4 tag is intentionally absent.
+- No credentials, `.env`, Providers, Docker/API/browser, formal evidence, Trace, BackgroundJob, Outbox, or business writes were used.
+- Next: push/merge D5 and revalidate merged `main`; only then create/push the final v4 tag in a separate Git-operation task.

@@ -324,3 +324,9 @@ D1 freezes v3-bound boundary/authorization schemas on `drb/phase-6-9-8-sr5-next-
 D2 composes C2/D1/proxy zero-call gates on `drb/phase-6-9-8-sr5-next-lineage-runner-preflight`. It ends at a dispatch-disabled preflight capability and creates no durability state. Closeout requires focused/full/typecheck/lint/Prettier, feature push, `--no-ff` merge/push, and merged-main regression before any runner/durability task.
 
 D3 freezes a non-self-referential v4 runtime-source contract. Final commit/bundle/tag-object are supplied after complete-source tagging by a future Git verifier, then matched to exact authorization fields. D3 issues no Git authority or execution capability. D4 now adds the v4-native zero-provider runner/durability boundary with one-shot source consumption, `8` guards, `12` reserved zero-dispatch lanes, strict journal/report/artifact validation, and no Live argv. The final Git verifier remains a separate zero-provider task before tag creation or authorization.
+### D5 final Git verifier (implemented 2026-08-13)
+
+D5 adds a read-only verifier for the future v4 annotated tag. It computes the dynamic source receipt only after complete-source
+merge/tag parity and can issue a single-use Git/source-only capability. It does not create or push the tag, read credentials,
+request authorization, call Providers, invoke the runner, or write evidence. The feature must be merged and revalidated on `main`
+before a separate Git-operation task creates/pushes v4; only afterward may D5 inspect the real tag.

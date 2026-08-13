@@ -1203,3 +1203,9 @@ D1 freezes source-bound boundary/authorization vocabulary without consuming appr
 D2 builds that independent preflight composition while keeping both runner invocation and Provider dispatch disabled. The next implementation task is a new-lineage runner/durability design and zero-provider test boundary; it must not reuse sealed v1/v2 evidence or authorization.
 
 D3 first removes the source-identity fixed point: future final Git values are dynamic verifier output rather than tracked constants. D4 now implements a v4-native zero-provider runner/durability boundary: single-use source capability, fixed `8` guards and `12` reserved lanes, zero dispatch, canonical hash-chain journal, hard-link artifact, and strict tamper rejection. The final Git verifier remains separate; only after it is complete may the full source be merged, one final v4 tag created, remote parity verified, and fresh authorization requested.
+## Phase 6.9.8 SR5 D5 status
+
+D5 final Git verifier is implemented as zero-provider, read-only source verification. It is intentionally separate from tag creation,
+authorization, Provider execution, and product acceptance. Remaining order is: merge/push and merged-main revalidation; create/push
+the final v4 annotated tag on the complete source; run the verifier to obtain the dynamic receipt; then make a separate decision on
+fresh DeepSeek/Qwen boundary acceptance and any controlled-Live.

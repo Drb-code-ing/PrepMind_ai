@@ -2275,3 +2275,16 @@ D3 runtime source receipt + exact boundary/authorization binding
 D4 does not use the historical v1/v2 Live runner, D2 v3 static source, root `.env`, Provider adapters, Docker, Trace,
 BackgroundJob, Outbox, or product repositories. The future final Git verifier is the only owner allowed to produce a real v4 source
 receipt; D4 itself has no Git, runner, or Provider authority.
+## SR5 D5 source verification flow
+
+```text
+clean main + upstream/origin parity
+  -> v4 annotated local/remote tag parity
+  -> dynamic source-object bundle + sealed predecessor check
+  -> empty current-lineage evidence scan
+  -> D3 runtime source receipt
+  -> one-shot Git/source capability only
+```
+
+The D5 capability cannot cross into runner reservation or Provider dispatch. Credentials, formal evidence, Trace, BackgroundJob,
+Outbox, and business data are outside this flow.
