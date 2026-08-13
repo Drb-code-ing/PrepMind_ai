@@ -100,7 +100,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
       'phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved',
     );
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG).toBe(
-      'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v2-approved',
+      'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v6-approved',
     );
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_TAG).toBe(
       'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved',
@@ -108,14 +108,9 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG).not.toBe(
       PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_TAG,
     );
-    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH).toBe(
-      'drb/phase-6-9-8-sr5-proxy-port-recovery',
-    );
+    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH).toBe('main');
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_BRANCH).toBe(
       'drb/phase-6-9-8-retriever-final-response-schema-recovery-sr5',
-    );
-    expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_BRANCH).not.toBe(
-      PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_BRANCH,
     );
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG).not.toBe(
       PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_APPROVED_TAG,
@@ -501,9 +496,9 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         proxyEnv: {},
         authorizationEnv: {
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
-            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V6_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
-            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_CONTROLLED_LIVE_ONCE',
+            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V6_CONTROLLED_LIVE_ONCE',
         },
         signal: new AbortController().signal,
       },
@@ -544,9 +539,9 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         proxyEnv: {},
         authorizationEnv: {
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
-            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V6_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
-            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_CONTROLLED_LIVE_ONCE',
+            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V6_CONTROLLED_LIVE_ONCE',
         },
         signal: new AbortController().signal,
       },
@@ -676,7 +671,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         configurable: true,
         enumerable: true,
         get: () =>
-          'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+          'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V6_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
       },
     );
     Object.defineProperty(
@@ -686,15 +681,15 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         configurable: true,
         enumerable: true,
         get: () =>
-          'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_CONTROLLED_LIVE_ONCE',
+          'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V6_CONTROLLED_LIVE_ONCE',
       },
     );
     const snapshot = snapshotPhase698RetrieverSchemaRecoverySr5LiveAuthorizationEnv(env);
     expect(snapshot).toMatchObject({
       PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
-        'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+        'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V6_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
       PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
-        'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_CONTROLLED_LIVE_ONCE',
+        'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V6_CONTROLLED_LIVE_ONCE',
     });
     expect(
       Object.getOwnPropertyDescriptor(

@@ -699,3 +699,6 @@ checkout to stay permanently pre-tag. v4 is unchanged and not eligible for autho
 v5 and makes fail-closed unit coverage independent of repository tag lifecycle. Runner/provider dispatch, credentials, formal
 evidence, and business writes remain disabled. See
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v4-post-tag-test-recovery-zero-provider.md`.
+## Current checkpoint: SR5 v6 live-contract recovery
+
+The active SR5 Live entrypoint is being repaired to bind the runtime contract to `main` and a new immutable v6 tag. The existing v5 tag remains sealed and is not eligible for reuse. This recovery is zero-provider; a fresh V6 data-boundary acceptance and exact authorization are required after the new tag is verified.
