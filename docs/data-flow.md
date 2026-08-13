@@ -2257,7 +2257,7 @@ D1 flow: exact v3 source identity + exact boundary receipt + exact one-shot auth
 
 D2 flow: C2 tag capability -> D1 authorization capability -> exact source identity cross-check -> strict zero-call proxy attestation -> preflight-only capability. The flow stops with runner invocation and Provider dispatch both disabled; no credential or evidence port exists.
 
-D3 future flow: complete runner merge -> v4 annotated tag -> Git verifier dynamic receipt -> D3 structural parity + exact authorization binding -> zero-provider contract record. D3 itself stops with `gitAuthorityIssued=false`; verifier capability, credentials, reservation, and execution are later boundaries.
+D3 recovery flow: complete recovery merge -> v5 annotated tag -> Git verifier dynamic receipt -> D3 structural parity + exact V5 authorization binding -> zero-provider contract record. D3 itself stops with `gitAuthorityIssued=false`; verifier capability, credentials, reservation, and execution are later boundaries. The immutable v4 tag passed Git inspection but is blocked by its post-tag focused test failure.
 # Phase 6.9.8 SR5 D4 runtime runner/durability data flow
 
 ```text
@@ -2273,13 +2273,13 @@ D3 runtime source receipt + exact boundary/authorization binding
 ```
 
 D4 does not use the historical v1/v2 Live runner, D2 v3 static source, root `.env`, Provider adapters, Docker, Trace,
-BackgroundJob, Outbox, or product repositories. The future final Git verifier is the only owner allowed to produce a real v4 source
+BackgroundJob, Outbox, or product repositories. The future final Git verifier is the only owner allowed to produce a real v5 source
 receipt; D4 itself has no Git, runner, or Provider authority.
 ## SR5 D5 source verification flow
 
 ```text
 clean main + upstream/origin parity
-  -> v4 annotated local/remote tag parity
+  -> v5 annotated local/remote tag parity
   -> dynamic source-object bundle + sealed predecessor check
   -> empty current-lineage evidence scan
   -> D3 runtime source receipt

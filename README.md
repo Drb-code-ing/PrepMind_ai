@@ -692,9 +692,10 @@ D1 adds a zero-provider authorization vocabulary contract bound to the v3 source
 D2 adds the independent runner-preflight composition: C2 tag parity + D1 source-bound authorization + strict zero-call proxy attestation. Its capability remains preflight-only (`runnerInvocationAllowed=false`, `providerDispatchAllowed=false`) and cannot reach credentials, reservation, evidence, or the historical Live runner.
 
 D3 removes the final-source self-reference trap: commit, source-bundle SHA, and annotated-tag object are no longer planned as constants inside the covered Agent tree. A future v4 Git verifier will supply them as a strict runtime receipt; the contract binds authorization to that receipt while explicitly issuing no Git or runner authority.
-## Current SR5 D5 checkpoint
+## Current SR5 v5 recovery checkpoint
 
-D5 implements the read-only final Git verifier for the future v4 annotated tag. It derives the D3 runtime source receipt from
-Git parity and issues only a single-use Git/source capability; runner/provider dispatch, credentials, formal evidence, and business
-writes remain disabled. D5 does not create/push the tag or run controlled-Live. See
-`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-final-git-verifier-zero-provider.md`.
+The immutable v4 tag passed D5 Git/source inspection but exposed a post-tag test-lifecycle defect (`21/22`): a test required the real
+checkout to stay permanently pre-tag. v4 is unchanged and not eligible for authorization. The recovery moves the final contract to
+v5 and makes fail-closed unit coverage independent of repository tag lifecycle. Runner/provider dispatch, credentials, formal
+evidence, and business writes remain disabled. See
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v4-post-tag-test-recovery-zero-provider.md`.

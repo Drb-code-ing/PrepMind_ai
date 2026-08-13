@@ -39,6 +39,12 @@ Credential reads, Provider calls, formal evidence, and business writes are all `
 
 D3 does not consume user acceptance and does not create the v4 tag. Runner/durability and the final Git verifier must be completed before the one final source tag and any fresh authorization.
 
+## Superseded final-tag checkpoint
+
+The v4 tag was later created and passed D5 Git inspection, but a tagged-source replay exposed a lifecycle-dependent test and passed
+`21/22`. v4 remains immutable and receives no authorization. The current final runtime-source contract is v5; see
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-v4-post-tag-test-recovery-zero-provider.md`.
+
 ## Git closeout
 
 - feature commit: `0943c4e4`

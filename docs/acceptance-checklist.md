@@ -2853,5 +2853,9 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Focused `22/22` and 38 assertions; typecheck, formatting, and diff check pass.
 - [x] Merge/push D5 and repeat validation on merged `main`.
 - [x] Feature `7a2dfced` merged/pushed as `31b17fe9`; merged-main D5+D3+D4 `48/48`.
-- [ ] Create/push final v4 tag in a separate task; then perform read-only post-tag inspection.
+- [x] Create/push v4 tag and perform read-only inspection; inspection passed, but tagged-source focused replay exposed a test-lifecycle defect (`21/22`).
+- [x] Seal v4 unchanged and block authorization/Live for v4.
+- [x] Move the final contract to v5 and replace the real-checkout pre-tag assertion with isolated fail-closed coverage.
+- [ ] Merge/push v5 recovery and repeat focused validation on merged `main`.
+- [ ] Create/push final v5 tag in a separate Git operation; then perform read-only post-tag inspection and focused replay.
 - [ ] Fresh data-boundary acceptance and controlled-Live (not part of D5).

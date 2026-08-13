@@ -28,7 +28,7 @@ function capability() {
 }
 
 describe('Phase 6.9.8 SR5 D4 runtime runner durability', () => {
-  test('persists a v4-native zero-provider fixed-denominator bundle', async () => {
+  test('persists a runtime-source-bound zero-provider fixed-denominator bundle', async () => {
     const root = await createPhase698Sr5RuntimeRunnerSyntheticRootForTest();
     try {
       const reservation = await reservePhase698Sr5RuntimeRunnerAttemptForTest({

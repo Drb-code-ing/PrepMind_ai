@@ -2183,5 +2183,6 @@ start Provider calls, or touch sealed SR5 evidence while validating D4.
 ## SR5 D5 final Git verifier
 
 The D5 module is read-only. Its only supported operation is `inspect-zero-provider`; it performs bounded Git inspection and never
-loads `.env`, creates tags, requests authorization, or starts a model run. Before the future v4 tag exists, inspection must fail
-closed. Do not use D5 to replay any sealed run or to probe a Provider.
+loads `.env`, creates tags, requests authorization, or starts a model run. The immutable v4 tag is blocked by its post-tag test
+failure and must not be moved or reused. Before the future v5 tag exists, v5 inspection must fail closed. Do not use D5 to replay
+any sealed run or to probe a Provider.
