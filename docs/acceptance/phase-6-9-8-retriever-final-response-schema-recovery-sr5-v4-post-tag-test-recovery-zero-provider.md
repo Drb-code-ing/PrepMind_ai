@@ -36,6 +36,7 @@ Focused D5+D3+D4 passed `48/48` (`85 expect()` calls); typecheck, lint, Prettier
 This recovery reads no `.env` or credential, calls no Provider, creates no formal evidence or business data,
 and does not start Docker/API/browser, Trace, BackgroundJob, or Outbox.
 
-Next order: feature push -> `--no-ff` merge/push `main` -> merged-main zero-provider validation -> create/push
-one final v5 annotated tag -> real read-only D5 verification. Fresh data-boundary acceptance and any
-controlled-Live remain later independent decisions.
+Recovery feature `f80854bf` was merged with `--no-ff` as `96caa882` and pushed. Merged-main focused D5+D3+D4
+passed `48/48`; typecheck and lint also passed. The next complete parity commit is the source from which one
+final v5 annotated tag may be created. Fresh data-boundary acceptance and any controlled-Live remain later
+independent decisions.

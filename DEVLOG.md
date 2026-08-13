@@ -6338,3 +6338,4 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Recovery moves final tag and exact boundary/authorization vocabulary to v5 and uses an isolated temporary root for missing-repository failure.
 - Recovery focused D5+D3+D4 passes `48/48` (85 assertions); typecheck/lint/diff check pass.
 - v4 remains immutable. Next: merge/push recovery, validate merged `main`, then create/push and inspect v5.
+- Recovery feature `f80854bf` merged/pushed as `96caa882`; merged-main focused D5+D3+D4 passed `48/48`. This commit is ready for the single v5 tag operation.

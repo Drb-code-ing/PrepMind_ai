@@ -2857,5 +2857,5 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Seal v4 unchanged and block authorization/Live for v4.
 - [x] Move the final contract to v5 and replace the real-checkout pre-tag assertion with isolated fail-closed coverage.
 - [ ] Merge/push v5 recovery and repeat focused validation on merged `main`.
-- [ ] Create/push final v5 tag in a separate Git operation; then perform read-only post-tag inspection and focused replay.
+- [ ] Create/push final v5 tag in a separate Git operation from the next complete parity commit; then perform read-only post-tag inspection and focused replay.
 - [ ] Fresh data-boundary acceptance and controlled-Live (not part of D5).

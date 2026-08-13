@@ -1338,3 +1338,4 @@ Recovery branch `drb/phase-6-9-8-sr5-final-tag-test-recovery` moves the final co
 vocabulary to v5 and replaces the repository-lifecycle assertion with an isolated temporary-root fail-closed test.
 Focused D5+D3+D4 now passes `48/48`; no `.env`, credential, Provider, Docker, evidence, or business write is used.
 Do not move/delete v4. Merge/push recovery and revalidate `main` before creating the one final v5 tag.
+Recovery feature `f80854bf` is merged/pushed as `96caa882`; merged-main focused D5+D3+D4 passed `48/48`.
