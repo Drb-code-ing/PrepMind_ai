@@ -49,7 +49,9 @@ all `0`. This is not model-quality, semantic, product, or controlled-Live eviden
 
 ## Git and next stop
 
-The feature branch is intentionally kept separate until full validation and documentation parity are complete. After this task is
-merged and revalidated on `main`, the only remaining SR5 engineering task is the final Git verifier that produces the dynamic source
-receipt after complete-source merge/tagging. A new v4 tag, remote parity, fresh DeepSeek/Qwen boundary acceptance, and any controlled-
-Live execution require separate future authorization. Historical v1/v2/v3 tags, authorizations, and sealed evidence are immutable.
+Feature commit `e5e3150d` was pushed, merged into `main` with `--no-ff` as `5efe506f`, and pushed to origin. Merged `main` again
+passed focused `26/26` (`47 expect()`), typecheck, lint, and `git diff --check`; `main == origin/main` at that checkpoint.
+
+The only remaining SR5 engineering task is the final Git verifier that produces the dynamic source receipt after complete-source
+merge/tagging. A new v4 tag, remote parity, fresh DeepSeek/Qwen boundary acceptance, and any controlled-Live execution require
+separate future authorization. Historical v1/v2/v3 tags, authorizations, and sealed evidence are immutable.

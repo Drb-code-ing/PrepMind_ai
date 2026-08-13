@@ -2839,5 +2839,5 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] second source consume、second run、crash-only seal、active owner、second seal、artifact/journal tamper、Live/authorization argv fail-closed
 - [x] focused D3+D4 `26/26`（`47 expect()`）；credential/Provider/formal evidence/business writes=`0`
 - [x] Agent full `1634/1634`（`25433 expect()`，`202 files`，`--timeout 30000`）、typecheck/lint/Prettier/diff check
-- [ ] 功能分支 push、`main --no-ff` merge/push 与 merged-main replay
+- [x] 功能 `e5e3150d` push、`main --no-ff` merge=`5efe506f`/push、merged-main focused/typecheck/lint/diff replay
 - [ ] final Git verifier、v4 annotated tag/remote parity、fresh authorization 与 controlled-Live（独立后续任务）
