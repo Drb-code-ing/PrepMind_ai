@@ -22,13 +22,13 @@ export const PHASE_6_9_8_SR5_RUNTIME_SOURCE_BINDING_AUTHORITY =
 export const PHASE_6_9_8_SR5_RUNTIME_SOURCE_BINDING_GATE =
   'sr5_runtime_source_binding_contract_zero_provider' as const;
 export const PHASE_6_9_8_SR5_RUNTIME_APPROVED_TAG =
-  'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v6-approved' as const;
+  'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v7-approved' as const;
 export const PHASE_6_9_8_SR5_RUNTIME_APPROVED_TAG_REF =
   `refs/tags/${PHASE_6_9_8_SR5_RUNTIME_APPROVED_TAG}` as const;
 export const PHASE_6_9_8_SR5_RUNTIME_DATA_BOUNDARY_CONFIRMATION =
-  'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V6_DEEPSEEK_AND_QWEN_DATA_BOUNDARY' as const;
+  'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V7_DEEPSEEK_AND_QWEN_DATA_BOUNDARY' as const;
 export const PHASE_6_9_8_SR5_RUNTIME_AUTHORIZATION_CONFIRMATION =
-  'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V6_CONTROLLED_LIVE_ONCE' as const;
+  'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V7_CONTROLLED_LIVE_ONCE' as const;
 
 export const PHASE_6_9_8_SR5_RUNTIME_SOURCE_MANIFEST = deepFreeze({
   version: 'phase-6.9.8-retriever-final-response-schema-recovery-sr5-runtime-source-manifest-v1',
