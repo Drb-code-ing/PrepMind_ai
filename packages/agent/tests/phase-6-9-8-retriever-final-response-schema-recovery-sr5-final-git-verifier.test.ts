@@ -17,9 +17,9 @@ import {
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-final-git-verifier.ts';
 
 describe('Phase 6.9.8 SR5 D5 final Git verifier', () => {
-  test('creates the exact v4 annotated tag message without Live authority', () => {
+  test('creates the exact v6 annotated tag message without Live authority', () => {
     const message = createPhase698Sr5FinalGitTagMessage(`sha256:${'a'.repeat(64)}`);
-    expect(message).toContain('Phase 6.9.8 SR5 runtime v5 approved source');
+    expect(message).toContain('Phase 6.9.8 SR5 runtime v6 approved source');
     expect(message).toContain(`sourceBundleSha256=sha256:${'a'.repeat(64)}`);
     expect(message).toContain('qualityAuthority:none');
     expect(() => createPhase698Sr5FinalGitTagMessage('invalid')).toThrow(
