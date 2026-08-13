@@ -1316,3 +1316,12 @@ D1 runs on `drb/phase-6-9-8-sr5-next-lineage-authorization-contract`. It freezes
 D2 runs on `drb/phase-6-9-8-sr5-next-lineage-runner-preflight`. It composes C2 tag parity, D1 source-bound authorization, and strict zero-call proxy attestation into a single-use preflight-only capability. It keeps runner invocation and Provider dispatch disabled and defines no credential, reservation, marker, journal, evidence, or historical Live-runner path.
 
 D3 runs on `drb/phase-6-9-8-sr5-next-lineage-runtime-source-binding`. It resolves the final-source fixed-point problem by keeping future commit/bundle/tag-object values out of tracked constants. A future Git verifier supplies a dynamic v4 receipt after final runner merge/tag; D3 validates parity and binds authorization fields but issues no Git authority or executable capability. D1/D2 remain immutable v3 historical checkpoints.
+## Current checkpoint: Phase 6.9.8 SR5 D5 final Git verifier (2026-08-13)
+
+The ordinary branch `drb/phase-6-9-8-sr5-final-git-verifier` adds a read-only post-tag verifier for the future v4 annotated tag.
+It dynamically derives the D3 source receipt from clean `main`/upstream/origin parity, annotated local/remote tag identity,
+source-object bundle, sealed v2 predecessor, and an empty current-lineage evidence namespace. D5 never creates or pushes a tag,
+reads `.env`, requests authorization, calls Providers, invokes D4, or writes formal/business data. Its single-use module-private
+capability is Git/source-only: `gitAuthorityIssued=true`, while runner/provider dispatch and all counters remain zero. The v4 tag,
+fresh DeepSeek/Qwen boundary acceptance, authorization, and controlled-Live remain future tasks. Acceptance:
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-final-git-verifier-zero-provider.md`.

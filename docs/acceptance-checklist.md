@@ -2841,3 +2841,13 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Agent full `1634/1634`（`25433 expect()`，`202 files`，`--timeout 30000`）、typecheck/lint/Prettier/diff check
 - [x] 功能 `e5e3150d` push、`main --no-ff` merge=`5efe506f`/push、merged-main focused/typecheck/lint/diff replay
 - [ ] final Git verifier、v4 annotated tag/remote parity、fresh authorization 与 controlled-Live（独立后续任务）
+## Phase 6.9.8 SR5 D5 final Git verifier
+
+- [x] Read-only verifier derives the dynamic D3 receipt from Git.
+- [x] Clean `main`, upstream/origin, annotated tag, peeled/target commit, source bundle, and sealed predecessor are fail-closed checks.
+- [x] Current-lineage evidence must be empty; local and remote tag object IDs must match.
+- [x] Capability is module-private and single-use; runner/provider dispatch remain false.
+- [x] Focused `22/22` and 38 assertions; typecheck, formatting, and diff check pass.
+- [ ] Merge/push D5 and repeat validation on merged `main`.
+- [ ] Create/push final v4 tag in a separate task; then perform read-only post-tag inspection.
+- [ ] Fresh data-boundary acceptance and controlled-Live (not part of D5).
