@@ -1212,6 +1212,6 @@ repository being permanently pre-tag. v4 remains immutable and blocked. The reco
 isolates fail-closed unit coverage from the repository lifecycle. Remaining order is: merge/push recovery and merged-main revalidation;
 create/push final v5; run real D5 inspection and tagged-source focused replay; only then make a separate decision on fresh
 DeepSeek/Qwen boundary acceptance and any controlled-Live.
-## Current checkpoint: SR5 v7 live-contract recovery
+## Current checkpoint: SR5 v8 final parity
 
-The active runtime contract is being moved from the stale v2 binding to a new immutable v7 source tag on `main`. This is a zero-provider repair. Do not reuse v5/v6 tags or their authorizations. Controlled-Live remains blocked until the merged-main v7 tag and fresh V7 authorization are independently verified.
+The active runtime contract is being finalized against a new immutable v8 source tag on `main`. This is a zero-provider repair. Do not reuse v5-v7 tags or their authorizations. Controlled-Live remains blocked until the merged-main v8 tag and fresh V8 authorization are independently verified.
