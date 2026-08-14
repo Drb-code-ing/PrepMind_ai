@@ -3,6 +3,22 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
+## 当前 SR5 v10 host-preflight contract（zero-provider，2026-08-14）
+
+v10 使用独立 `live-v10-approved` tag、精确授权字符串和 `...sr5-live-v10` durability namespace。当前功能分支只允许
+zero-provider 检查；不要传 Live authorization 参数，不读取根 `.env`，也不运行 recover：
+
+```powershell
+bun test --timeout 30000 packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-final-git-verifier.test.ts
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/agent lint
+bun --filter @repo/ai diagnose:phase-6-9-7:recovery:proxy-preflight
+```
+
+PowerShell 或显式 profile-free host 的 diagnostic 应返回 bounded `direct_ready` 或 `loopback_proxy_ready`；失败时只允许
+读取固定 code/mode/count/listener 元数据，禁止打印 proxy URL/value。不要在生产代码中清空 proxy 或绕过 listener probe。
+分支合并、merged-main 回放、v10 annotated tag local/remote parity 和 fresh V10 授权完成前，Live 保持阻断。
+
 ## 当前 SR5 run-bound recovery（zero-provider，2026-08-12）
 
 本任务只运行测试与只读 sealed validator，不运行 Live/recover/产品 API，不读取根 `.env`，也不启动或清理 Docker：

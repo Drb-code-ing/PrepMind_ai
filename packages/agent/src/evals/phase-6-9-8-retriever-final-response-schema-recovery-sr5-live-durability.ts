@@ -62,7 +62,7 @@ const DATETIME = z.string().datetime({ offset: true });
 const MAX_FILE_BYTES = 64 * 1024 * 1024;
 const DURABILITY_ERROR = 'PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_DURABILITY_INVALID';
 const FORMAL_FILE =
-  /^phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v9(?:\.marker|-[0-9a-f-]{36}\.(?:journal\.jsonl|recovery\.claim|report\.json)|-[0-9a-f-]{36}\.report\.json\.tmp\.[0-9a-f-]{36})$/u;
+  /^phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v10(?:\.marker|-[0-9a-f-]{36}\.(?:journal\.jsonl|recovery\.claim|report\.json)|-[0-9a-f-]{36}\.report\.json\.tmp\.[0-9a-f-]{36})$/u;
 
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_SCHEMA = z
   .object({

@@ -2874,4 +2874,10 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Zero-provider diagnosis confirms PowerShell and profile-free Git Bash are `direct_ready` with zero proxy variables.
 - [x] Git Bash login profile reproducibly injects four HTTP(S) proxy variables for unavailable loopback `127.0.0.1:7897`, producing `loopback_proxy_unavailable` with one listener probe and zero Provider calls.
 - [x] Shared production preflight is retained fail-closed; no proxy clearing, bypass, Live retry, credential read, or Provider probe is used.
-- [ ] A new source/lineage decision binds native/no-profile launch provenance and bounded preflight diagnostics before any future tag/authorization; SR6 remains blocked.
+- [x] v10 source/lineage uses new tag, exact authorization strings, CLI v2, and isolated `...sr5-live-v10` namespace.
+- [x] Strict bounded preflight diagnostic projects no URL/value/raw error; malformed results stop before credential/reservation.
+- [x] v2/v9 legacy namespaces are ignored read-only while current v10 leftovers fail closed.
+- [x] v10 focused `128/128` (`282 expect()`), Agent full `1658/1658` (`25478 expect()`, `203 files`), typecheck/lint/Prettier/diff pass.
+- [ ] Commit/push v10 feature, `--no-ff` merge/push, and repeat zero-provider acceptance on merged `main`.
+- [ ] Create/push the immutable v10 annotated tag in a separate Git operation and pass local/remote final Git verification.
+- [ ] Only then request fresh V10 boundary acceptance/authorization; SR6 remains blocked.

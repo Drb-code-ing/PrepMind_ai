@@ -2,6 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
+import {
+  PHASE_6_9_7_ARCHITECTURE_RECOVERY_PROXY_PREFLIGHT_CODES,
+  PHASE_6_9_7_ARCHITECTURE_RECOVERY_PROXY_PREFLIGHT_VERSION,
+  type Phase697ArchitectureRecoveryProxyPreflightResult,
+} from '@repo/ai';
 import { z } from 'zod';
 
 import {
@@ -44,7 +49,20 @@ import {
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-runner.ts';
 
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_CLI_VERSION =
-  'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-cli-v1' as const;
+  'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-cli-v2' as const;
+
+const PROXY_PREFLIGHT_RESULT_SCHEMA = z
+  .object({
+    version: z.literal(PHASE_6_9_7_ARCHITECTURE_RECOVERY_PROXY_PREFLIGHT_VERSION),
+    ok: z.boolean(),
+    code: z.enum(PHASE_6_9_7_ARCHITECTURE_RECOVERY_PROXY_PREFLIGHT_CODES),
+    mode: z.enum(['direct', 'loopback_proxy', 'undetermined']),
+    configuredProxyVariables: z.number().int().min(0).max(6),
+    listener: z.enum(['not_required', 'listening', 'unavailable', 'probe_failed', 'aborted']),
+    listenerProbeCalls: z.union([z.literal(0), z.literal(1)]),
+    providerCalls: z.literal(0),
+  })
+  .strict();
 
 export type Phase698RetrieverSchemaRecoverySr5LiveCliInput = Readonly<{
   args: readonly string[];
@@ -214,11 +232,22 @@ export async function executePhase698RetrieverSchemaRecoverySr5LiveCliCore(
   }
   if (input.signal.aborted) return blocked('aborted_after_source');
 
-  let proxy: Readonly<{ code: 'direct_ready' | 'loopback_proxy_ready'; listenerProbeCalls: 0 | 1 }>;
+  let proxyResult: Phase697ArchitectureRecoveryProxyPreflightResult;
   try {
-    proxy = parseProxy(
+    proxyResult = PROXY_PREFLIGHT_RESULT_SCHEMA.parse(
       await ports.runProxyPreflight({ env: input.proxyEnv, signal: input.signal }),
     );
+  } catch {
+    return blocked('proxy_preflight_not_ready');
+  }
+  if (!proxyResult.ok) {
+    return blocked('proxy_preflight_not_ready', {
+      proxy: projectProxyPreflightDiagnostic(proxyResult),
+    });
+  }
+  let proxy: Readonly<{ code: 'direct_ready' | 'loopback_proxy_ready'; listenerProbeCalls: 0 | 1 }>;
+  try {
+    proxy = parseReadyProxy(proxyResult);
   } catch {
     return blocked('proxy_preflight_not_ready');
   }
@@ -410,23 +439,39 @@ function normalizeInput(value: unknown): Phase698RetrieverSchemaRecoverySr5LiveC
   });
 }
 
-function parseProxy(value: unknown): Readonly<{
+function parseReadyProxy(value: Phase697ArchitectureRecoveryProxyPreflightResult): Readonly<{
   code: 'direct_ready' | 'loopback_proxy_ready';
   listenerProbeCalls: 0 | 1;
 }> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value))
-    throw new Error('proxy_invalid');
-  const record = value as Record<string, unknown>;
   if (
-    record.ok !== true ||
-    (record.code !== 'direct_ready' && record.code !== 'loopback_proxy_ready') ||
-    record.providerCalls !== 0 ||
-    (record.listenerProbeCalls !== 0 && record.listenerProbeCalls !== 1)
+    value.ok !== true ||
+    (value.code !== 'direct_ready' && value.code !== 'loopback_proxy_ready') ||
+    (value.code === 'direct_ready' &&
+      (value.mode !== 'direct' ||
+        value.configuredProxyVariables !== 0 ||
+        value.listener !== 'not_required' ||
+        value.listenerProbeCalls !== 0)) ||
+    (value.code === 'loopback_proxy_ready' &&
+      (value.mode !== 'loopback_proxy' ||
+        value.configuredProxyVariables < 1 ||
+        value.listener !== 'listening' ||
+        value.listenerProbeCalls !== 1))
   )
     throw new Error('proxy_invalid');
   return Object.freeze({
-    code: record.code,
-    listenerProbeCalls: record.listenerProbeCalls,
+    code: value.code,
+    listenerProbeCalls: value.listenerProbeCalls,
+  });
+}
+
+function projectProxyPreflightDiagnostic(value: Phase697ArchitectureRecoveryProxyPreflightResult) {
+  return Object.freeze({
+    code: value.code,
+    mode: value.mode,
+    configuredProxyVariables: value.configuredProxyVariables,
+    listener: value.listener,
+    listenerProbeCalls: value.listenerProbeCalls,
+    providerCalls: 0 as const,
   });
 }
 
