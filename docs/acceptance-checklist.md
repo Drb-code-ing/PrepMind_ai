@@ -2871,4 +2871,7 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] The single authorized entrypoint executed once and stopped at `proxy_preflight_not_ready` before credential projection/reservation.
 - [x] Terminal counters are Provider/credential/formal-evidence/business-write `0/0/0/0`; no v9 bundle exists, so seal/recover is inapplicable.
 - [x] This authorization is not retried/replayed/backfilled and no Provider probe is appended.
-- [ ] A new task performs only zero-provider production proxy-preflight diagnosis; SR6 product acceptance remains blocked.
+- [x] Zero-provider diagnosis confirms PowerShell and profile-free Git Bash are `direct_ready` with zero proxy variables.
+- [x] Git Bash login profile reproducibly injects four HTTP(S) proxy variables for unavailable loopback `127.0.0.1:7897`, producing `loopback_proxy_unavailable` with one listener probe and zero Provider calls.
+- [x] Shared production preflight is retained fail-closed; no proxy clearing, bypass, Live retry, credential read, or Provider probe is used.
+- [ ] A new source/lineage decision binds native/no-profile launch provenance and bounded preflight diagnostics before any future tag/authorization; SR6 remains blocked.

@@ -1,5 +1,17 @@
 # PrepMind AI 开发日志
 
+> 2026-08-14 — Phase 6.9.8 SR5 v9 proxy-preflight zero-provider 根因诊断完成：
+>
+> CodeGraph 确认 SR5 production wrapper 已正确注入共享 `runPhase697ArchitectureRecoveryProxyPreflight`；FastCtx/原生宿主
+> 对照确认差异来自启动 shell。PowerShell 与 Git Bash `--noprofile --norc` 均为 `direct_ready`、代理变量 `0`、
+> Provider `0`；Git Bash login profile 注入四项 HTTP(S) proxy 变量，脱敏端点为 `127.0.0.1:7897`，监听探测失败后
+> 返回 `loopback_proxy_unavailable`。因此 v9 固定码 `proxy_preflight_not_ready` 是对该安全失败的上层收口。
+>
+> 本任务未读 `.env`/credential，未调用 DeepSeek/Qwen，未创建/改写 evidence，未触碰 Docker、PostgreSQL、Redis、
+> MinIO、API、browser 或业务数据。共享 preflight 不应被绕过，v9 授权也不重跑；下一步只能决定新的 source/lineage，
+> 固化 native/no-profile 启动边界与 bounded failure diagnostic 后再走 merge/tag/fresh authorization。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v9-proxy-preflight-zero-provider-diagnosis.md`。
+
 > 2026-08-14 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 v9 controlled-Live 入口已停止：
 >
 > v9 feature、`--no-ff` merge、远程推送、merged-main zero-provider 回放、annotated tag local/remote parity 和最终只读
