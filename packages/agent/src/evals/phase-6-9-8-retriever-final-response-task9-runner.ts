@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 
 import { z } from 'zod';
 
+import type { ModelAgentStructuredOutputStage, Phase697V7WireFailureCategory } from '@repo/ai';
+
 import {
   PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA,
   PHASE_6_9_8_TASK9_EVAL_POLICY,
@@ -156,13 +158,25 @@ export type RunPhase698Task9Input = Readonly<{
 
 export class Phase698Task9RuntimeError extends Error {
   readonly reason: Phase698Task9FailureReason;
+  readonly diagnostic: Phase698Task9RuntimeDiagnostic | null;
 
-  constructor(reason: Phase698Task9FailureReason) {
+  constructor(reason: Phase698Task9FailureReason, diagnostic?: Phase698Task9RuntimeDiagnostic) {
     super(`PHASE_6_9_8_TASK9_${reason.toUpperCase()}`);
     this.name = 'Phase698Task9RuntimeError';
     this.reason = reason;
+    this.diagnostic = diagnostic ? freezeRuntimeDiagnostic(diagnostic) : null;
   }
 }
+
+export type Phase698Task9RuntimeDiagnostic = Readonly<{
+  adapterFailureCategory: Phase697V7WireFailureCategory;
+  structuredOutputStage: ModelAgentStructuredOutputStage | null;
+  providerWire: Readonly<{
+    dispatches: 0 | 1;
+    responses: 0 | 1;
+    verifiedUsage: 0 | 1;
+  }>;
+}>;
 
 type RunnerDependencies = Readonly<{
   now(): number;
@@ -460,6 +474,11 @@ async function executeCall(input: {
       input.dependencies,
     );
   } catch (error) {
+    const responseObserved = wire.responses === 0;
+    mergePhase698Task9ProviderWire(wire, error);
+    if (responseObserved && wire.responses === 1) {
+      await lifecycle.appendWireStage('response_received');
+    }
     return terminateRuntimeFailure(input, wire, startedAt, error);
   }
 
@@ -515,6 +534,7 @@ async function terminateRuntimeFailure(
     transportAuthority: input.transportAuthority,
     disposition: reason === 'aborted' ? 'aborted' : reason === 'timeout' ? 'timeout' : 'failed',
     failureReason: reason,
+    ...runtimeDiagnosticFields(error),
     wire,
     usage: null,
     verifiedCostCny: null,
@@ -522,6 +542,43 @@ async function terminateRuntimeFailure(
   });
   await input.lifecycle.appendCallTerminal(entry);
   return Object.freeze({ entry, result: null });
+}
+
+export function mergePhase698Task9ProviderWire(
+  wire: { dispatches: number; responses: number; verifiedUsage: number },
+  error: unknown,
+) {
+  if (!(error instanceof Phase698Task9RuntimeError) || error.diagnostic === null) return;
+  wire.dispatches = Math.max(wire.dispatches, error.diagnostic.providerWire.dispatches);
+  wire.responses = Math.max(wire.responses, error.diagnostic.providerWire.responses);
+}
+
+export function runtimeDiagnosticFields(error: unknown) {
+  if (!(error instanceof Phase698Task9RuntimeError) || error.diagnostic === null) return {};
+  return {
+    adapterFailureCategory: error.diagnostic.adapterFailureCategory,
+    structuredOutputStage: error.diagnostic.structuredOutputStage,
+  } as const;
+}
+
+function freezeRuntimeDiagnostic(
+  diagnostic: Phase698Task9RuntimeDiagnostic,
+): Phase698Task9RuntimeDiagnostic {
+  const { dispatches, responses, verifiedUsage } = diagnostic.providerWire;
+  if (
+    ![0, 1].includes(dispatches) ||
+    ![0, 1].includes(responses) ||
+    ![0, 1].includes(verifiedUsage) ||
+    dispatches < responses ||
+    responses < verifiedUsage
+  ) {
+    throw new Error('PHASE_6_9_8_TASK9_RUNTIME_DIAGNOSTIC_INVALID');
+  }
+  return Object.freeze({
+    adapterFailureCategory: diagnostic.adapterFailureCategory,
+    structuredOutputStage: diagnostic.structuredOutputStage,
+    providerWire: Object.freeze({ dispatches, responses, verifiedUsage }),
+  });
 }
 
 function parseCallResult(phase: Phase698Task9CallPhase, value: unknown): Phase698Task9CallResult {

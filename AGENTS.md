@@ -1,5 +1,22 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 v10 schema/adapter postmortem（zero-provider，2026-08-14）
+
+v10 sealed evidence 只能证明 DeepSeek candidate 的类型化调用以 `schema_invalid` 终止；旧 `runRewriteModel` 将
+Provider JSON parse、object missing、type validation、response audit、usage 与本地合同失败压成同一 reason，Task9/SR5
+又只在 `invokeCall` 成功返回后记 outer `response_received`。因此历史 wire=`1/1/0/0` 不能证明 HTTP response 未到达，
+也不能从封存证据确定具体 Provider shape 根因。
+
+当前普通分支 `drb/phase-6-9-8-sr5-v10-schema-adapter-postmortem` 已以 bounded enum/stage 修复诊断投影：未来失败可保留
+`adapterFailureCategory/structuredOutputStage`，内层已观察 response 时会先追加 durability wire stage 再写 terminal；
+Provider 原文、字段和值仍不保存。focused `38/38`（`128 expect()`），Agent full `1661/1661`（`25496 expect()`，
+`203 files`），typecheck/lint/Prettier/diff check 通过。
+
+本任务 Provider/credential/formal evidence/business writes=`0/0/0/0`，未读取根 `.env`，未启动 Docker/API/browser，
+未修改 v10 sealed bundle；`qualityAuthority=none`。下一步只做分支 push、`main --no-ff` merge/push 与 merged-main
+zero-provider parity；新的 lineage/tag/Live 必须另行决策和授权。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-schema-adapter-postmortem-zero-provider.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 v10 controlled-Live 已失败封存（2026-08-14）
 
 唯一 v10 run `da94b83b-3638-4e23-aefc-9e3423bf4c77` 已在 clean/tag-verified source
@@ -1400,6 +1417,7 @@ capability is Git/source-only: `gitAuthorityIssued=true`, while runner/provider 
 fresh DeepSeek/Qwen boundary acceptance, authorization, and controlled-Live remain future tasks. Acceptance:
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-final-git-verifier-zero-provider.md`.
 Feature commit `7a2dfced` was merged with `--no-ff` as `31b17fe9` and pushed; merged-main D5+D3+D4 validation passed `48/48`.
+
 ## Current checkpoint: Phase 6.9.8 SR5 v4 post-tag test recovery (2026-08-13)
 
 The immutable v4 annotated tag points to `5d1d2997`, with tag object `6523ae12` and source bundle
@@ -1411,6 +1429,7 @@ vocabulary to v5 and replaces the repository-lifecycle assertion with an isolate
 Focused D5+D3+D4 now passes `48/48`; no `.env`, credential, Provider, Docker, evidence, or business write is used.
 Do not move/delete v4. Merge/push recovery and revalidate `main` before creating the one final v5 tag.
 Recovery feature `f80854bf` is merged/pushed as `96caa882`; merged-main focused D5+D3+D4 passed `48/48`.
+
 ## Current checkpoint: SR5 v9 evidence namespace recovery (2026-08-14)
 
 The v8 entrypoint reached source admission and failed closed because the active evidence regex still matched the sealed unversioned v2 marker/report namespace. The v9 recovery versions marker, journal, report, recovery claim, and dispatch-lock paths under `...sr5-live-v9`; v2 and v5-v8 artifacts/tags remain immutable. v9 was merged and pushed as `3ad7d7ce`, the local/remote annotated tag passed parity, and the final read-only verifier returned `ok=true`. The freshly authorized v9 entrypoint then stopped at `proxy_preflight_not_ready` before credential projection or reservation: Provider/credential/formal-evidence/business-write counts are all `0`, and no v9 durability file exists. Do not rerun this authorization; the next task is an independent zero-provider proxy-preflight diagnosis from current `main`.

@@ -1,5 +1,21 @@
 # PrepMind AI 开发日志
 
+> 2026-08-14 — Phase 6.9.8 SR5 v10 schema/adapter postmortem（zero-provider）完成：
+>
+> 源码确认旧 DeepSeek rewrite harness 丢弃了 candidate trace/V7 adapter 的 bounded failure category，并将 JSON parse、
+> object missing、type validation、response audit、usage 与本地合同失败统一写成 `schema_invalid`；Task9/SR5 还把
+> `response_received` 错绑在 typed call 成功返回之后。因此 v10 sealed wire=`1/1/0/0` 不能证明没有 HTTP response，
+> 也不能再精确归因 Provider shape。
+>
+> 修复后 RuntimeError 只携带允许枚举的 adapter category、structured stage 与 0/1 wire prefix；runner 在失败终态前补记
+> 已观察到的 `response_received` durability stage，报告和 journal 可一致重算，raw content/field/value 仍不进入 evidence。
+> focused `38/38`（`128 expect()`），Agent full `1661/1661`（`25496 expect()`，`203 files`），typecheck/lint/
+> Prettier/diff check 通过。
+>
+> Provider/credential/formal evidence/business writes=`0/0/0/0`，未读 `.env`，未触碰 Docker/API/browser 或 v10 sealed
+> bundle，`qualityAuthority=none`。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-schema-adapter-postmortem-zero-provider.md`。
+
 > 2026-08-14 — Phase 6.9.8 SR5 v10 唯一 controlled-Live 已失败封存：
 >
 > clean/tag-verified source=`fb0e9534...`，run=`da94b83b-3638-4e23-aefc-9e3423bf4c77`，proxy=`direct_ready`。
@@ -52,7 +68,7 @@
 >
 > 用户接受 v9 DeepSeek/Qwen 数据边界并授权唯一入口后，正式 CLI 在 source/tag/authorization admission 之后、credential
 > projection 与 reservation 之前以 `proxy_preflight_not_ready` fail-closed。终态为 `providerCalls=0 /
-> credentialReads=0 / formalEvidence=0 / businessWrites=0`；没有 v9 marker、journal、report、artifact、recovery claim、
+credentialReads=0 / formalEvidence=0 / businessWrites=0`；没有 v9 marker、journal、report、artifact、recovery claim、
 > dispatch lock、Trace、BackgroundJob、Outbox 或业务数据。没有 bundle 可 seal/recover，本次授权入口不得直接重跑、
 > replay、backfill 或追加 Provider 探测。
 >
@@ -6390,6 +6406,7 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - No credentials, `.env`, Providers, Docker/API/browser, formal evidence, Trace, BackgroundJob, Outbox, or business writes were used.
 - Next: push/merge D5 and revalidate merged `main`; only then create/push the final v4 tag in a separate Git-operation task.
 - Closeout: feature `7a2dfced` merged/pushed as `31b17fe9`; merged-main D5+D3+D4 passed `48/48` (85 assertions), typecheck/lint/diff check passed.
+
 ## 2026-08-13 — SR5 v4 post-tag test recovery
 
 - Created/pushed immutable v4 tag on `5d1d2997`; tag object `6523ae12`, bundle `sha256:e702a81a...084e2a`.
@@ -6399,6 +6416,7 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - Recovery focused D5+D3+D4 passes `48/48` (85 assertions); typecheck/lint/diff check pass.
 - v4 remains immutable. Next: merge/push recovery, validate merged `main`, then create/push and inspect v5.
 - Recovery feature `f80854bf` merged/pushed as `96caa882`; merged-main focused D5+D3+D4 passed `48/48`. This commit is ready for the single v5 tag operation.
+
 > 2026-08-14 - Phase 6.9.8 SR5 v9 evidence namespace recovery started
 >
 > The authorized v8 entrypoint failed at source admission with `providerCalls=0 / credentialReads=0 / formalEvidence=0`. CodeGraph/FastCtx traced the failure to an unversioned formal-evidence regex and path family that treated sealed v2 files as current evidence. v9 versions marker, journal, report, recovery claim, temporary report, and dispatch lock paths; a new regression proves legacy sealed files are ignored while v9 leftovers still fail closed. Focused passed `67/67` (`148 expect()`), Agent full `1657/1657` (`25474 expect()`, `203 files`), and typecheck/lint/diff check passed. No old artifact is moved, deleted, or rewritten. Next gates are feature commit, `--no-ff` merge/push, merged-main zero-provider replay, v9 tag parity, then fresh V9 authorization.

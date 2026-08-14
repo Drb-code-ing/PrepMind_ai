@@ -1,5 +1,16 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 SR5 v10 schema/adapter postmortem（2026-08-14）
+
+zero-provider postmortem 已定位两个独立诊断缺口：DeepSeek candidate 的细分类别在 `runRewriteModel` 被压成
+`schema_invalid`；Task9/SR5 outer wire 把 typed call 成功返回误当成 Provider response arrival。修复已让 bounded
+adapter category/structured stage 进入未来失败终态，并在 durable terminal 前补写实际观察到的 response stage。
+
+该结论不反向归因 v10 Provider 原文；封存 evidence 仍只能说明严格类型化合同失败。focused `38/38`、Agent full
+`1661/1661`、typecheck/lint/Prettier/diff check 通过，Provider/credential/formal evidence/business writes=`0/0/0/0`。
+固定收口顺序：分支 commit/push -> `main --no-ff` merge/push -> merged-main zero-provider parity。之后才能从最新 `main`
+决定新的 recovery lineage/source/tag；本任务不创建 tag、不请求授权、不执行 Live，也不解锁 SR6。
+
 ## 当前原子阶段：Phase 6.9.8 SR5 run-bound revalidation recovery（2026-08-12）
 
 zero-provider architecture recovery 已关闭 self-marker 自拒绝：runId-bound capability、当前 run namespace allowlist、共享
@@ -1212,6 +1223,7 @@ repository being permanently pre-tag. v4 remains immutable and blocked. The reco
 isolates fail-closed unit coverage from the repository lifecycle. Remaining order is: merge/push recovery and merged-main revalidation;
 create/push final v5; run real D5 inspection and tagged-source focused replay; only then make a separate decision on fresh
 DeepSeek/Qwen boundary acceptance and any controlled-Live.
+
 ## Current checkpoint: SR5 v9 evidence namespace recovery
 
 The v8 entrypoint failed closed before credentials because the current evidence namespace overlapped sealed v2 files. v9 isolates all current durability paths with a version suffix. The repair, merged-main replay, remote push, annotated-tag parity, final Git verifier, fresh data-boundary acceptance, and exact authorization are complete.
