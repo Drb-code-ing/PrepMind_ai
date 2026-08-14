@@ -3,6 +3,21 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
+## 当前 SR5 v10 schema/adapter postmortem（zero-provider，2026-08-14）
+
+本任务只允许以下无 credential 回归；不要读取根 `.env`、不要传 V10 authorization、不要执行 Live/recover/curl：
+
+```powershell
+bun test --timeout 30000 packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-runner.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-task9b-live-config.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.test.ts
+bun test --timeout 30000 packages/agent/tests
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/agent lint
+git diff --check
+```
+
+v10 sealed wire=`1/1/0/0` 不能用于断言 HTTP response 未到达；具体 JSON/object/type/response-audit 根因也无法从旧证据
+恢复。新代码只持久化 bounded category/stage，不保存 Provider content。Docker/API/browser 产品验收仍未执行。
+
 ## 当前 SR5 v10 Live 已封存（2026-08-14）
 
 唯一 run `da94b83b-3638-4e23-aefc-9e3423bf4c77` 已正常发布 evidence，gate 为
@@ -2187,6 +2202,7 @@ docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker
 ```
 
 `stop` 保留容器、镜像、network、PostgreSQL/MinIO volume 与所有数据。关机收口禁止 `down`、`down -v`、prune、container/image/volume 删除、数据库 reset、Redis flush 或 MinIO wipe。
+
 ## SR5 next-lineage checkpoint
 
 Run the focused admission tests on `drb/phase-6-9-8-sr5-next-lineage-admission`; do not use the Live CLI or load `.env`. The future v3 tag is intentionally absent. Push the branch, merge with `--no-ff` to `main`, push `main`, then rerun zero-provider checks on `main`.
@@ -2198,6 +2214,7 @@ For D1 use `drb/phase-6-9-8-sr5-next-lineage-authorization-contract`. Run the fo
 For D2 use `drb/phase-6-9-8-sr5-next-lineage-runner-preflight`. Run its focused test, Agent full suite, typecheck, lint, and Prettier. Do not load `.env`, invoke a Provider, reserve evidence, or reuse historical SR5 Live CLI/runner/durability.
 
 For D3 use `drb/phase-6-9-8-sr5-next-lineage-runtime-source-binding`. Validate only the pure runtime-source contract; do not create v4, supply real authorization, inspect credentials, or treat a plain receipt object as Git authority.
+
 # Phase 6.9.8 SR5 D4 developer boundary
 
 D4 is validated only through Bun tests. There is no Live CLI, authorization argv, root `.env` load, Docker composition, or product
@@ -2209,6 +2226,7 @@ bun test packages/agent/tests/phase-6-9-8-retriever-final-response-schema-recove
 
 The suite creates an OS temporary root and removes it. Do not create/move a v4 tag, reuse old authorization, inspect credentials,
 start Provider calls, or touch sealed SR5 evidence while validating D4.
+
 ## SR5 D5 final Git verifier
 
 The D5 module is read-only. Its only supported operation is `inspect-zero-provider`; it performs bounded Git inspection and never

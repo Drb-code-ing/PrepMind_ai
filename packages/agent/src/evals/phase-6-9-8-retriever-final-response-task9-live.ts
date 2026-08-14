@@ -15,6 +15,8 @@ import {
   isFinalResponseStreamProviderError,
   isQwenTextEmbeddingV4ProviderError,
   type QwenTextEmbeddingV4FailureCode,
+  type Phase697V7WireFailureCategory,
+  type Phase697V7WireSnapshot,
   type StructuredModelExecutor,
 } from '@repo/ai';
 
@@ -322,23 +324,17 @@ async function runRewriteModel(
   const trace = candidate.observation.trace;
   const usage = candidate.observation.usage;
   const snapshot = diagnostics.readSnapshot();
-  if (
-    invocations !== 1 ||
-    !candidate.ok ||
-    candidate.rewrite.disposition !== 'candidate_applied' ||
-    candidate.observation.provenance !== 'deepseek_network' ||
-    !candidate.observation.attempted ||
-    trace?.status !== 'succeeded' ||
-    trace.provider !== 'deepseek' ||
-    trace.model !== RETRIEVER_QUERY_REWRITE_MODEL ||
-    usage.inputTokens < 1 ||
-    usage.outputTokens < 1 ||
-    snapshot.state !== 'succeeded' ||
-    snapshot.counters.providerDispatches !== 1 ||
-    snapshot.counters.providerResponses !== 1 ||
-    snapshot.counters.verifiedUsages !== 1
-  ) {
-    throw new Phase698Task9RuntimeError('schema_invalid');
+  const failure = projectPhase698Task9RewriteFailureForTest({
+    invocations,
+    candidateApplied: candidate.ok && candidate.rewrite.disposition === 'candidate_applied',
+    provenance: candidate.observation.provenance,
+    attempted: candidate.observation.attempted,
+    trace,
+    snapshot,
+  });
+  if (failure !== null) throw failure;
+  if (usage.inputTokens < 1 || usage.outputTokens < 1 || snapshot.counters.verifiedUsages !== 1) {
+    throw new Phase698Task9RuntimeError('usage_invalid');
   }
   const intentPreserved = testCase.requiredTerms.every((term) =>
     normalize(candidate.executedQuery).includes(normalize(term)),
@@ -352,6 +348,93 @@ async function runRewriteModel(
     usage: { ...usage },
     verifiedCostCny: calculatePhase698Task9DeepseekCostCny(usage.inputTokens, usage.outputTokens),
   });
+}
+
+export function projectPhase698Task9RewriteFailureForTest(
+  input: Readonly<{
+    invocations: number;
+    candidateApplied: boolean;
+    provenance: string;
+    attempted: boolean;
+    trace:
+      | Readonly<{
+          status: string;
+          provider: string;
+          model: string;
+        }>
+      | undefined;
+    snapshot: Phase697V7WireSnapshot;
+  }>,
+): Phase698Task9RuntimeError | null {
+  const category = input.snapshot.failureCategory;
+  const baseInvalid =
+    input.invocations !== 1 ||
+    !input.candidateApplied ||
+    input.provenance !== 'deepseek_network' ||
+    !input.attempted ||
+    input.trace?.status !== 'succeeded' ||
+    input.trace.provider !== 'deepseek' ||
+    input.trace.model !== RETRIEVER_QUERY_REWRITE_MODEL ||
+    input.snapshot.state !== 'succeeded' ||
+    input.snapshot.counters.providerDispatches !== 1 ||
+    input.snapshot.counters.providerResponses !== 1;
+  if (!baseInvalid) return null;
+  const reason = mapDeepseekRewriteFailure(category);
+  return new Phase698Task9RuntimeError(reason, {
+    adapterFailureCategory: category ?? 'unknown',
+    structuredOutputStage: structuredOutputStage(category),
+    providerWire: {
+      dispatches: boundedWire(input.snapshot.counters.providerDispatches),
+      responses: boundedWire(input.snapshot.counters.providerResponses),
+      // Task9 verifies usage only after a typed call result returns successfully.
+      verifiedUsage: 0,
+    },
+  });
+}
+
+function structuredOutputStage(category: Phase697V7WireFailureCategory | null) {
+  return category === 'provider_json_parse' ||
+    category === 'provider_type_validation' ||
+    category === 'provider_object_missing'
+    ? category
+    : null;
+}
+
+function mapDeepseekRewriteFailure(
+  category: Phase697V7WireFailureCategory | null,
+): ConstructorParameters<typeof Phase698Task9RuntimeError>[0] {
+  switch (category) {
+    case 'transport':
+      return 'transport';
+    case 'http_auth':
+      return 'http_auth';
+    case 'http_rate_limit':
+      return 'http_rate_limit';
+    case 'http_client':
+      return 'http_client';
+    case 'http_server':
+      return 'http_server';
+    case 'response_audit':
+    case 'invalid_response':
+      return 'response_invalid';
+    case 'provider_json_parse':
+    case 'provider_type_validation':
+    case 'provider_object_missing':
+      return 'schema_invalid';
+    case 'usage_validation':
+      return 'usage_invalid';
+    case 'pre_dispatch_abort':
+    case 'post_dispatch_abort':
+      return 'aborted';
+    case 'runtime_timeout':
+      return 'timeout';
+    default:
+      return 'runtime_contract_invalid';
+  }
+}
+
+function boundedWire(value: number): 0 | 1 {
+  return value === 1 ? 1 : 0;
 }
 
 async function runFinalResponse(

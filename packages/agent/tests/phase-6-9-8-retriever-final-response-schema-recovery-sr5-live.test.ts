@@ -65,6 +65,7 @@ import {
   createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixture,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_SOURCE_SCHEMA_VERSION,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-schema.ts';
+import { Phase698Task9RuntimeError } from '../src/evals/phase-6-9-8-retriever-final-response-task9-runner.ts';
 
 const roots: string[] = [];
 
@@ -167,6 +168,49 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     expect(validation.ok).toBe(true);
     expect(validation.runId).toBe(runId);
     await expect(reservation.publishArtifact(report)).rejects.toThrow();
+  });
+
+  it('retains bounded adapter diagnostics and response wire on a failed typed call', async () => {
+    const { root, runId, reservation, bound } = await createReservation();
+    const base = createPhase698RetrieverSchemaRecoverySr5LiveReviewedMockHarnessForTest();
+    let invocations = 0;
+    const harness = {
+      ...base,
+      async invokeCall(input: Parameters<typeof base.invokeCall>[0]) {
+        invocations += 1;
+        if (invocations === 2) {
+          throw new Phase698Task9RuntimeError('schema_invalid', {
+            adapterFailureCategory: 'provider_object_missing',
+            structuredOutputStage: 'provider_object_missing',
+            providerWire: { dispatches: 1, responses: 1, verifiedUsage: 0 },
+          });
+        }
+        return base.invokeCall(input);
+      },
+    } as const;
+
+    const report = await runPhase698RetrieverSchemaRecoverySr5ControlledLiveForTest({
+      runId,
+      repositoryRoot: root,
+      admissionAuthority: 'synthetic_test_live',
+      admissionCapability: bound.capability,
+      harness,
+      lifecycle: reservation.lifecycle,
+      signal: new AbortController().signal,
+    });
+
+    expect(report.callEntries[1]).toMatchObject({
+      disposition: 'failed',
+      failureReason: 'schema_invalid',
+      adapterFailureCategory: 'provider_object_missing',
+      structuredOutputStage: 'provider_object_missing',
+      wire: { attempts: 1, dispatches: 1, responses: 1, verifiedUsage: 0 },
+    });
+    expect(report.providers.qwen.responses).toBe(1);
+    expect(report.providers.deepseek.responses).toBe(1);
+    expect(report.providers.qwen.verifiedUsage).toBe(1);
+    expect(report.providers.deepseek.verifiedUsage).toBe(0);
+    expect(report.callEntries.slice(2).every((entry) => entry.wire.attempts === 0)).toBe(true);
   });
 
   it('projects a production-shaped v2 repository observation through the live source schema', () => {

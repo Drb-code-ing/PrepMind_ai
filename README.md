@@ -1,5 +1,16 @@
 # PrepMind AI 智能备考助手
 
+## 当前工作回执：SR5 v10 schema/adapter postmortem（zero-provider，2026-08-14）
+
+v10 DeepSeek `schema_invalid` 已完成无 credential、无 Provider 调用的源码级复盘。旧链路把多个 adapter/runtime 失败压成
+同一 reason，并只在类型化调用成功返回后记录 outer response，所以封存 wire=`1/1/0/0` 不能证明 HTTP response 未到达，
+也无法再判定具体 Provider shape 根因。当前修复只持久化受限 category/stage 与 wire prefix，并让 SR5 journal/report 对
+失败后的 `response_received` 保持一致；不保存模型原文、字段名或字段值。
+
+focused `38/38`，Agent full `1661/1661`，typecheck/lint/Prettier/diff check 通过；Provider、credential、formal evidence、
+business writes 均为 `0`，v10 sealed bundle 和 Docker/数据库/Redis/MinIO 未触碰。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-schema-adapter-postmortem-zero-provider.md`。
+
 ## 当前工作回执：SR5 run-bound source revalidation（zero-provider，2026-08-12）
 
 SR5 已修复 `admit -> reserve self-marker -> consume` 的自拒绝：reservation/admission capability 绑定同一 runId，运行中只

@@ -19,6 +19,8 @@ import {
 import { PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_BUDGET } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-contract.ts';
 import {
   Phase698Task9RuntimeError,
+  mergePhase698Task9ProviderWire,
+  runtimeDiagnosticFields,
   type Phase698Task9CallResult,
   type Phase698Task9GuardResult,
 } from './phase-6-9-8-retriever-final-response-task9-runner.ts';
@@ -520,6 +522,11 @@ async function executeCall(
       timeoutFor(identity.phase),
     );
   } catch (error) {
+    const responseObserved = wire.responses === 0;
+    mergePhase698Task9ProviderWire(wire, error);
+    if (responseObserved && wire.responses === 1) {
+      await lifecycle.appendWireStage('response_received');
+    }
     const entry = failureEntry(
       identity,
       wire,
@@ -621,6 +628,7 @@ function failureEntry(
     transportAuthority,
     disposition: reason === 'aborted' ? 'aborted' : reason === 'timeout' ? 'timeout' : 'failed',
     failureReason: reason,
+    ...runtimeDiagnosticFields(error),
     wire,
     usage: null,
     verifiedCostCny: null,

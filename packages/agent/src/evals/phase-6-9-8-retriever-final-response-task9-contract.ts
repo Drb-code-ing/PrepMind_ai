@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 
 import {
+  MODEL_AGENT_STRUCTURED_OUTPUT_STAGES,
+  PHASE_6_9_7_V7_WIRE_FAILURE_CATEGORIES,
   QWEN_TEXT_EMBEDDING_V4_DIMENSIONS,
   QWEN_TEXT_EMBEDDING_V4_ENDPOINT_PROFILE,
   QWEN_TEXT_EMBEDDING_V4_INPUT_PRICE_PER_MILLION_CNY,
@@ -301,6 +303,8 @@ export const PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA = z
     ]),
     disposition: CALL_DISPOSITION_SCHEMA,
     failureReason: FAILURE_REASON_SCHEMA.nullable(),
+    adapterFailureCategory: z.enum(PHASE_6_9_7_V7_WIRE_FAILURE_CATEGORIES).nullable().optional(),
+    structuredOutputStage: z.enum(MODEL_AGENT_STRUCTURED_OUTPUT_STAGES).nullable().optional(),
     wire: z
       .object({
         attempts: z.number().int().min(0).max(1),
@@ -343,6 +347,8 @@ export const PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA = z
         responses !== 0 ||
         verifiedUsage !== 0 ||
         entry.failureReason !== expectedFailureReason ||
+        entry.adapterFailureCategory !== undefined ||
+        entry.structuredOutputStage !== undefined ||
         entry.usage !== null ||
         entry.verifiedCostCny !== null ||
         entry.durationMs !== null
@@ -360,6 +366,8 @@ export const PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA = z
         responses !== 1 ||
         verifiedUsage !== 1 ||
         entry.failureReason !== null ||
+        entry.adapterFailureCategory !== undefined ||
+        entry.structuredOutputStage !== undefined ||
         entry.usage === null ||
         entry.verifiedCostCny === null
       ) {
@@ -391,9 +399,59 @@ export const PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA = z
     ) {
       context.addIssue({ code: 'custom', message: 'failure disposition mismatch' });
     }
+    const structuredCategory =
+      entry.adapterFailureCategory === 'provider_json_parse'
+        ? 'provider_json_parse'
+        : entry.adapterFailureCategory === 'provider_type_validation'
+          ? 'provider_type_validation'
+          : entry.adapterFailureCategory === 'provider_object_missing'
+            ? 'provider_object_missing'
+            : null;
+    if (
+      (structuredCategory === null && entry.structuredOutputStage != null) ||
+      (structuredCategory !== null && entry.structuredOutputStage !== structuredCategory) ||
+      (entry.adapterFailureCategory !== undefined &&
+        entry.adapterFailureCategory !== null &&
+        entry.failureReason !== adapterFailureReason(entry.adapterFailureCategory))
+    ) {
+      context.addIssue({ code: 'custom', message: 'bounded adapter diagnostic mismatch' });
+    }
   });
 
 export type Phase698Task9CallEntry = z.infer<typeof PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA>;
+
+function adapterFailureReason(
+  category: (typeof PHASE_6_9_7_V7_WIRE_FAILURE_CATEGORIES)[number],
+): Phase698Task9FailureReason {
+  switch (category) {
+    case 'transport':
+      return 'transport';
+    case 'http_auth':
+      return 'http_auth';
+    case 'http_rate_limit':
+      return 'http_rate_limit';
+    case 'http_client':
+      return 'http_client';
+    case 'http_server':
+      return 'http_server';
+    case 'response_audit':
+    case 'invalid_response':
+      return 'response_invalid';
+    case 'provider_json_parse':
+    case 'provider_type_validation':
+    case 'provider_object_missing':
+      return 'schema_invalid';
+    case 'usage_validation':
+      return 'usage_invalid';
+    case 'pre_dispatch_abort':
+    case 'post_dispatch_abort':
+      return 'aborted';
+    case 'runtime_timeout':
+      return 'timeout';
+    default:
+      return 'runtime_contract_invalid';
+  }
+}
 
 export const PHASE_6_9_8_TASK9_REWRITE_ENTRY_SCHEMA = z
   .object({

@@ -4,6 +4,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { createPhase698Task9ReviewedMockHarnessForTest } from '../src/evals/phase-6-9-8-retriever-final-response-task9-reviewed-mock.ts';
 import {
+  Phase698Task9RuntimeError,
   runPhase698Task9,
   runPhase698Task9ForTest,
   type Phase698Task9Harness,
@@ -97,6 +98,36 @@ describe('Phase 6.9.8 Task 9B runner failure boundaries', () => {
     });
     expect(report.rewrite.strictCount).toBe(0);
     expect(report.latency.rewriteP95Ms).toBeNull();
+  });
+
+  test('projects bounded adapter diagnostics and the actual Provider response prefix', async () => {
+    const base = await createPhase698Task9ReviewedMockHarnessForTest();
+    const harness: Phase698Task9Harness = Object.freeze({
+      transportAuthority: 'synthetic_injected',
+      runGuard: base.runGuard,
+      async invokeCall() {
+        throw new Phase698Task9RuntimeError('schema_invalid', {
+          adapterFailureCategory: 'provider_type_validation',
+          structuredOutputStage: 'provider_type_validation',
+          providerWire: { dispatches: 1, responses: 1, verifiedUsage: 0 },
+        });
+      },
+    });
+    const report = await runWithNoopLifecycle(harness);
+
+    expect(report.callEntries[0]).toMatchObject({
+      disposition: 'failed',
+      failureReason: 'schema_invalid',
+      adapterFailureCategory: 'provider_type_validation',
+      structuredOutputStage: 'provider_type_validation',
+      wire: { attempts: 1, dispatches: 1, responses: 1, verifiedUsage: 0 },
+    });
+    expect(report.providers.qwen).toMatchObject({
+      attempts: 1,
+      dispatches: 1,
+      responses: 1,
+      verifiedUsage: 0,
+    });
   });
 
   test('hard timeout aborts the lane once and records no response or usage', async () => {

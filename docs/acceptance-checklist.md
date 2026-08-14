@@ -5,6 +5,22 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
+## 0K-V10-Postmortem. SR5 v10 schema/adapter postmortem（当前，zero-provider）
+
+- [x] 只读源码确认 candidate trace/V7 wire 在旧 `runRewriteModel` 被压缩
+- [x] 确认旧 outer `response=0` 只表示 typed call 未返回，不证明 HTTP response 未到达
+- [x] bounded `adapterFailureCategory/structuredOutputStage` 投影，不保留 raw content/field/value
+- [x] Task9/SR5 failure terminal 前补写 durability `response_received`
+- [x] 历史 call entry 无新增字段仍兼容 strict validator
+- [x] focused `38/38`（`128 expect()`）
+- [x] Agent full `1661/1661`（`25496 expect()`，`203 files`）
+- [x] typecheck/lint/Prettier/diff check
+- [ ] 分支 commit/push、`main --no-ff` merge/push、merged-main parity
+- [ ] 新 lineage/source/tag/Live：不属于本任务，未授权
+- [ ] SR6 Docker/API/Trace/可见浏览器：继续阻断
+
+验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-schema-adapter-postmortem-zero-provider.md`。
+
 ## 0K-RunBound. Phase 6.9.8 SR5 run-bound recovery（当前，zero-provider）
 
 - [x] reservation/admission capability exact runId binding
@@ -2859,6 +2875,7 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [ ] Merge/push v5 recovery and repeat focused validation on merged `main`.
 - [ ] Create/push final v5 tag in a separate Git operation from the next complete parity commit; then perform read-only post-tag inspection and focused replay.
 - [ ] Fresh data-boundary acceptance and controlled-Live (not part of D5).
+
 ## SR5 v9 recovery gate
 
 - [x] Active CLI binds clean `main == origin/main == 3ad7d7ce...` and the immutable v9 tag.
