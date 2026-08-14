@@ -8,8 +8,9 @@ adapter category/structured stage 进入未来失败终态，并在 durable term
 
 该结论不反向归因 v10 Provider 原文；封存 evidence 仍只能说明严格类型化合同失败。focused `38/38`、Agent full
 `1661/1661`、typecheck/lint/Prettier/diff check 通过，Provider/credential/formal evidence/business writes=`0/0/0/0`。
-固定收口顺序：分支 commit/push -> `main --no-ff` merge/push -> merged-main zero-provider parity。之后才能从最新 `main`
-决定新的 recovery lineage/source/tag；本任务不创建 tag、不请求授权、不执行 Live，也不解锁 SR6。
+固定收口顺序已完成：功能提交 `6a11b37a` 推送后以 `--no-ff` 合并为 `main` 提交 `1289d059`，merged-main
+zero-provider parity 通过。之后才能从最新 `main` 决定新的 recovery lineage/source/tag；本任务不创建 tag、不请求授权、不
+执行 Live，也不解锁 SR6。
 
 ## 当前原子阶段：Phase 6.9.8 SR5 run-bound revalidation recovery（2026-08-12）
 

@@ -13,8 +13,8 @@ Provider 原文、字段和值仍不保存。focused `38/38`（`128 expect()`）
 `203 files`），typecheck/lint/Prettier/diff check 通过。
 
 本任务 Provider/credential/formal evidence/business writes=`0/0/0/0`，未读取根 `.env`，未启动 Docker/API/browser，
-未修改 v10 sealed bundle；`qualityAuthority=none`。下一步只做分支 push、`main --no-ff` merge/push 与 merged-main
-zero-provider parity；新的 lineage/tag/Live 必须另行决策和授权。详见
+未修改 v10 sealed bundle；`qualityAuthority=none`。功能提交 `6a11b37a` 已以 `--no-ff` 合并并推送，合并提交为
+`1289d059`；合并后 focused/full zero-provider parity 均通过。新的 lineage/tag/Live 必须另行决策和授权。详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-schema-adapter-postmortem-zero-provider.md`。
 
 ## 当前状态：Phase 6.9.8 SR5 v10 controlled-Live 已失败封存（2026-08-14）

@@ -15,7 +15,7 @@
 - [x] focused `38/38`（`128 expect()`）
 - [x] Agent full `1661/1661`（`25496 expect()`，`203 files`）
 - [x] typecheck/lint/Prettier/diff check
-- [ ] 分支 commit/push、`main --no-ff` merge/push、merged-main parity
+- [x] 分支 commit/push、`main --no-ff` merge/push、merged-main parity（merge=`1289d059`）
 - [ ] 新 lineage/source/tag/Live：不属于本任务，未授权
 - [ ] SR6 Docker/API/Trace/可见浏览器：继续阻断
 

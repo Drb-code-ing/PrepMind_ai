@@ -16,6 +16,9 @@
 > bundle，`qualityAuthority=none`。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-schema-adapter-postmortem-zero-provider.md`。
 
+> 2026-08-14 — postmortem 功能提交 `6a11b37a` 已 `--no-ff` 合并并推送 `main`，merge=`1289d059`。merged-main focused
+> `38/38`、Agent full `1661/1661`、typecheck/lint/diff check 全部通过；没有重新执行 Live 或产品验收。
+
 > 2026-08-14 — Phase 6.9.8 SR5 v10 唯一 controlled-Live 已失败封存：
 >
 > clean/tag-verified source=`fb0e9534...`，run=`da94b83b-3638-4e23-aefc-9e3423bf4c77`，proxy=`direct_ready`。

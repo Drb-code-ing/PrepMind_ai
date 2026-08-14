@@ -70,6 +70,6 @@ v10 run `da94b83b-3638-4e23-aefc-9e3423bf4c77` 继续永久封存，禁止 retry
 
 ## 下一步
 
-先完成普通分支提交/推送、`main --no-ff` 合并/推送与 merged-main zero-provider 二次验收。之后再从最新 `main` 独立决定
-新的 schema recovery lineage/source/tag；任何 controlled-Live 都必须重新建立 source parity、数据边界与 fresh exact
-authorization，不能复用 v10 tag、授权或 evidence。
+功能提交 `6a11b37a` 已推送，并以 `--no-ff` 生成合并提交 `1289d059` 推送到 `main`；合并后 focused `38/38`、Agent full
+`1661/1661`、typecheck/lint/diff check 全部通过。之后再从最新 `main` 独立决定新的 schema recovery lineage/source/tag；
+任何 controlled-Live 都必须重新建立 source parity、数据边界与 fresh exact authorization，不能复用 v10 tag、授权或 evidence。
