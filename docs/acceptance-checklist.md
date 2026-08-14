@@ -2859,10 +2859,12 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [ ] Merge/push v5 recovery and repeat focused validation on merged `main`.
 - [ ] Create/push final v5 tag in a separate Git operation from the next complete parity commit; then perform read-only post-tag inspection and focused replay.
 - [ ] Fresh data-boundary acceptance and controlled-Live (not part of D5).
-## SR5 v8 recovery gate
+## SR5 v9 recovery gate
 
-- [ ] Active CLI binds `main` and the immutable v8 tag.
+- [ ] Active CLI binds `main` and the immutable v9 tag.
+- [x] Current evidence paths use the isolated `...sr5-live-v9` namespace.
+- [x] Sealed unversioned v2 evidence is ignored without deletion or mutation.
 - [ ] Focused and merged-main zero-provider suites pass.
-- [ ] v8 annotated tag and local/remote parity are verified.
-- [ ] Fresh V8 DeepSeek/Qwen boundary acceptance and exact authorization are recorded.
+- [ ] v9 annotated tag and local/remote parity are verified.
+- [ ] Fresh V9 DeepSeek/Qwen boundary acceptance and exact authorization are recorded.
 - [ ] Only then may the single controlled-Live run execute.

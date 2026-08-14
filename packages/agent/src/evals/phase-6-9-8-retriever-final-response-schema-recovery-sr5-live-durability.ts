@@ -8,6 +8,7 @@ import { z } from 'zod';
 import {
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_CALL_ENTRY_SCHEMA,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_FINAL_ENTRY_SCHEMA,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_GUARD_ENTRY_SCHEMA,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_LINEAGE,
   PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_REPORT_SCHEMA,
@@ -53,7 +54,7 @@ export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RECOVERY_CLAIM_VERSI
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_ARTIFACT_VERSION =
   'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-artifact-v1' as const;
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_RELATIVE_PATH =
-  '.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker' as const;
+  `.tmp/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE}.marker` as const;
 
 const UUID = z.string().uuid();
 const SHA256 = z.string().regex(/^[0-9a-f]{64}$/u);
@@ -61,7 +62,7 @@ const DATETIME = z.string().datetime({ offset: true });
 const MAX_FILE_BYTES = 64 * 1024 * 1024;
 const DURABILITY_ERROR = 'PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_DURABILITY_INVALID';
 const FORMAL_FILE =
-  /^phase-6-9-8-retriever-final-response-schema-recovery-sr5-live(?:\.marker|-[0-9a-f-]{36}\.(?:journal\.jsonl|recovery\.claim|report\.json)|-[0-9a-f-]{36}\.report\.json\.tmp\.[0-9a-f-]{36})$/u;
+  /^phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v9(?:\.marker|-[0-9a-f-]{36}\.(?:journal\.jsonl|recovery\.claim|report\.json)|-[0-9a-f-]{36}\.report\.json\.tmp\.[0-9a-f-]{36})$/u;
 
 export const PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_SCHEMA = z
   .object({
@@ -1542,15 +1543,15 @@ function isLiveAuthority(
 
 export function journalRelativePath(runId: string) {
   UUID.parse(runId);
-  return `.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${runId}.journal.jsonl`;
+  return `.tmp/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE}-${runId}.journal.jsonl`;
 }
 
 export function recoveryClaimRelativePath(runId: string) {
   UUID.parse(runId);
-  return `.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${runId}.recovery.claim`;
+  return `.tmp/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE}-${runId}.recovery.claim`;
 }
 
 export function artifactRelativePath(runId: string) {
   UUID.parse(runId);
-  return `.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${runId}.report.json`;
+  return `.tmp/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE}-${runId}.report.json`;
 }

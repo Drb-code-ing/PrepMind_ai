@@ -1339,6 +1339,6 @@ vocabulary to v5 and replaces the repository-lifecycle assertion with an isolate
 Focused D5+D3+D4 now passes `48/48`; no `.env`, credential, Provider, Docker, evidence, or business write is used.
 Do not move/delete v4. Merge/push recovery and revalidate `main` before creating the one final v5 tag.
 Recovery feature `f80854bf` is merged/pushed as `96caa882`; merged-main focused D5+D3+D4 passed `48/48`.
-## Current checkpoint: SR5 v8 final parity (2026-08-13)
+## Current checkpoint: SR5 v9 evidence namespace recovery (2026-08-14)
 
-The v5 tag was documentation-only, v6 had stale contract binding, and v7 had a stale manifest in its tag message. The active Live CLI is now being finalized against `main` and a dynamically computed immutable v8 tag. No credential or provider call has been made. v5-v7 tags remain immutable and their authorizations are not consumed. After merge, push, merged-main zero-provider replay, and v8 tag parity, a fresh V8 authorization is required before the single controlled-Live.
+The v8 entrypoint reached source admission and failed closed because the active evidence regex still matched the sealed unversioned v2 marker/report namespace. The result was `providerCalls=0`, `credentialReads=0`, and `formalEvidence=0`; no run was reserved. The v9 recovery versions marker, journal, report, recovery claim, and dispatch-lock paths under `...sr5-live-v9`. v2 and v5-v8 artifacts/tags remain immutable. After merge, push, merged-main zero-provider replay, and v9 tag parity, a fresh V9 authorization is required before the single controlled-Live.
