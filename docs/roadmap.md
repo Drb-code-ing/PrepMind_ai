@@ -1214,4 +1214,6 @@ create/push final v5; run real D5 inspection and tagged-source focused replay; o
 DeepSeek/Qwen boundary acceptance and any controlled-Live.
 ## Current checkpoint: SR5 v9 evidence namespace recovery
 
-The v8 entrypoint failed closed before credentials because the current evidence namespace overlapped sealed v2 files. v9 isolates all current durability paths with a version suffix. This is a zero-provider repair; v2 and v5-v8 tags/evidence remain immutable. Controlled-Live stays blocked until merged-main v9 tag parity and fresh V9 authorization are independently verified.
+The v8 entrypoint failed closed before credentials because the current evidence namespace overlapped sealed v2 files. v9 isolates all current durability paths with a version suffix. The repair, merged-main replay, remote push, annotated-tag parity, final Git verifier, fresh data-boundary acceptance, and exact authorization are complete.
+
+The authorized v9 production entrypoint then stopped at `proxy_preflight_not_ready` before credential projection and reservation. Calls/credential reads/formal evidence/business writes are `0/0/0/0`, and no v9 bundle exists. Do not retry this authorization or append Provider probes. The next atomic task is an independent zero-provider production proxy-preflight diagnosis from latest `main`; only a later source/lineage decision can define whether another controlled-Live is admissible. SR6 Docker/API/visible-browser product acceptance remains blocked.
