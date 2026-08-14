@@ -1,5 +1,25 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 v10 controlled-Live 已失败封存（2026-08-14）
+
+唯一 v10 run `da94b83b-3638-4e23-aefc-9e3423bf4c77` 已在 clean/tag-verified source
+`fb0e9534db020b169f0bd629b62648191c92961a` 上正常 durable seal。宿主 proxy 为 `direct_ready`；credential reads=`3`，
+transport/external Provider calls=`2/2`，business writes=`0`。Qwen `text-embedding-v4` 的 `rewrite_01` original retrieval
+成功，wire=`1/1/1/1`、usage=`123/0`、verified cost=`0.0000615 CNY`；DeepSeek `deepseek-v4-pro` candidate 在 dispatch
+后以 bounded `schema_invalid` 终止，wire=`1/1/0/0`，verified usage/cost=`null`。随后 quality breaker 将其余 `22`
+Provider slots 固定为 `not_started_quality_breaker`。
+
+终态为 `schema_recovery_sr5_branch_quality_gate_failed / qualityAuthority=none`，正式 rewrite/final semantic 与 aggregate
+budget 均为 `null`，不能把 Qwen 单槽成功拼接成 Retriever/FinalResponse 语义通过。Journal=`54` 且以
+`evidence_published` 收口；validator=`ok=true`；report logical SHA=`bbd3f59e...2db6`，physical artifact SHA=
+`c0714172...ce39`。没有 recovery claim，禁止 retry/resume/replay/backfill、recover/seal、删除/改写 evidence、curl、
+单 case或产品 API 追加 Provider 探测。
+
+本轮未启动 Docker/API/browser，未写 Trace、BackgroundJob、Outbox 或业务数据，不形成 SR6/product/main/SLA authority。
+下一任务只能从最新 `main` 新开 zero-provider postmortem，定位 DeepSeek candidate schema boundary 与 adapter accounting，
+不得反向推断或补写 Provider 原文。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-controlled-live-quality-failure-sealed.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 v10 host-preflight contract（2026-08-14）
 
 v10 功能提交 `8c5a2e60` 已以 `--no-ff` 合并并推送为 `main == origin/main == 95ea523a`。当前
