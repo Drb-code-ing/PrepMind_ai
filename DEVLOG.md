@@ -1,5 +1,20 @@
 # PrepMind AI 开发日志
 
+> 2026-08-14 — Phase 6.9.8 SR5 v10 唯一 controlled-Live 已失败封存：
+>
+> clean/tag-verified source=`fb0e9534...`，run=`da94b83b-3638-4e23-aefc-9e3423bf4c77`，proxy=`direct_ready`。
+> Qwen original retrieval 成功，wire `1/1/1/1`、usage `123/0`、verified cost `0.0000615 CNY`；DeepSeek v4-pro
+> candidate 在 dispatch 后 bounded `schema_invalid`，wire `1/1/0/0`，无 verified usage/cost。首错 breaker 后其余 `22`
+> Provider slots 未启动。总 external Provider calls=`2`、credential reads=`3`、business writes=`0`。
+>
+> Gate=`schema_recovery_sr5_branch_quality_gate_failed`、`qualityAuthority=none`；正式 semantic/budget aggregate 全为
+> `null`。Journal `54` 条，以 `evidence_published` 收口；validator `ok=true`，report logical SHA=`bbd3f59e...2db6`，
+> artifact SHA=`c0714172...ce39`。证据已正常 seal，不执行 recover；禁止重跑、追加 Provider 探测或改写 evidence。
+>
+> 未启动 Docker/API/browser，未写 Trace/BackgroundJob/Outbox/业务数据，SR6 继续阻断。下一任务只允许独立
+> zero-provider schema/adapter postmortem。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-controlled-live-quality-failure-sealed.md`。
+
 > 2026-08-14 — Phase 6.9.8 SR5 v10 host-preflight contract（zero-provider）完成：
 >
 > 当前 Live tag/授权/数据边界/evidence namespace 全部升级到独立 v10，v9 不复用。CLI v2 对共享 preflight 结果执行

@@ -3,6 +3,19 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
+## 当前 SR5 v10 Live 已封存（2026-08-14）
+
+唯一 run `da94b83b-3638-4e23-aefc-9e3423bf4c77` 已正常发布 evidence，gate 为
+`schema_recovery_sr5_branch_quality_gate_failed / qualityAuthority=none`。只允许以下只读 validator：
+
+```powershell
+bun run --cwd packages/agent eval:phase-6-9-8:schema-recovery:sr5:live:validate
+```
+
+禁止再次传入 V10 authorization，禁止运行 recover、curl、单 case或产品 API 探测，禁止删除/移动/格式化/改写 v10
+marker、journal、report 与 artifact。Qwen 一次验证成功不代表整体语义通过；DeepSeek candidate 为 bounded
+`schema_invalid`，没有保存原始模型内容。Docker/API/browser/Trace 产品验收未执行，SR6 保持阻断。
+
 ## 当前 SR5 v10 host-preflight contract（zero-provider，2026-08-14）
 
 v10 使用独立 `live-v10-approved` tag、精确授权字符串和 `...sr5-live-v10` durability namespace。当前功能分支只允许

@@ -2880,5 +2880,9 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] v10 focused `128/128` (`282 expect()`), Agent full `1658/1658` (`25478 expect()`, `203 files`), typecheck/lint/Prettier/diff pass.
 - [x] Feature `8c5a2e60` committed/pushed and `--no-ff` merged/pushed as `main == origin/main == 95ea523a`.
 - [x] Merged-main focused `128/128`, Agent full `1658/1658`, typecheck/lint, profile-free `direct_ready`, and v10 namespace=0 pass.
-- [ ] Create/push the immutable v10 annotated tag in a separate Git operation and pass local/remote final Git verification.
-- [ ] Only then request fresh V10 boundary acceptance/authorization; SR6 remains blocked.
+- [x] Immutable v10 tag object `fd7e3921...` was pushed; peeled commit=`fb0e9534...`, local/remote parity and final Git verifier passed.
+- [x] Fresh V10 boundary acceptance/authorization was received and the single run executed from `direct_ready` PowerShell.
+- [x] Run `da94b83b...` sealed with Qwen wire `1/1/1/1`, DeepSeek wire `1/1/0/0` + `schema_invalid`, and 22 slots not started.
+- [x] Validator=`ok=true`, journal=`54`, final event=`evidence_published`, report SHA=`bbd3f59e...2db6`, artifact SHA=`c0714172...ce39`.
+- [x] Gate=`schema_recovery_sr5_branch_quality_gate_failed`, `qualityAuthority=none`; retry/recover/appended Provider probes are forbidden.
+- [ ] New zero-provider schema/adapter postmortem; SR6 remains blocked.
