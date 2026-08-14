@@ -1,5 +1,23 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 v10 host-preflight contract（2026-08-14）
+
+普通分支 `drb/phase-6-9-8-sr5-v10-host-preflight-contract` 已完成 v10 zero-provider implementation：当前
+approved tag/数据边界/授权/evidence namespace 独立升级为 `live-v10`，v9 tag、授权和零证据终态不可复用。Live CLI
+version 升为 v2；共享 proxy preflight 结果先经过 strict schema，失败只投影固定 `code/mode/configuredProxyVariables/
+listener/listenerProbeCalls/providerCalls`，不保存 proxy URL/value、credential 或 raw error；malformed/extra field 继续
+收口为固定 `proxy_preflight_not_ready`。ready attestation 还必须满足 direct 或 listening-loopback 的内部一致性。
+
+v10 同时证明 unversioned v2 与 v9 durability namespace 均不阻断新 lineage，而任意 v10 leftover 仍在 reservation 前
+fail-closed。runtime source manifest=`sha256:6723dc13e6abd7ca018169a73dfd6ef49a0073860051c3c2914515770818fb80`；
+SR5 focused `128/128`（`282 expect()`），Agent full `1658/1658`（`25478 expect()`，`203 files`），typecheck/lint/
+Prettier/diff check 通过。
+
+全程未读根 `.env`/credential、未调用 Provider、未创建正式 evidence 或业务写入，未启动/清理 Docker、数据库、Redis、
+MinIO、API 或浏览器，`qualityAuthority=none`。下一步先提交/推送、`--no-ff` 合并/push、merged-main 回放；之后才能在
+独立 Git 操作创建并验证 v10 annotated tag，再请求 fresh V10 数据边界与授权。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-host-preflight-contract-zero-provider.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 v9 proxy-preflight 根因已 zero-provider 定位（2026-08-14）
 
 v9 `proxy_preflight_not_ready` 的根因不是 production port 丢失，也不是 DeepSeek/Qwen。相同仓库和共享诊断 CLI 在

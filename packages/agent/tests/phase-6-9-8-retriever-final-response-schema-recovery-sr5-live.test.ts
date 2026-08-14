@@ -102,7 +102,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
       'phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved',
     );
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG).toBe(
-      'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v9-approved',
+      'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v10-approved',
     );
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_TAG).toBe(
       'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved',
@@ -498,9 +498,9 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         proxyEnv: {},
         authorizationEnv: {
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
-            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V10_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
-            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_CONTROLLED_LIVE_ONCE',
+            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V10_CONTROLLED_LIVE_ONCE',
         },
         signal: new AbortController().signal,
       },
@@ -508,8 +508,12 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         readAdmission: () =>
           createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest(),
         runProxyPreflight: async () => ({
+          version: 'phase-6.9.7-architecture-recovery-proxy-preflight-v1',
           ok: false,
           code: 'loopback_proxy_unavailable',
+          mode: 'loopback_proxy',
+          configuredProxyVariables: 4,
+          listener: 'unavailable',
           providerCalls: 0,
           listenerProbeCalls: 1,
         }),
@@ -526,7 +530,63 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     );
     expect(code).toBe(1);
     expect(credentialReads).toBe(0);
-    expect(JSON.parse(writes[0] ?? '{}').code).toBe('proxy_preflight_not_ready');
+    expect(JSON.parse(writes[0] ?? '{}')).toMatchObject({
+      code: 'proxy_preflight_not_ready',
+      providerCalls: 0,
+      credentialReads: 0,
+      formalEvidence: 0,
+      proxy: {
+        code: 'loopback_proxy_unavailable',
+        mode: 'loopback_proxy',
+        configuredProxyVariables: 4,
+        listener: 'unavailable',
+        listenerProbeCalls: 1,
+        providerCalls: 0,
+      },
+    });
+  });
+
+  it('rejects malformed proxy diagnostics without reflecting untrusted fields', async () => {
+    const writes: string[] = [];
+    let credentialEnvLoads = 0;
+    const code = await executePhase698RetrieverSchemaRecoverySr5LiveCliCore(
+      {
+        args: [PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_RUN_ARGUMENT],
+        root: 'synthetic-root',
+        proxyEnv: {},
+        authorizationEnv: {
+          PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
+            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V10_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+          PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
+            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V10_CONTROLLED_LIVE_ONCE',
+        },
+        signal: new AbortController().signal,
+      },
+      {
+        readAdmission: () =>
+          createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest(),
+        runProxyPreflight: async () => ({
+          ok: false,
+          code: 'loopback_proxy_unavailable',
+          proxyUrl: 'must-not-be-reflected',
+        }),
+        loadCredentialEnv: async () => {
+          credentialEnvLoads += 1;
+          throw new Error('must-not-load');
+        },
+        write: (line) => writes.push(line),
+      },
+    );
+
+    expect(code).toBe(1);
+    expect(credentialEnvLoads).toBe(0);
+    expect(JSON.parse(writes[0] ?? '{}')).toMatchObject({
+      code: 'proxy_preflight_not_ready',
+      providerCalls: 0,
+      credentialReads: 0,
+      formalEvidence: 0,
+    });
+    expect(writes[0]).not.toContain('must-not-be-reflected');
   });
 
   it('preserves an injected ready proxy port and stops at credential projection', async () => {
@@ -541,9 +601,9 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         proxyEnv: {},
         authorizationEnv: {
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
-            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V10_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
-            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_CONTROLLED_LIVE_ONCE',
+            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V10_CONTROLLED_LIVE_ONCE',
         },
         signal: new AbortController().signal,
       },
@@ -553,8 +613,12 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         runProxyPreflight: async () => {
           proxyPreflights += 1;
           return {
+            version: 'phase-6.9.7-architecture-recovery-proxy-preflight-v1',
             ok: true,
             code: 'loopback_proxy_ready',
+            mode: 'loopback_proxy',
+            configuredProxyVariables: 4,
+            listener: 'listening',
             providerCalls: 0,
             listenerProbeCalls: 1,
           };
@@ -673,7 +737,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         configurable: true,
         enumerable: true,
         get: () =>
-          'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+          'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V10_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
       },
     );
     Object.defineProperty(
@@ -683,15 +747,15 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         configurable: true,
         enumerable: true,
         get: () =>
-          'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_CONTROLLED_LIVE_ONCE',
+          'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V10_CONTROLLED_LIVE_ONCE',
       },
     );
     const snapshot = snapshotPhase698RetrieverSchemaRecoverySr5LiveAuthorizationEnv(env);
     expect(snapshot).toMatchObject({
       PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
-        'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+        'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V10_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
       PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
-        'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_CONTROLLED_LIVE_ONCE',
+        'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V10_CONTROLLED_LIVE_ONCE',
     });
     expect(
       Object.getOwnPropertyDescriptor(
@@ -701,7 +765,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     ).toMatchObject({ writable: false, configurable: false });
   });
 
-  it('ignores the immutable legacy SR5 namespace while keeping v9 isolated', async () => {
+  it('ignores immutable legacy SR5 namespaces while keeping v10 isolated', async () => {
     const root = await mkdtemp(join(tmpdir(), 'prepmind-sr5-live-legacy-'));
     roots.push(root);
     await mkdir(join(root, '.tmp'), { recursive: true });
@@ -718,6 +782,18 @@ describe('SR5 live lineage (zero-provider tests)', () => {
       ),
       '{}\n',
     );
+    await Bun.write(
+      join(root, '.tmp', 'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v9.marker'),
+      '{}\n',
+    );
+    await Bun.write(
+      join(
+        root,
+        '.tmp',
+        `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v9-${legacyRunId}.report.json`,
+      ),
+      '{}\n',
+    );
 
     expect(scanPhase698RetrieverSchemaRecoverySr5LiveFormalPaths(root)).toEqual([]);
   });
@@ -730,7 +806,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
       join(
         root,
         '.tmp',
-        `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v9-${crypto.randomUUID()}.report.json.tmp.${crypto.randomUUID()}`,
+        `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v10-${crypto.randomUUID()}.report.json.tmp.${crypto.randomUUID()}`,
       ),
       '{}\n',
     ).catch(async () => {

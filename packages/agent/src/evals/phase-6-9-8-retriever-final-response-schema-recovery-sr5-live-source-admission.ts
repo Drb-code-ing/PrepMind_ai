@@ -60,7 +60,7 @@ const COMMIT = z.string().regex(/^[0-9a-f]{40}$/u);
 const SHA256_REF = z.string().regex(/^sha256:[0-9a-f]{64}$/u);
 const UUID = z.string().uuid();
 const LIVE_FORMAL_BASENAME =
-  /^phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v9(?:\.marker|-[0-9a-f-]{36}\.(?:journal\.jsonl|report\.json|recovery\.claim|json)|-[0-9a-f-]{36}\.report\.json\.tmp\.[0-9a-f-]{36})$/u;
+  /^phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v10(?:\.marker|-[0-9a-f-]{36}\.(?:journal\.jsonl|report\.json|recovery\.claim|json)|-[0-9a-f-]{36}\.report\.json\.tmp\.[0-9a-f-]{36})$/u;
 
 export type Phase698RetrieverSchemaRecoverySr5LiveAdmissionCapability = Readonly<{
   version: 'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-admission-capability-v1';
