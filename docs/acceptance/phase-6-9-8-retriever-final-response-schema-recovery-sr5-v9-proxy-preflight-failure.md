@@ -42,3 +42,5 @@ This result proves only that the production proxy preflight was not ready in thi
 Docker, PostgreSQL, Redis, MinIO, API, browser, Trace, BackgroundJob, Outbox, and business data were not started, cleared, or modified by this run. The result grants no semantic, SLA, product, Docker/API/browser, or `main` product authority.
 
 The v9 authorization is not rerun, replayed, resumed, or backfilled. Do not use curl, an isolated case, the product API, or another Provider call to append evidence. The next atomic task is a new ordinary Git branch from latest `main` that performs only zero-provider, credential-free diagnosis of the production proxy-preflight composition. Any later controlled-Live requires a separate source/lineage and authorization decision.
+
+The subsequent zero-provider diagnosis identified the launch-shell difference without changing this terminal record. See `phase-6-9-8-retriever-final-response-schema-recovery-sr5-v9-proxy-preflight-zero-provider-diagnosis.md`.

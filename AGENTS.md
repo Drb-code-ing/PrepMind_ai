@@ -1,5 +1,19 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 v9 proxy-preflight 根因已 zero-provider 定位（2026-08-14）
+
+v9 `proxy_preflight_not_ready` 的根因不是 production port 丢失，也不是 DeepSeek/Qwen。相同仓库和共享诊断 CLI 在
+PowerShell 与 Git Bash `--noprofile --norc` 中均返回 `direct_ready / configuredProxyVariables=0 / providerCalls=0`；
+本次 controlled-Live 使用的 Git Bash login shell 则由 profile 注入 `HTTPS_PROXY/https_proxy/HTTP_PROXY/http_proxy`
+四项，脱敏端点均为 `http://127.0.0.1:7897`，当时端口未监听，因此共享 preflight 正确返回
+`loopback_proxy_unavailable / listenerProbeCalls=1 / providerCalls=0`。Live CLI 再将其收口为固定
+`proxy_preflight_not_ready`。
+
+本诊断没有读取根 `.env`/credential、没有调用 Provider、没有创建或改写 evidence，也没有启动/清理 Docker、数据库、
+Redis、MinIO、API 或浏览器。不得通过清空 proxy、绕过 preflight 或重跑 v9 授权来修复；未来入口必须使用明确的 native/
+no-profile host environment，并在新的 source/lineage/tag/authorization 决策中保留 bounded preflight diagnostic。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v9-proxy-preflight-zero-provider-diagnosis.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 v9 controlled-Live 在 proxy preflight 前门停止（2026-08-14）
 
 `main == origin/main == 3ad7d7ce06c5b4a79132c1411522bf396e6f8987`；本地/远程 annotated tag
