@@ -1,5 +1,21 @@
 # PrepMind AI 开发日志
 
+> 2026-08-14 — Phase 6.9.8 Retriever / FinalResponse Schema Recovery SR5 v9 controlled-Live 入口已停止：
+>
+> v9 feature、`--no-ff` merge、远程推送、merged-main zero-provider 回放、annotated tag local/remote parity 和最终只读
+> Git verifier 均已完成。最终 source 为 `main == origin/main == 3ad7d7ce...`，tag object=`b0abb9a5...c1ff`，
+> peeled commit=`3ad7d7ce...`，verifier=`ok=true`。
+>
+> 用户接受 v9 DeepSeek/Qwen 数据边界并授权唯一入口后，正式 CLI 在 source/tag/authorization admission 之后、credential
+> projection 与 reservation 之前以 `proxy_preflight_not_ready` fail-closed。终态为 `providerCalls=0 /
+> credentialReads=0 / formalEvidence=0 / businessWrites=0`；没有 v9 marker、journal、report、artifact、recovery claim、
+> dispatch lock、Trace、BackgroundJob、Outbox 或业务数据。没有 bundle 可 seal/recover，本次授权入口不得直接重跑、
+> replay、backfill 或追加 Provider 探测。
+>
+> 这不是 DeepSeek/Qwen、账号、余额、模型权限、schema 或语义质量失败证据，也没有执行 Docker/API/可见浏览器产品验收。
+> 下一任务仅为从最新 `main` 新开的独立 zero-provider proxy-preflight 诊断。完整记录见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v9-proxy-preflight-failure.md`。
+
 > 2026-08-12 — Phase 6.9.8 SR5 run-bound source revalidation architecture recovery（zero-provider）：
 >
 > 修复 reservation 创建 self-marker 后 admission 再要求 namespace=0 的自拒绝。两个 capability 通过私有 runId binding

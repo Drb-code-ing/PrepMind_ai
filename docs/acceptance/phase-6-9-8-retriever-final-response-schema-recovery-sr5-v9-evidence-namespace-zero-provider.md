@@ -31,4 +31,6 @@ No `.env` or credential was read during this recovery. No Provider was called, a
 
 ## Stop gates
 
-The v8 authorization is not reusable. After the feature branch is committed and pushed, merged with `--no-ff` into `main`, pushed, and replayed on merged `main`, a new immutable v9 annotated tag must pass local/remote/source parity. Only then may fresh V9 DeepSeek/Qwen data-boundary acceptance and exact one-shot authorization be requested.
+The feature was merged and pushed as `3ad7d7ce06c5b4a79132c1411522bf396e6f8987`. Focused and Agent-full replay passed on merged `main`; local/remote annotated tag object `b0abb9a5eea8d674e98c2fdc33f18eb1c95dc1ff` peeled to that commit. The final read-only Git verifier returned `ok=true`, source manifest `sha256:35890f5da943fe6b53a48a13926b89d813e682f3ae28566ee55821b108dbeb45`, and source bundle `sha256:47e424c4509dcc0e680fc29bd1b5586092f4ae600575c94480cd918ed3f201ec`.
+
+Fresh v9 data-boundary acceptance and exact authorization were subsequently received. The production entrypoint stopped at `proxy_preflight_not_ready` before credentials or reservation, with all side-effect counters at zero. That terminal boundary is recorded separately in `phase-6-9-8-retriever-final-response-schema-recovery-sr5-v9-proxy-preflight-failure.md`; this zero-provider recovery document does not claim model or product authority.

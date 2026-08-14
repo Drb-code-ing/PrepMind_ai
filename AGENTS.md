@@ -1,5 +1,24 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 v9 controlled-Live 在 proxy preflight 前门停止（2026-08-14）
+
+`main == origin/main == 3ad7d7ce06c5b4a79132c1411522bf396e6f8987`；本地/远程 annotated tag
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v9-approved` 的 tag object 均为
+`b0abb9a5eea8d674e98c2fdc33f18eb1c95dc1ff`，peeled commit 均为当前 `main`。最终只读 Git verifier 为
+`ok=true / sr5_final_git_source_verified_zero_provider`，source manifest/source bundle 分别为
+`sha256:35890f5d...eb45 / sha256:47e424c4...01ec`。
+
+用户随后接受 v9 DeepSeek/Qwen 数据边界并授权唯一入口。正式 CLI 在 source/tag/authorization admission 后、credential
+projection 与 reservation 前返回 `proxy_preflight_not_ready`；终态计数为 `providerCalls=0 / credentialReads=0 /
+formalEvidence=0 / businessWrites=0`。没有 v9 marker、journal、report、artifact、recovery claim 或 dispatch lock，因而没有
+可执行或需要执行的 seal/recover；本次授权入口不得直接重跑、replay、backfill，也不得用 curl、单 case或产品 API 追加
+Provider 探测。该结果不能归因 DeepSeek/Qwen、账号、余额、模型权限、schema 或语义质量，也不形成 Docker/API/browser、
+Trace、SLA 或产品 authority。
+
+下一任务只能从最新 `main` 新开普通分支，对 production proxy preflight 做 zero-provider、无 credential 的独立诊断；历史 v2
+evidence、v5-v9 tags 与本次零证据终态保持不变。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v9-proxy-preflight-failure.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 D4 runtime runner/durability（2026-08-13）
 
 普通分支 `drb/phase-6-9-8-sr5-runtime-runner-durability` 正在完成 v4-native zero-provider runner/durability：D3
@@ -1341,4 +1360,4 @@ Do not move/delete v4. Merge/push recovery and revalidate `main` before creating
 Recovery feature `f80854bf` is merged/pushed as `96caa882`; merged-main focused D5+D3+D4 passed `48/48`.
 ## Current checkpoint: SR5 v9 evidence namespace recovery (2026-08-14)
 
-The v8 entrypoint reached source admission and failed closed because the active evidence regex still matched the sealed unversioned v2 marker/report namespace. The result was `providerCalls=0`, `credentialReads=0`, and `formalEvidence=0`; no run was reserved. The v9 recovery versions marker, journal, report, recovery claim, and dispatch-lock paths under `...sr5-live-v9`. v2 and v5-v8 artifacts/tags remain immutable. After merge, push, merged-main zero-provider replay, and v9 tag parity, a fresh V9 authorization is required before the single controlled-Live.
+The v8 entrypoint reached source admission and failed closed because the active evidence regex still matched the sealed unversioned v2 marker/report namespace. The v9 recovery versions marker, journal, report, recovery claim, and dispatch-lock paths under `...sr5-live-v9`; v2 and v5-v8 artifacts/tags remain immutable. v9 was merged and pushed as `3ad7d7ce`, the local/remote annotated tag passed parity, and the final read-only verifier returned `ok=true`. The freshly authorized v9 entrypoint then stopped at `proxy_preflight_not_ready` before credential projection or reservation: Provider/credential/formal-evidence/business-write counts are all `0`, and no v9 durability file exists. Do not rerun this authorization; the next task is an independent zero-provider proxy-preflight diagnosis from current `main`.

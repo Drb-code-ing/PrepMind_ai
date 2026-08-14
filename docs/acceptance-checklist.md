@@ -2861,10 +2861,14 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [ ] Fresh data-boundary acceptance and controlled-Live (not part of D5).
 ## SR5 v9 recovery gate
 
-- [ ] Active CLI binds `main` and the immutable v9 tag.
+- [x] Active CLI binds clean `main == origin/main == 3ad7d7ce...` and the immutable v9 tag.
 - [x] Current evidence paths use the isolated `...sr5-live-v9` namespace.
 - [x] Sealed unversioned v2 evidence is ignored without deletion or mutation.
-- [ ] Focused and merged-main zero-provider suites pass.
-- [ ] v9 annotated tag and local/remote parity are verified.
-- [ ] Fresh V9 DeepSeek/Qwen boundary acceptance and exact authorization are recorded.
-- [ ] Only then may the single controlled-Live run execute.
+- [x] Focused `67/67`, Agent full `1657/1657`, and merged-main zero-provider suites pass.
+- [x] v9 annotated tag object `b0abb9a5...c1ff` and peeled commit `3ad7d7ce...` have local/remote parity.
+- [x] Final read-only Git verifier returns `ok=true` with current-lineage evidence paths empty.
+- [x] Fresh V9 DeepSeek/Qwen boundary acceptance and exact authorization were recorded.
+- [x] The single authorized entrypoint executed once and stopped at `proxy_preflight_not_ready` before credential projection/reservation.
+- [x] Terminal counters are Provider/credential/formal-evidence/business-write `0/0/0/0`; no v9 bundle exists, so seal/recover is inapplicable.
+- [x] This authorization is not retried/replayed/backfilled and no Provider probe is appended.
+- [ ] A new task performs only zero-provider production proxy-preflight diagnosis; SR6 product acceptance remains blocked.
