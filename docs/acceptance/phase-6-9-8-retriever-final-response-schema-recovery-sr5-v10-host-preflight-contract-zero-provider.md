@@ -38,3 +38,9 @@ Tests cover the bounded `loopback_proxy_unavailable` projection, malformed resul
 This task does not read the root `.env` or credentials, call DeepSeek/Qwen, create formal evidence, write business data, or start/clear Docker, PostgreSQL, Redis, MinIO, API, browser, Trace, BackgroundJob, or Outbox. It does not create a tag and does not authorize Live or SR6 product acceptance.
 
 Next, commit and push the feature, merge it to latest `main` with `--no-ff`, push `main`, and repeat zero-provider verification. A separate Git operation may then create/push the v10 annotated tag and run the final read-only Git verifier. Fresh V10 data-boundary acceptance and exact authorization may only be requested after all those gates pass.
+
+## Merged-main parity
+
+Feature commit `8c5a2e60` was pushed and merged with `--no-ff`; `main == origin/main == 95ea523abaa27b56cb2942ce50eb515eaff20c52`. On merged `main`, the eight-suite focused run passed `128/128` (`282 expect()`), Agent full passed `1658/1658` (`25478 expect()`, `203 files`), and typecheck/lint passed. Profile-free Git Bash returned `direct_ready`, `configuredProxyVariables=0`, `listenerProbeCalls=0`, and `providerCalls=0`; the current v10 evidence namespace remained empty.
+
+No tag or authorization was created by this parity step. The next operation is only the immutable v10 annotated tag, remote parity inspection, and final read-only Git verifier.
