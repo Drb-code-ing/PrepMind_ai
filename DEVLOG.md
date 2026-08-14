@@ -12,6 +12,10 @@
 > Provider/formal evidence/business writes=`0/0/0`，未触碰 Docker/API/browser。下一步仅为分支 commit/push、
 > `--no-ff` merge/push 与 merged-main zero-provider replay；tag 与 fresh V10 授权仍是后续独立停止门。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-host-preflight-contract-zero-provider.md`。
+>
+> 后续 parity：功能提交 `8c5a2e60` 已合并/推送为 `95ea523a`；merged-main focused `128/128`、Agent full
+> `1658/1658`、typecheck/lint、profile-free `direct_ready`、v10 evidence paths=`0` 通过。当前只剩独立 annotated tag、
+> local/remote parity 与最终只读 Git verifier；尚未创建 tag 或取得 V10 Live 权限。
 
 > 2026-08-14 — Phase 6.9.8 SR5 v9 proxy-preflight zero-provider 根因诊断完成：
 >

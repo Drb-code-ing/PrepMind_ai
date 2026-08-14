@@ -2878,6 +2878,7 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Strict bounded preflight diagnostic projects no URL/value/raw error; malformed results stop before credential/reservation.
 - [x] v2/v9 legacy namespaces are ignored read-only while current v10 leftovers fail closed.
 - [x] v10 focused `128/128` (`282 expect()`), Agent full `1658/1658` (`25478 expect()`, `203 files`), typecheck/lint/Prettier/diff pass.
-- [ ] Commit/push v10 feature, `--no-ff` merge/push, and repeat zero-provider acceptance on merged `main`.
+- [x] Feature `8c5a2e60` committed/pushed and `--no-ff` merged/pushed as `main == origin/main == 95ea523a`.
+- [x] Merged-main focused `128/128`, Agent full `1658/1658`, typecheck/lint, profile-free `direct_ready`, and v10 namespace=0 pass.
 - [ ] Create/push the immutable v10 annotated tag in a separate Git operation and pass local/remote final Git verification.
 - [ ] Only then request fresh V10 boundary acceptance/authorization; SR6 remains blocked.
