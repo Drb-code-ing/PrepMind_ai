@@ -49,6 +49,7 @@ import {
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-schema.ts';
 import {
   canonicalPhase698RetrieverSchemaRecoverySr5LiveJson,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE,
   sha256Phase698RetrieverSchemaRecoverySr5Live,
 } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-contract.ts';
 import { PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_JOURNAL_RECORD_SCHEMA } from './phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-journal-contract.ts';
@@ -59,7 +60,7 @@ const COMMIT = z.string().regex(/^[0-9a-f]{40}$/u);
 const SHA256_REF = z.string().regex(/^sha256:[0-9a-f]{64}$/u);
 const UUID = z.string().uuid();
 const LIVE_FORMAL_BASENAME =
-  /^phase-6-9-8-retriever-final-response-schema-recovery-sr5-live(?:\.marker|-[0-9a-f-]{36}\.(?:journal\.jsonl|report\.json|recovery\.claim|json)|-[0-9a-f-]{36}\.report\.json\.tmp\.[0-9a-f-]{36})$/u;
+  /^phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v9(?:\.marker|-[0-9a-f-]{36}\.(?:journal\.jsonl|report\.json|recovery\.claim|json)|-[0-9a-f-]{36}\.report\.json\.tmp\.[0-9a-f-]{36})$/u;
 
 export type Phase698RetrieverSchemaRecoverySr5LiveAdmissionCapability = Readonly<{
   version: 'phase-6.9.8-retriever-final-response-schema-recovery-sr5-live-admission-capability-v1';
@@ -583,8 +584,8 @@ function validateLiveRunBoundRepositoryObservation(
   runId: string,
 ) {
   const expected = [
-    '.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker',
-    `.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${runId}.journal.jsonl`,
+    `.tmp/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE}.marker`,
+    `.tmp/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE}-${runId}.journal.jsonl`,
   ].sort();
   const observedPaths = observation === null ? [] : [...observation.formalEvidencePaths].sort();
   if (
@@ -599,8 +600,8 @@ function validateLiveRunBoundRepositoryObservation(
 
 function expectedRunBoundFormalPaths(runId: string) {
   return [
-    '.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker',
-    `.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${runId}.journal.jsonl`,
+    `.tmp/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE}.marker`,
+    `.tmp/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE}-${runId}.journal.jsonl`,
   ].sort();
 }
 
@@ -849,11 +850,11 @@ function assertRunBoundSourceAndDurablePrefix(
     try {
       markerBytes = readTrustedRegularFile(
         namespace,
-        '.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker',
+        `.tmp/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE}.marker`,
       );
       journalBytes = readTrustedRegularFile(
         namespace,
-        `.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${runId}.journal.jsonl`,
+        `.tmp/${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE}-${runId}.journal.jsonl`,
       );
       assertTrustedRunBoundNamespace(namespace, runId);
     } finally {
@@ -996,7 +997,7 @@ function acquireRunBoundDispatchLease(
   const path = resolve(
     repositoryRoot,
     '.tmp',
-    `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${UUID.parse(runId)}.dispatch.lock`,
+    `${PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_EVIDENCE_NAMESPACE}-${UUID.parse(runId)}.dispatch.lock`,
   );
   const handle = openSync(
     path,

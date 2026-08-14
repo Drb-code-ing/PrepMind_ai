@@ -699,6 +699,6 @@ checkout to stay permanently pre-tag. v4 is unchanged and not eligible for autho
 v5 and makes fail-closed unit coverage independent of repository tag lifecycle. Runner/provider dispatch, credentials, formal
 evidence, and business writes remain disabled. See
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v4-post-tag-test-recovery-zero-provider.md`.
-## Current checkpoint: SR5 v8 final parity
+## Current checkpoint: SR5 v9 evidence namespace recovery
 
-The active SR5 Live entrypoint is being finalized against `main` and a new immutable v8 tag. Existing v5-v7 tags remain sealed and are not eligible for reuse. This recovery is zero-provider; a fresh V8 data-boundary acceptance and exact authorization are required after the new tag is verified.
+The v8 entrypoint failed closed before credentials because its evidence scan still included the sealed unversioned v2 namespace. v9 isolates current marker/journal/report/recovery/lock paths under a versioned namespace. Existing v2 and v5-v8 artifacts/tags remain sealed. This recovery is zero-provider; fresh V9 boundary acceptance and exact authorization are required after the v9 tag is verified.

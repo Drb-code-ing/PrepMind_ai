@@ -23,6 +23,7 @@ import {
   consumePhase698RetrieverSchemaRecoverySr5LiveAdmissionCapability,
   consumePhase698RetrieverSchemaRecoverySr5LiveReservationCapability,
   createPhase698RetrieverSchemaRecoverySr5LiveSyntheticAdmissionForTest,
+  scanPhase698RetrieverSchemaRecoverySr5LiveFormalPaths,
   validatePhase698RetrieverSchemaRecoverySr5LiveObservationForTest,
   validatePhase698RetrieverSchemaRecoverySr5LiveRunBoundObservationForTest,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-source-admission.ts';
@@ -35,6 +36,7 @@ import {
   sealPhase698RetrieverSchemaRecoverySr5LiveInterruptedAttemptForTest,
   artifactRelativePath,
   journalRelativePath,
+  PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_RELATIVE_PATH,
   validatePhase698RetrieverSchemaRecoverySr5LiveBundle,
 } from '../src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-durability.ts';
 import {
@@ -100,7 +102,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
       'phase-6-9-8-retriever-final-response-schema-recovery-sr5-approved',
     );
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_APPROVED_TAG).toBe(
-      'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v8-approved',
+      'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v9-approved',
     );
     expect(PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_V1_APPROVED_TAG).toBe(
       'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v1-approved',
@@ -195,7 +197,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
   it('accepts only the active run marker and initial journal during run-bound revalidation', () => {
     const source = createPhase698RetrieverSchemaRecoverySr5LiveSyntheticSourceFixture();
     const runId = crypto.randomUUID();
-    const marker = '.tmp/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker';
+    const marker = PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_RELATIVE_PATH;
     const journal = journalRelativePath(runId);
     const observation = {
       branch: source.branch,
@@ -280,7 +282,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
     const markerPath = join(
       root,
       '.tmp',
-      'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker',
+      PHASE_6_9_8_RETRIEVER_SCHEMA_RECOVERY_SR5_LIVE_MARKER_RELATIVE_PATH.split('/').at(-1)!,
     );
     const marker = await Bun.file(markerPath).json();
     await Bun.write(markerPath, `${JSON.stringify({ ...marker, runId: crypto.randomUUID() })}\n`);
@@ -496,9 +498,9 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         proxyEnv: {},
         authorizationEnv: {
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
-            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V8_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
-            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V8_CONTROLLED_LIVE_ONCE',
+            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_CONTROLLED_LIVE_ONCE',
         },
         signal: new AbortController().signal,
       },
@@ -539,9 +541,9 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         proxyEnv: {},
         authorizationEnv: {
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
-            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V8_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+            'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
           PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
-            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V8_CONTROLLED_LIVE_ONCE',
+            'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_CONTROLLED_LIVE_ONCE',
         },
         signal: new AbortController().signal,
       },
@@ -671,7 +673,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         configurable: true,
         enumerable: true,
         get: () =>
-          'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V8_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+          'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
       },
     );
     Object.defineProperty(
@@ -681,15 +683,15 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         configurable: true,
         enumerable: true,
         get: () =>
-          'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V8_CONTROLLED_LIVE_ONCE',
+          'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_CONTROLLED_LIVE_ONCE',
       },
     );
     const snapshot = snapshotPhase698RetrieverSchemaRecoverySr5LiveAuthorizationEnv(env);
     expect(snapshot).toMatchObject({
       PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_DATA_BOUNDARY_ACCEPTED:
-        'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V8_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
+        'I_ACCEPT_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_DEEPSEEK_AND_QWEN_DATA_BOUNDARY',
       PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED:
-        'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V8_CONTROLLED_LIVE_ONCE',
+        'I_AUTHORIZE_PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_V9_CONTROLLED_LIVE_ONCE',
     });
     expect(
       Object.getOwnPropertyDescriptor(
@@ -697,6 +699,27 @@ describe('SR5 live lineage (zero-provider tests)', () => {
         'PHASE_6_9_8_RETRIEVER_FINAL_RESPONSE_SCHEMA_RECOVERY_SR5_APPROVED',
       ),
     ).toMatchObject({ writable: false, configurable: false });
+  });
+
+  it('ignores the immutable legacy SR5 namespace while keeping v9 isolated', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'prepmind-sr5-live-legacy-'));
+    roots.push(root);
+    await mkdir(join(root, '.tmp'), { recursive: true });
+    const legacyRunId = crypto.randomUUID();
+    await Bun.write(
+      join(root, '.tmp', 'phase-6-9-8-retriever-final-response-schema-recovery-sr5-live.marker'),
+      '{}\n',
+    );
+    await Bun.write(
+      join(
+        root,
+        '.tmp',
+        `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${legacyRunId}.report.json`,
+      ),
+      '{}\n',
+    );
+
+    expect(scanPhase698RetrieverSchemaRecoverySr5LiveFormalPaths(root)).toEqual([]);
   });
 
   it('rejects current-lineage temp leftovers before creating a marker', async () => {
@@ -707,7 +730,7 @@ describe('SR5 live lineage (zero-provider tests)', () => {
       join(
         root,
         '.tmp',
-        `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-${crypto.randomUUID()}.report.json.tmp.${crypto.randomUUID()}`,
+        `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v9-${crypto.randomUUID()}.report.json.tmp.${crypto.randomUUID()}`,
       ),
       '{}\n',
     ).catch(async () => {
