@@ -9,6 +9,7 @@ import {
   QWEN_TEXT_EMBEDDING_V4_PRICE_PROFILE,
   createFinalResponseStreamExecutor,
   createFirstPartyDeepSeekV4ProDirectAdapter,
+  createFirstPartyDeepSeekV4ProDirectAdapterV2,
   createModelAgentRuntime,
   createPhase697V7WireDiagnostics,
   createQwenTextEmbeddingV4Provider,
@@ -70,7 +71,7 @@ import {
 } from './phase-6-9-8-retriever-final-response-task9-runner.ts';
 
 export const PHASE_6_9_8_TASK9_LIVE_HARNESS_VERSION =
-  'phase-6.9.8-retriever-final-response-task9-live-harness-v1' as const;
+  'phase-6.9.8-retriever-final-response-task9-live-harness-v2' as const;
 
 const UNSAFE_OUTPUT_PATTERN =
   /api[_-]?key|system\s+prompt|ignore\s+previous|忽略(?:此前|之前)|调用工具|删除全部/iu;
@@ -284,7 +285,7 @@ async function runRewriteModel(
   runId: string,
   apiKey: string,
 ): Promise<Phase698Task9CallResult> {
-  return runRewriteModelInternal(testCase, signal, runId, apiKey);
+  return runRewriteModelInternal(testCase, signal, runId, apiKey, undefined, 'v2');
 }
 
 async function runRewriteModelInternal(
@@ -293,14 +294,19 @@ async function runRewriteModelInternal(
   runId: string,
   apiKey: string,
   syntheticFetch?: typeof fetch,
+  adapterContract: 'v1' | 'v2' = 'v1',
 ): Promise<Phase698Task9CallResult> {
   if (!('originalQuery' in testCase)) {
     throw new Phase698Task9RuntimeError('runtime_contract_invalid');
   }
   const context = createContext(runId, testCase.caseId, signal);
   const diagnostics = createPhase697V7WireDiagnostics({ appendStage: async () => undefined });
+  const adapterFactory =
+    adapterContract === 'v2'
+      ? createFirstPartyDeepSeekV4ProDirectAdapterV2
+      : createFirstPartyDeepSeekV4ProDirectAdapter;
   const adapter = syntheticFetch
-    ? createFirstPartyDeepSeekV4ProDirectAdapter(
+    ? adapterFactory(
         {
           provider: 'deepseek',
           apiKey,
@@ -310,7 +316,7 @@ async function runRewriteModelInternal(
         diagnostics.capability,
         { fetch: syntheticFetch },
       )
-    : createFirstPartyDeepSeekV4ProDirectAdapter(
+    : adapterFactory(
         {
           provider: 'deepseek',
           apiKey,
@@ -393,6 +399,22 @@ export async function qualifyPhase698Task9RewriteDiagnosticForTest(
     throw error;
   }
   throw new Error('PHASE_6_9_8_TASK9_DIAGNOSTIC_QUALIFICATION_EXPECTED_FAILURE');
+}
+
+export function qualifyPhase698Task9RewriteV11CompatibilityForTest(
+  input: Readonly<{
+    testCase: Phase698Task8RewriteCase;
+    fetch: typeof fetch;
+  }>,
+): Promise<Phase698Task9CallResult> {
+  return runRewriteModelInternal(
+    input.testCase,
+    new AbortController().signal,
+    'task9_v11_compatibility_qualification',
+    'synthetic-v11-compatibility-key',
+    input.fetch,
+    'v2',
+  );
 }
 
 export function projectPhase698Task9RewriteFailureForTest(

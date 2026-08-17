@@ -1,5 +1,21 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider，进行中，2026-08-17）
+
+当前分支 `drb/phase-6-9-8-sr5-v11-recovery` 从 `main=610598c4` 新开。V11 将证据、source lineage、tag、授权确认与
+V10 完全隔离；V10 sealed marker/journal/report/artifact 只读且不可复用。新增 DeepSeek direct adapter V2 兼容合同：
+非思考模式仅允许 `reasoning_content: null`，非空推理内容仍 fail-closed；DQ1/DQ2 的五类 bounded diagnostic 已实际穿过
+V11 runner 并写入 journal/report/artifact 回归。当前仍为 zero-provider：未读根 `.env`/credential，未调用 DeepSeek/Qwen，
+未创建正式 Live evidence/business writes，未启动 Docker/API/browser，`qualityAuthority=none`。focused V11 bridge `8/8`
+（`68 expect()`）和既有 SR5 live `28/28` 已通过；V10 原 validator/runtime identity 已恢复，V11 CLI 与 package subpaths 已隔离；
+Agent full `1671/1671`（`25804 expect()`，`206 files`）、AI full
+`346/346`（`2667 expect()`，`28 files`）、typecheck/lint 已通过。分支提交推送、main 合并后二次回归及新
+controlled-Live 尚未完成。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v11-diagnostic-recovery-zero-provider.md`。
+
+V11 只解锁后续独立 source/tag parity 与 fresh data-boundary/authorization 决策，不构成真实模型质量、产品、SR6 或 SLA
+authority。不得 retry/replay/recover/seal V10 run `da94b83b-3638-4e23-aefc-9e3423bf4c77`，不得删除或改写其证据。
+
 ## 当前状态：Phase 6.9.8 SR5 v10 diagnostic qualification DQ2（zero-provider，2026-08-17）
 
 DQ2 在 DQ1 生产形状 seam 上新增 `27` 个独立 held-out Provider shape：object/envelope missing=`5`、content JSON

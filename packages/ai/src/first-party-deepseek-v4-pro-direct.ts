@@ -23,6 +23,8 @@ import {
 
 export const FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_VERSION =
   'first-party-deepseek-v4-pro-direct-v1' as const;
+export const FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_V2_VERSION =
+  'first-party-deepseek-v4-pro-direct-v2' as const;
 
 const ADAPTER_FAILURE = 'FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_REQUEST_FAILED';
 const INVALID_CONFIG = 'INVALID_MODEL_PROVIDER_CONFIG';
@@ -55,6 +57,12 @@ export type FirstPartyDeepSeekV4ProDirectAdapter = Readonly<{
   executor: StructuredModelExecutor;
 }>;
 
+export type FirstPartyDeepSeekV4ProDirectAdapterV2 = Readonly<{
+  version: typeof FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_V2_VERSION;
+  provenance: 'first_party_deepseek_v4_pro_direct' | 'synthetic_test';
+  executor: StructuredModelExecutor;
+}>;
+
 type NormalizedExecutorInput = Parameters<StructuredModelExecutor>[0];
 type SafeUsage = Readonly<{ inputTokens: number; outputTokens: number }>;
 
@@ -73,6 +81,48 @@ export function createFirstPartyDeepSeekV4ProDirectAdapter(
   wireCapability: Phase697V7WireCapability,
   dependencies: FirstPartyDeepSeekV4ProDirectDependencies = DEFAULT_DEPENDENCIES,
 ): FirstPartyDeepSeekV4ProDirectAdapter {
+  return createDirectAdapter(
+    config,
+    wireCapability,
+    dependencies,
+    FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_VERSION,
+    'strict_v1',
+  );
+}
+
+/**
+ * V2 keeps the strict non-thinking audit but accepts the Provider's explicit
+ * `reasoning_content: null` sentinel. Non-null reasoning remains fail-closed.
+ */
+export function createFirstPartyDeepSeekV4ProDirectAdapterV2(
+  config: FirstPartyDeepSeekV4ProDirectConfig,
+  wireCapability: Phase697V7WireCapability,
+  dependencies: FirstPartyDeepSeekV4ProDirectDependencies = DEFAULT_DEPENDENCIES,
+): FirstPartyDeepSeekV4ProDirectAdapterV2 {
+  return createDirectAdapter(
+    config,
+    wireCapability,
+    dependencies,
+    FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_V2_VERSION,
+    'nullable_reasoning_v2',
+  );
+}
+
+function createDirectAdapter<
+  Version extends
+    | typeof FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_VERSION
+    | typeof FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_V2_VERSION,
+>(
+  config: FirstPartyDeepSeekV4ProDirectConfig,
+  wireCapability: Phase697V7WireCapability,
+  dependencies: FirstPartyDeepSeekV4ProDirectDependencies,
+  version: Version,
+  responseCompatibility: 'strict_v1' | 'nullable_reasoning_v2',
+): Readonly<{
+  version: Version;
+  provenance: 'first_party_deepseek_v4_pro_direct' | 'synthetic_test';
+  executor: StructuredModelExecutor;
+}> {
   const normalized = normalizeConfig(config);
   const resolvedDependencies = normalizeDependencies(dependencies);
   if (!claimPhase697V7WireCapability(wireCapability)) throw new Error(INVALID_CONFIG);
@@ -84,6 +134,7 @@ export function createFirstPartyDeepSeekV4ProDirectAdapter(
         input,
         wireCapability,
         delegate: resolvedDependencies.fetch,
+        responseCompatibility,
       });
     } catch (error) {
       const requestedCategory =
@@ -110,7 +161,7 @@ export function createFirstPartyDeepSeekV4ProDirectAdapter(
   };
 
   return Object.freeze({
-    version: FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_VERSION,
+    version,
     provenance:
       dependencies === DEFAULT_DEPENDENCIES
         ? 'first_party_deepseek_v4_pro_direct'
@@ -124,6 +175,7 @@ async function executeDirect(input: {
   input: Parameters<StructuredModelExecutor>[0];
   wireCapability: Phase697V7WireCapability;
   delegate: typeof fetch;
+  responseCompatibility: 'strict_v1' | 'nullable_reasoning_v2';
 }) {
   await advanceOrStop(input.wireCapability, 'executor_entered');
   const request = normalizeExecutorInput(input.input);
@@ -171,7 +223,9 @@ async function executeDirect(input: {
 
     const payload = await readResponsePayload(response, input.wireCapability);
     if (!isPlainRecord(payload)) throw new DirectAdapterFailure('invalid_response');
-    if (!passesNonThinkingAudit(payload)) throw new DirectAdapterFailure('response_audit');
+    if (!passesNonThinkingAudit(payload, input.responseCompatibility)) {
+      throw new DirectAdapterFailure('response_audit');
+    }
     await advanceOrStop(input.wireCapability, 'response_audit_passed');
 
     const content = readCompletionContent(payload);
@@ -306,12 +360,21 @@ function classifyHttpStatus(status: number): Phase697V7WireFailureCategory | nul
   return 'invalid_response';
 }
 
-function passesNonThinkingAudit(payload: Record<string, unknown>) {
+function passesNonThinkingAudit(
+  payload: Record<string, unknown>,
+  compatibility: 'strict_v1' | 'nullable_reasoning_v2',
+) {
   try {
     const choices = payload.choices;
     const first = readFirstArrayValue(choices);
     const message = isPlainRecord(first) && isPlainRecord(first.message) ? first.message : null;
-    if (message && hasOwn(message, 'reasoning_content')) return false;
+    if (
+      message &&
+      hasOwn(message, 'reasoning_content') &&
+      (compatibility === 'strict_v1' || message.reasoning_content !== null)
+    ) {
+      return false;
+    }
     const usage = payload.usage;
     if (!isPlainRecord(usage) || !hasOwn(usage, 'completion_tokens_details')) return true;
     const details = usage.completion_tokens_details;
