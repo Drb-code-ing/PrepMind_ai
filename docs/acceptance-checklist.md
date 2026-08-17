@@ -5,6 +5,25 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
+## 0K-V12-Live. SR5 V12 controlled-Live（失败封存）
+
+- [x] source/tag clean parity：commit=`550bc864`，tag object=`62d5d2d6`，source bundle=`d1ff73db...d381`
+- [x] fresh V12 DeepSeek/Qwen data-boundary 与唯一 exact authorization
+- [x] direct-host/source admission、`8/8` zero-call guards
+- [x] 唯一 run `49429392-857d-4635-80cc-0bca317cf9ff` runtime seal
+- [x] Provider calls=`5`：DeepSeek `2`、Qwen `3`；credential reads=`3`；business writes=`0`
+- [x] `rewrite_01` 三槽成功，`rewrite_02` original Qwen 成功
+- [x] `rewrite_02` DeepSeek response 已到达，Task9 typed result/usage 未验证，随后 `runtime_contract_invalid/unknown/1-1-1-0`
+- [x] 其余 `19` 槽 `not_started_quality_breaker`，不执行 retry/resume/replay/backfill
+- [x] validator=`ok=true`，journal=`67`，final event=`evidence_published`，recovery claim=`null`
+- [x] report logical SHA=`86f4e84e...3654`，physical artifact SHA=`817bc897...e81`
+- [x] 未启动 Docker/API/browser，未写 Trace/BackgroundJob/Outbox 或业务数据
+- [ ] 独立 zero-provider Task9 base-invalid/local-rejection diagnostic postmortem；V12 不得重跑
+- [ ] 新 source/lineage/tag/authorization 后的下一次质量门
+- [ ] SR6 Docker/API/Trace/可见浏览器验收
+
+验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-controlled-live-quality-failure-sealed.md`。
+
 ## 0K-V12. SR5 direct-host recovery（zero-provider，已合并）
 
 - [x] 从最新已推送 `main=4b7c663b` 新开普通 V12 分支，不使用 worktree
@@ -19,9 +38,9 @@
 - [x] Agent/AI typecheck、lint；Provider/credential/formal evidence/business writes=`0/0/0/0`
 - [x] 未读根 `.env`，未调用 Provider，未创建 V12 evidence，未操作 Docker/API/browser
 - [x] 功能提交 `4dec1299`、功能合并 `d763f32f`、文档 closeout `2351a221`、文档合并 `bbe58918`、merged-main parity
-- [ ] V12 annotated tag local/remote parity 与最终只读 source verifier
-- [ ] fresh V12 DeepSeek/Qwen data-boundary 与 exact authorization
-- [ ] 唯一 V12 controlled-Live durable seal
+- [x] V12 annotated tag local/remote parity 与最终只读 source verifier
+- [x] fresh V12 DeepSeek/Qwen data-boundary 与 exact authorization
+- [x] 唯一 V12 controlled-Live durable seal（质量门失败，见 0K-V12-Live）
 - [ ] SR6 Docker/API/Trace/可见浏览器验收
 
 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-direct-host-recovery-zero-provider.md`。

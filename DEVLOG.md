@@ -1,5 +1,23 @@
 # PrepMind AI 开发日志
 
+> 2026-08-17 — Phase 6.9.8 SR5 V12 controlled-Live 已失败封存：
+>
+> 唯一 run `49429392-857d-4635-80cc-0bca317cf9ff` 在 source/tag/object=
+> `550bc864...dff4 / phase-...-live-v12-approved / 62d5d2d6...08ec` 上完成 runtime seal。direct-host/source admission
+> 与 `8/8` zero-call guards 通过；credential reads=`3`，Provider calls=`5`（DeepSeek `2`、Qwen `3`），业务写入=`0`。
+>
+> `rewrite_01` 的 original Qwen、DeepSeek candidate、candidate Qwen 全部成功；`rewrite_02` original Qwen 也成功。第二个
+> DeepSeek candidate 已收到 response，但在 Task9 typed verification/application 边界以
+> `runtime_contract_invalid / adapterFailureCategory=unknown / stage=null / wire=1/1/1/0` 失败。现有投影把 candidate 未应用、
+> provenance/trace、V7 state/counter 与 invocation mismatch 合并；candidate 未应用内部又有 safety scan、unchanged、
+> protected-terms drift。封存证据不能选择其中一项。breaker 后其余 `19` 槽未启动。
+>
+> 终态 `schema_recovery_sr5_branch_quality_gate_failed / qualityAuthority=none`；validator=`ok=true`，journal `67` 条并以
+> `evidence_published` 收口，report logical SHA=`86f4e84e...3654`，artifact SHA=`817bc897...e81`，无 recovery claim。
+> V12 授权已消费且禁止重跑/恢复/追加 Provider 探测。未启动 Docker/API/browser，未写 Trace/BackgroundJob/Outbox/业务数据；
+> 下一步仅为独立 zero-provider Task9/base-invalid/local-rejection diagnostic postmortem。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-controlled-live-quality-failure-sealed.md`。
+
 > 2026-08-17 — Phase 6.9.8 SR5 V12 direct-host recovery（zero-provider）：
 >
 > 从已推送 `main=4b7c663b` 新开普通分支 `drb/phase-6-9-8-sr5-v12-direct-host-recovery`。V12 建立独立 source/tag/

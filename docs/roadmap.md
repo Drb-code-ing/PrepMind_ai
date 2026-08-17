@@ -1,5 +1,19 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 SR5 V12 Live failure postmortem（待开始，2026-08-17）
+
+V12 唯一 controlled-Live 已正常 sealed：run=`49429392-857d-4635-80cc-0bca317cf9ff`，direct-host/source/guards 通过，
+DeepSeek/Qwen 调用=`2/3`。第一组 rewrite 全链路成功；第二组 DeepSeek response 已到达，但 Task9 typed result/usage 未验证，
+当前证据只保留 `runtime_contract_invalid / unknown / wire=1/1/1/0`。它不能区分 candidate 未应用、provenance/trace、V7
+state/counter 或 invocation mismatch；candidate 未应用内部也不能区分 safety scan、unchanged 与 protected-terms drift。
+breaker 后其余 `19` 槽未启动，终态 `quality_gate_failed / qualityAuthority=none`；validator=`ok=true`、journal=`67`、
+`evidence_published`。
+
+V12 不得重跑、恢复或追加 Provider 探测，SR6 继续阻断。下一原子任务从最新 `main` 新开普通分支，仅做 zero-provider postmortem：
+把 response-observed 后的 Task9 `baseInvalid` 与 candidate-local rejection bounded reason 投影到 SR5 journal/report，补
+synthetic/held-out/metamorphic
+回归并保持 raw model content 不落盘。源码改变后必须建立新的 source/tag/authorization lineage，不能复用 V12。
+
 ## 当前原子阶段：Phase 6.9.8 SR5 V12 direct-host recovery（zero-provider，已合并，2026-08-17）
 
 V11 在 login-shell 注入的失效 loopback proxy 前停止且不得重跑。V12 从最新 `main=4b7c663b` 建立独立 lineage，并把

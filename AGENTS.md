@@ -1,5 +1,31 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 V12 controlled-Live 已失败封存（2026-08-17）
+
+唯一 V12 run `49429392-857d-4635-80cc-0bca317cf9ff` 已在 clean/tag-verified source
+`550bc864b983992b77cd73157e5513515177dff4` 上正常 runtime seal。approved tag object=
+`62d5d2d607b5827d679e4c4351603fd2bd2608ec`，source bundle=`sha256:d1ff73db...d381`；direct-host/source admission 与
+`8/8` zero-call guards 通过。credential reads=`3`，external Provider calls=`5`（DeepSeek `2`、Qwen `3`），business
+writes=`0`，未使用 BackgroundJob/Outbox。
+
+`rewrite_01` 三槽全部成功；`rewrite_02` original Qwen retrieval 也成功。随后 DeepSeek candidate 已 dispatch 并收到 HTTP
+response，但以 `runtime_contract_invalid / adapterFailureCategory=unknown / structuredOutputStage=null / wire=1/1/1/0`
+终止，quality breaker 将其余 `19` 槽固定为 `not_started_quality_breaker`。该证据只能确认 response 已观察、Task9 typed result/
+usage 尚未验证；现有 `baseInvalid` 还合并 candidate 未应用、provenance/attempted/trace、V7 state/counter 与 invocation mismatch。
+若属于 candidate 未应用，其下又有完整字段安全扫描、rewrite unchanged 或 protected-terms drift。V12 sealed 投影未保留具体
+bounded reason，因此不能从证据中选择其中一项，也不能归因 schema、网络、usage validation 或 Provider 原文。
+
+终态为 `schema_recovery_sr5_branch_quality_gate_failed / qualityAuthority=none`，正式 aggregate usage/cost 与未完成质量指标均为
+`null`。Validator=`ok=true`；journal=`67` 且以 `evidence_published` 收口；report logical SHA=
+`86f4e84e...3654`，physical artifact SHA=`817bc897...e81`，recovery claim=`null`。本次唯一授权已消费，禁止
+retry/resume/replay/backfill、再次 seal/recover、移动 tag、删除/改写 evidence、curl、单 case或产品 API 追加 Provider 探测。
+
+本轮未启动 Docker/API/browser，未写 Trace/BackgroundJob/Outbox 或业务数据，不形成 SR6/product/SLA authority。下一任务只能
+从最新 `main` 新开独立 zero-provider postmortem，先拆分 Task9 `baseInvalid`，再给 candidate-local rejection 增加有界诊断并
+通过 synthetic/held-out 回归；不得
+反推或补写 Provider 原文。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-controlled-live-quality-failure-sealed.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 V12 direct-host recovery（zero-provider，已合并，2026-08-17）
 
 V11 唯一入口因 Git Bash login profile 注入失效的 `127.0.0.1:7897` proxy 而在 Provider/credential/evidence 前停止；
