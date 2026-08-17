@@ -34,7 +34,7 @@ V10 controlled-Live 将 DeepSeek candidate 的失败压成 `schema_invalid`，�
 - Agent full `1671/1671`（`25804 expect()`，`206 files`）、AI full `346/346`（`2667 expect()`，`28 files`）、Agent/AI
   typecheck、lint 通过。
 - 本阶段已完成 format、focused/full zero-provider parity 与 V10/V11 identity isolation；功能分支已推送并以 `--no-ff` 合并为
-  `main=7cf12916`，merged-main Agent `1671/1671`、AI `346/346` 全量结果保持通过。收口分支仅修复 Prettier 格式并同步文档，
+  `main=7cf12916`，merged-main Agent `1671/1671`、AI `346/346` 全量结果保持通过。收口分支仅完成 CRLF-aware Prettier 复核并同步文档，
   不改变运行语义；本阶段仍未创建 V11 annotated tag、未接受 fresh authorization、未执行 controlled-Live，也未进行 SR6 Docker/API/browser 验收。
 
 ## 边界

@@ -9,7 +9,7 @@ lineage/tag/authorization/evidence namespace；DeepSeek direct adapter V2 只放
 breaker、journal、report、artifact 和 strict validator 回归，V11 focused `8/8`（`68 expect()`），既有 SR5 live `28/28`。
 
 当前仍 zero-provider，`qualityAuthority=none`；未读 `.env`/credential，未调用 Provider，未启动 Docker/API/browser。Agent full
-`1671/1671`、AI full `346/346`、typecheck/lint 已通过，格式化修复后目标文件 Prettier/diff check 通过，merged-main 全量
+`1671/1671`、AI full `346/346`、typecheck/lint 已通过，格式化修复后目标文件以 CRLF-aware Prettier/diff check 通过，merged-main 全量
 回归保持通过。本原子阶段已收口；下一顺序是从最新 `main` 创建并推送独立 V11 annotated tag，重新接受 fresh data-boundary
 与 exact authorization，执行唯一 controlled-Live；成功或失败 durable seal 后，才进入 SR6 Docker/API/可见浏览器验收。
 
