@@ -1,8 +1,9 @@
 # PrepMind AI 开发日志
 
-> 2026-08-17 — Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider，分支实现中）：
+> 2026-08-17 — Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider）完成：
 >
-> 从 `main=610598c4` 新开普通分支 `drb/phase-6-9-8-sr5-v11-recovery`。V11 建立独立的 source lineage、tag、授权确认和
+> 从 `main=610598c4` 新开普通分支 `drb/phase-6-9-8-sr5-v11-recovery`，功能提交 `1773625a` 已推送并以 `--no-ff` 合并为
+> `main=7cf12916`；格式化与文档收口另在 `drb/phase-6-9-8-sr5-v11-closeout` 完成。V11 建立独立的 source lineage、tag、授权确认和
 > evidence namespace，V10 sealed evidence 保持只读。DeepSeek direct adapter 新增版本化 V2 兼容合同，仅允许非思考模式的
 > `reasoning_content: null`，非空 reasoning 仍拒绝；五类 DQ bounded diagnostic 通过 SR5 runner 进入 journal/report/artifact，
 > raw sentinel 未泄漏。V11 focused bridge `8/8`（`68 expect()`），既有 SR5 live `28/28` 通过；V10 原 validator/runtime
@@ -10,8 +11,8 @@
 >
 > 本轮仍 zero-provider：credential/provider/formal evidence/business writes=`0/0/0/0`，未读根 `.env`，未启动 Docker/API/browser，
 > `qualityAuthority=none`。Agent full `1671/1671`（`25804 expect()`，`206 files`）、AI full `346/346`
-> （`2667 expect()`，`28 files`）、typecheck/lint/format 已通过；原子提交推送、`main --no-ff` 合并后二次回归和
-> controlled-Live 仍待完成。
+> （`2667 expect()`，`28 files`）、typecheck/lint 已通过；格式化修复后目标文件 Prettier 与 diff check 通过，merged-main
+> 全量回归保持通过。当前 zero-provider 原子阶段已完成，尚未进行新 V11 tag、fresh authorization、controlled-Live 或 SR6。
 > 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v11-diagnostic-recovery-zero-provider.md`。
 
 > 2026-08-17 — Phase 6.9.8 SR5 v10 diagnostic qualification DQ2（zero-provider）完成：
