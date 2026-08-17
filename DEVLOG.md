@@ -11,7 +11,7 @@
 >
 > 本轮仍 zero-provider：credential/provider/formal evidence/business writes=`0/0/0/0`，未读根 `.env`，未启动 Docker/API/browser，
 > `qualityAuthority=none`。Agent full `1671/1671`（`25804 expect()`，`206 files`）、AI full `346/346`
-> （`2667 expect()`，`28 files`）、typecheck/lint 已通过；格式化修复后目标文件 Prettier 与 diff check 通过，merged-main
+> （`2667 expect()`，`28 files`）、typecheck/lint 已通过；格式化修复后目标文件以 CRLF-aware Prettier 与 diff check 通过，merged-main
 > 全量回归保持通过。当前 zero-provider 原子阶段已完成，尚未进行新 V11 tag、fresh authorization、controlled-Live 或 SR6。
 > 验收见 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v11-diagnostic-recovery-zero-provider.md`。
 

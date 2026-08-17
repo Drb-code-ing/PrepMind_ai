@@ -10,7 +10,7 @@ V11 runner 并写入 journal/report/artifact 回归。当前仍为 zero-provider
 未创建正式 Live evidence/business writes，未启动 Docker/API/browser，`qualityAuthority=none`。focused V11 bridge `8/8`
 （`68 expect()`）和既有 SR5 live `28/28` 已通过；V10 原 validator/runtime identity 已恢复，V11 CLI 与 package subpaths 已隔离；
 Agent full `1671/1671`（`25804 expect()`，`206 files`）、AI full `346/346`（`2667 expect()`，`28 files`）、
-typecheck/lint 已通过；格式化修复后目标文件 Prettier 与 diff check 通过。功能提交 `1773625a` 已推送，merge
+typecheck/lint 已通过；格式化修复后目标文件以 CRLF-aware Prettier 与 diff check 通过。功能提交 `1773625a` 已推送，merge
 提交为 `7cf12916`；merged-main 全量回归已完成，Agent/AI 结果保持上述通过数。详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v11-diagnostic-recovery-zero-provider.md`。
 
