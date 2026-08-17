@@ -16,8 +16,9 @@
 > 通过。Provider/credential/formal evidence/business writes=`0/0/0/0`；未读根 `.env`，未调用 DeepSeek/Qwen，未创建正式
 > V12 evidence，未操作 Docker/API/browser，`qualityAuthority=none`。
 >
-> 功能提交 `4dec1299` 已推送，并以 `--no-ff` 合并提交 `d763f32f` 推送到 `main`；当前
-> `main == origin/main == d763f32f`。merged-main focused `19/19`、Agent `1680/1680`、AI `346/346` 与静态门全部通过。
+> 功能提交 `4dec1299` 已推送，并以 `--no-ff` 合并提交 `d763f32f` 推送到 `main`；文档 closeout 提交 `2351a221` 随后
+> 合并为 `bbe58918`。当前 `main == origin/main`，最终不可变 commit 由 V12 annotated tag 绑定。merged-main focused
+> `19/19`、Agent `1680/1680`、AI `346/346` 与静态门全部通过。
 > 下一步仅创建并核验 V12 annotated tag，再请求 fresh V12 数据边界与 exact authorization。当前没有执行 controlled-Live 或
 > SR6 产品验收。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-direct-host-recovery-zero-provider.md`。

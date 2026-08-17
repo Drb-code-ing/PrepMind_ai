@@ -2,8 +2,8 @@
 
 日期：2026-08-17  
 分支：`drb/phase-6-9-8-sr5-v12-direct-host-recovery`  
-基线：`main == origin/main == 4b7c663bdd1c87e4c583f3dcfa7c7b146deea018`；功能提交：`4dec1299`；合并提交：`d763f32f`；当前
-`main == origin/main == d763f32f`
+基线：`main == origin/main == 4b7c663bdd1c87e4c583f3dcfa7c7b146deea018`；功能提交：`4dec1299`；功能合并：`d763f32f`；
+文档 closeout：`2351a221`；文档合并：`bbe58918`；当前 `main == origin/main`，最终 commit 由 V12 annotated tag 绑定
 
 ## 目的
 

@@ -18,7 +18,7 @@
       `346/346`（`2667 expect()`，`28 files`）
 - [x] Agent/AI typecheck、lint；Provider/credential/formal evidence/business writes=`0/0/0/0`
 - [x] 未读根 `.env`，未调用 Provider，未创建 V12 evidence，未操作 Docker/API/browser
-- [x] 功能提交 `4dec1299`、推送、`main --no-ff` 合并提交 `d763f32f`、merged-main parity
+- [x] 功能提交 `4dec1299`、功能合并 `d763f32f`、文档 closeout `2351a221`、文档合并 `bbe58918`、merged-main parity
 - [ ] V12 annotated tag local/remote parity 与最终只读 source verifier
 - [ ] fresh V12 DeepSeek/Qwen data-boundary 与 exact authorization
 - [ ] 唯一 V12 controlled-Live durable seal
