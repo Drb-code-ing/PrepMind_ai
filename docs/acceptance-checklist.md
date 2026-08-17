@@ -17,7 +17,7 @@
 - [x] Agent/AI typecheck、lint
 - [x] format、diff 与 V10/V11 identity parity
 - [x] merged-main parity：功能 merge=`7cf12916`，全量 Agent/AI 结果保持通过
-- [x] 分支提交/推送，`main --no-ff` 合并/推送，合并后二次回归（格式化收口分支待本次合并）
+- [x] 功能与文档收口分支均已提交/推送并以 `--no-ff` 合并/推送 `main`，合并后二次回归完成
 - [ ] 新 V11 tag/source parity、fresh DeepSeek/Qwen data-boundary 与 exact authorization
 - [ ] 唯一 controlled-Live；未授权前不得读取根 `.env` 或调用 Provider
 - [ ] SR6 Docker/API/Trace/可见浏览器验收

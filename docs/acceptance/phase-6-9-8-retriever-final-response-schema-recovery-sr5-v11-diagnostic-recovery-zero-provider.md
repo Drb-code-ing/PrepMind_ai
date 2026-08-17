@@ -45,6 +45,6 @@ Docker、PostgreSQL、Redis、MinIO、API、browser，未写产品 Trace/Backgro
 
 ## 下一步
 
-完成收口分支的格式与文档提交并合并推送 `main`，再做一次轻量静态/重点 focused parity。之后才能核对新的 annotated tag/source bundle，
-重新接受 V11 DeepSeek/Qwen 数据边界并请求唯一一次 controlled-Live；Live
+zero-provider 功能、文档与 merged-main 重点 parity 已收口。下一步核对新的 annotated tag/source bundle，重新接受 V11
+DeepSeek/Qwen 数据边界并请求唯一一次 controlled-Live；Live
 成功或失败都要 durable seal，再决定是否进入 SR6 Docker/API/可见浏览器验收。
