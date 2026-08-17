@@ -1,25 +1,23 @@
 # PrepMind AI 学习与开发路线图
 
-## 当前原子阶段：Phase 6.9.8 SR5 V12 direct-host recovery（zero-provider，进行中，2026-08-17）
+## 当前原子阶段：Phase 6.9.8 SR5 V12 direct-host recovery（zero-provider，已合并，2026-08-17）
 
 V11 在 login-shell 注入的失效 loopback proxy 前停止且不得重跑。V12 从最新 `main=4b7c663b` 建立独立 lineage，并把
 direct-host 固化为整个 CLI 子进程的运行环境：preflight 与后续 Provider transport 共享同一份已移除 proxy 变量的环境，
 而不是只让 preflight 临时看见空代理配置。V10/V11 tag、授权、validator 和 evidence 保持不可变。
 
 当前 zero-provider focused/full/static 门已通过，Provider/credential/formal evidence/business writes=`0/0/0/0`，未触碰
-`.env`、Docker、API 或浏览器。收口顺序固定为：功能分支 commit/push -> `main --no-ff` merge/push -> merged-main parity ->
-V12 annotated tag local/remote parity -> fresh V12 data-boundary/exact authorization -> 唯一 controlled-Live durable seal。只有
+`.env`、Docker、API 或浏览器。功能提交 `4dec1299` 已推送，并以 `--no-ff` 合并为 `d763f32f` 推送到 `main`；merged-main
+Agent `1680/1680`（`25912 expect()`）、AI `346/346`（`2667 expect()`）、focused `19/19` 及静态门均通过。剩余收口顺序固定为：V12 annotated tag local/remote parity ->
+fresh V12 data-boundary/exact authorization -> 唯一 controlled-Live durable seal。只有
 V12 semantic gate 通过后，才进入 SR6 Docker/API/Trace/可见浏览器产品验收。
 
-## 当前原子阶段：Phase 6.9.8 SR5 V11 proxy preflight recovery（待开始，2026-08-17）
+## 历史检查点：Phase 6.9.8 SR5 V11 proxy preflight recovery（已由 V12 完成，2026-08-17）
 
 V11 唯一 controlled-Live 入口已在 Provider/credential/evidence 前因 `127.0.0.1:7897` 无监听而停止；计数均为 0，未创建
-正式 bundle。本次授权不得重跑。同仓库 no-profile zero-provider diagnostic 已返回 `direct_ready`，确认根因是 login-shell
-profile 注入失效 proxy。下一原子任务从最新 `main` 新开普通分支，建立不复用 V11 tag/授权的新 source lineage，并将
-no-profile/direct host 固化为前置验收；不得在运行中随意清空环境变量绕过 preflight。
-
-proxy recovery 合并并推送 `main` 后，重新创建独立 tag/source parity，获得 fresh V11 data-boundary 与 exact authorization，
-再执行新的唯一 controlled-Live。只有 durable semantic gate 完成后才进入 SR6 Docker/API/Trace/可见浏览器验收。
+正式 bundle。本次授权不得重跑。同仓库 no-profile zero-provider diagnostic 返回 `direct_ready`，确认根因是 login-shell
+profile 注入失效 proxy。该检查点提出的新 lineage/direct-host 固化任务已由上方 V12 recovery 完成；不得按本段历史步骤创建
+新的 V11 tag、复用 V11 授权或重跑 V11。当前后续只以 V12 source/tag/authorization/evidence namespace 为准。
 
 ## 当前原子阶段：Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider，已完成，2026-08-17）
 

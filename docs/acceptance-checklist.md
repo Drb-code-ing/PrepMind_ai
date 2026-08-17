@@ -5,7 +5,7 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
-## 0K-V12. SR5 direct-host recovery（当前 zero-provider）
+## 0K-V12. SR5 direct-host recovery（zero-provider，已合并）
 
 - [x] 从最新已推送 `main=4b7c663b` 新开普通 V12 分支，不使用 worktree
 - [x] V10/V11/V12 source tag、authorization、namespace、validator/runtime 三向隔离
@@ -14,10 +14,11 @@
 - [x] 共享 preflight 返回 `direct_ready/configuredProxyVariables=0/listenerProbeCalls=0/providerCalls=0`
 - [x] authorization gate 保持在 source/credential/Provider 前
 - [x] V10/V11/V12 focused `19/19`（`340 expect()`），最终 V12 `9/9`（`70 expect()`）
-- [x] Agent full `1680/1680`（`25911 expect()`，`207 files`）、AI full `346/346`（`2667 expect()`，`28 files`）
+- [x] Agent full `1680/1680`（功能分支 `25911 expect()`、merged-main `25912 expect()`，`207 files`）、AI full
+      `346/346`（`2667 expect()`，`28 files`）
 - [x] Agent/AI typecheck、lint；Provider/credential/formal evidence/business writes=`0/0/0/0`
 - [x] 未读根 `.env`，未调用 Provider，未创建 V12 evidence，未操作 Docker/API/browser
-- [ ] 功能分支 commit/push、`main --no-ff` merge/push、merged-main parity
+- [x] 功能提交 `4dec1299`、推送、`main --no-ff` 合并提交 `d763f32f`、merged-main parity
 - [ ] V12 annotated tag local/remote parity 与最终只读 source verifier
 - [ ] fresh V12 DeepSeek/Qwen data-boundary 与 exact authorization
 - [ ] 唯一 V12 controlled-Live durable seal

@@ -1,10 +1,11 @@
 # PrepMind AI — 仓库协作指南
 
-## 当前状态：Phase 6.9.8 SR5 V12 direct-host recovery（zero-provider，2026-08-17）
+## 当前状态：Phase 6.9.8 SR5 V12 direct-host recovery（zero-provider，已合并，2026-08-17）
 
 V11 唯一入口因 Git Bash login profile 注入失效的 `127.0.0.1:7897` proxy 而在 Provider/credential/evidence 前停止；
-V11 tag、授权和零证据终态保持不可复用。当前普通分支
-`drb/phase-6-9-8-sr5-v12-direct-host-recovery` 从最新已推送 `main=4b7c663b` 建立独立 V12 source、tag、授权与 evidence
+V11 tag、授权和零证据终态保持不可复用。功能分支
+`drb/phase-6-9-8-sr5-v12-direct-host-recovery` 已提交为 `4dec1299`，并以 `--no-ff` 合并为 `main=d763f32f`，当前
+`main == origin/main == d763f32f`。该分支从当时已推送 `main=4b7c663b` 建立独立 V12 source、tag、授权与 evidence
 namespace，V10/V11 validator/runtime 文件均保持独立只读。
 
 V12 production launcher 不再只让 preflight 看一份伪直连环境，而是先启动同一 CLI 的受控子进程：子进程环境保留系统变量和
@@ -13,13 +14,13 @@ transport 使用同一份 direct-host 环境，不修改父 shell 或 `process.e
 分裂状态。子进程仍按 authorization -> source -> proxy -> credential -> reservation -> Provider 的既有顺序执行。
 
 当前 focused V10/V11/V12 `19/19`（`340 expect()`），最终 V12 focused `9/9`（`70 expect()`）；Agent full
-`1680/1680`（`25911 expect()`，`207 files`）、AI full `346/346`（`2667 expect()`，`28 files`），Agent/AI typecheck/lint
+`1680/1680`（merged-main `25912 expect()`，`207 files`）、AI full `346/346`（`2667 expect()`，`28 files`），Agent/AI typecheck/lint
 通过。Provider/credential/formal evidence/business writes=`0/0/0/0`，未读根 `.env`，未调用 DeepSeek/Qwen，未创建 V12
 marker/journal/report/artifact，未启动或清理 Docker/API/browser，`qualityAuthority=none`。
 
-本阶段尚未创建 V12 annotated tag、未接受 V12 数据边界、未取得 V12 exact authorization、未执行 controlled-Live。必须先
-提交并推送功能分支、以 `--no-ff` 合并并推送 `main`、完成 merged-main zero-provider parity，再创建并验证独立 V12 tag；
-随后只能使用 fresh V12 两行授权执行唯一入口。SR6 Docker/API/Trace/可见浏览器产品验收继续阻断。详见
+功能提交、推送、`main` 合并推送及 merged-main parity 均已完成；merged-main focused/full/static 回归保持通过。当前仍未创建
+V12 annotated tag、未接受 V12 数据边界、未取得 V12 exact authorization、未执行 controlled-Live。下一步只是在最终 clean/pushed
+`main` 创建并验证独立 V12 tag，随后才能使用 fresh V12 两行授权执行唯一入口。SR6 Docker/API/Trace/可见浏览器产品验收继续阻断。详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-direct-host-recovery-zero-provider.md`。
 
 ## 当前状态：Phase 6.9.8 SR5 V11 controlled-Live 在 proxy preflight 停止（2026-08-17）
