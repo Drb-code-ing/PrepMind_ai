@@ -1,5 +1,16 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 SR5 V12 direct-host recovery（zero-provider，进行中，2026-08-17）
+
+V11 在 login-shell 注入的失效 loopback proxy 前停止且不得重跑。V12 从最新 `main=4b7c663b` 建立独立 lineage，并把
+direct-host 固化为整个 CLI 子进程的运行环境：preflight 与后续 Provider transport 共享同一份已移除 proxy 变量的环境，
+而不是只让 preflight 临时看见空代理配置。V10/V11 tag、授权、validator 和 evidence 保持不可变。
+
+当前 zero-provider focused/full/static 门已通过，Provider/credential/formal evidence/business writes=`0/0/0/0`，未触碰
+`.env`、Docker、API 或浏览器。收口顺序固定为：功能分支 commit/push -> `main --no-ff` merge/push -> merged-main parity ->
+V12 annotated tag local/remote parity -> fresh V12 data-boundary/exact authorization -> 唯一 controlled-Live durable seal。只有
+V12 semantic gate 通过后，才进入 SR6 Docker/API/Trace/可见浏览器产品验收。
+
 ## 当前原子阶段：Phase 6.9.8 SR5 V11 proxy preflight recovery（待开始，2026-08-17）
 
 V11 唯一 controlled-Live 入口已在 Provider/credential/evidence 前因 `127.0.0.1:7897` 无监听而停止；计数均为 0，未创建

@@ -1,5 +1,24 @@
 # PrepMind AI 开发日志
 
+> 2026-08-17 — Phase 6.9.8 SR5 V12 direct-host recovery（zero-provider）：
+>
+> 从已推送 `main=4b7c663b` 新开普通分支 `drb/phase-6-9-8-sr5-v12-direct-host-recovery`。V12 建立独立 source/tag/
+> authorization/evidence namespace，V10/V11 tag、validator、runtime 与历史终态保持不变。
+>
+> 根因修复不再只给 proxy preflight 传空对象：production launcher 会重入一个受控子进程，保留系统/V12 授权环境，按大小写
+> 不敏感规则移除 `HTTP(S)_PROXY/ALL_PROXY/NO_PROXY`；共享 preflight 和真实 Provider transport 因而使用同一个 direct-host
+> 环境。父 shell、`process.env`、根 `.env` 和 Docker 均不修改。authorization/source/preflight/credential/reservation/
+> Provider 的原有门禁顺序保持不变。
+>
+> V10/V11/V12 focused `19/19`（`340 expect()`），最终 V12 focused `9/9`（`70 expect()`）；Agent full
+> `1680/1680`（`25911 expect()`，`207 files`）、AI full `346/346`（`2667 expect()`，`28 files`），typecheck/lint
+> 通过。Provider/credential/formal evidence/business writes=`0/0/0/0`；未读根 `.env`，未调用 DeepSeek/Qwen，未创建正式
+> V12 evidence，未操作 Docker/API/browser，`qualityAuthority=none`。
+>
+> 当前仍需完成分支提交/推送、`main --no-ff` 合并/推送和 merged-main parity；之后才创建 V12 annotated tag 并请求 fresh V12
+> 数据边界与 exact authorization。当前没有执行 controlled-Live 或 SR6 产品验收。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-direct-host-recovery-zero-provider.md`。
+
 > 2026-08-17 — Phase 6.9.8 SR5 V11 controlled-Live 在 proxy preflight 停止：
 >
 > `main == origin/main == c077d654` 时创建并推送 annotated tag
@@ -15,7 +34,6 @@
 > 随后的 no-profile zero-provider diagnostic 返回
 > `direct_ready / configuredProxyVariables=0 / listenerProbeCalls=0 / providerCalls=0`，证明失败只来自 login-shell profile
 > 注入的失效 loopback proxy。后续新 lineage 应固定 no-profile/direct host；不得移动 V11 tag 或复用本次授权。
->
 
 > 2026-08-17 — Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider）完成：
 >
