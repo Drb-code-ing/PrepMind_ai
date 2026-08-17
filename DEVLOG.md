@@ -12,6 +12,10 @@
 > Docker/API/browser。本次授权入口不得直接重跑；后续必须先修复宿主 proxy，再从最新 `main` 建立新 source/tag 与 fresh
 > authorization。
 >
+> 随后的 no-profile zero-provider diagnostic 返回
+> `direct_ready / configuredProxyVariables=0 / listenerProbeCalls=0 / providerCalls=0`，证明失败只来自 login-shell profile
+> 注入的失效 loopback proxy。后续新 lineage 应固定 no-profile/direct host；不得移动 V11 tag 或复用本次授权。
+>
 
 > 2026-08-17 — Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider）完成：
 >
