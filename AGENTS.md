@@ -1,5 +1,22 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 v10 diagnostic qualification DQ1（zero-provider，2026-08-17）
+
+DQ1 将五类 synthetic Provider response 注入第一方 DeepSeek direct adapter，并实际穿过 `ModelAgentRuntime -> Retriever
+query-rewrite candidate -> V7 diagnostic snapshot -> Task9 RuntimeError projection`。JSON parse、object missing、type
+validation、response audit 与 usage validation 均保留各自 bounded category/stage；wire 固定为 dispatch/response/verified
+usage=`1/1/0`，Provider payload 中的敏感哨兵不进入 error 或 diagnostic。生产 `createPhase698Task9LiveHarness` 仍使用不可注入的
+真实 adapter，synthetic fetch 只暴露给 test-only qualification helper。
+
+authority=`zero_provider_sr5_v10_diagnostic_qualification`，gate=
+`schema_adapter_diagnostic_qualification_not_evidence`，`qualityAuthority=none`。DQ1 focused `39/39`，Agent full
+`1662/1662`（`25516 expect()`，`204 files`），typecheck/lint/Prettier/diff check 通过。Provider/credential/formal
+evidence/business writes=`0/0/0/0`；未读取根 `.env`，未启动 Docker/API/browser，未修改 v10 sealed bundle。
+
+DQ1 不能反推 v10 的具体 Provider shape，也不是新的 Live、模型质量、SR6、产品或 SLA authority。本任务不创建 tag、不接受
+授权、不执行 Live。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-diagnostic-qualification-dq1-zero-provider.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 v10 schema/adapter postmortem（zero-provider，2026-08-14）
 
 v10 sealed evidence 只能证明 DeepSeek candidate 的类型化调用以 `schema_invalid` 终止；旧 `runRewriteModel` 将

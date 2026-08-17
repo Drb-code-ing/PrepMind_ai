@@ -1,5 +1,16 @@
 # PrepMind AI 智能备考助手
 
+## 当前工作回执：SR5 v10 diagnostic qualification DQ1（zero-provider，2026-08-17）
+
+DQ1 已用五类 synthetic Provider response 验证第一方 DeepSeek direct adapter 到 Task9 failure projection 的完整诊断链路。
+JSON parse、object missing、type validation、response audit、usage validation 均可区分；失败 wire 为 `1/1/0`，原始
+Provider payload 和敏感哨兵不进入 diagnostic。生产 Live harness 没有开放 fetch 注入。
+
+focused `39/39`，Agent full `1662/1662`，typecheck/lint/Prettier/diff check 通过。Provider、credential、formal
+evidence、business writes 均为 `0`；未启动 Docker/API/browser，也未触碰 v10 sealed bundle。DQ1 不是 Live、模型质量或
+产品 authority。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-diagnostic-qualification-dq1-zero-provider.md`。
+
 ## 当前工作回执：SR5 v10 schema/adapter postmortem（zero-provider，2026-08-14）
 
 v10 DeepSeek `schema_invalid` 已完成无 credential、无 Provider 调用的源码级复盘。旧链路把多个 adapter/runtime 失败压成

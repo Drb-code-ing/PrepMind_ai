@@ -284,21 +284,45 @@ async function runRewriteModel(
   runId: string,
   apiKey: string,
 ): Promise<Phase698Task9CallResult> {
+  return runRewriteModelInternal(testCase, signal, runId, apiKey);
+}
+
+async function runRewriteModelInternal(
+  testCase: Phase698Task8RewriteCase | Phase698Task8FinalResponseCase,
+  signal: AbortSignal,
+  runId: string,
+  apiKey: string,
+  syntheticFetch?: typeof fetch,
+): Promise<Phase698Task9CallResult> {
   if (!('originalQuery' in testCase)) {
     throw new Phase698Task9RuntimeError('runtime_contract_invalid');
   }
   const context = createContext(runId, testCase.caseId, signal);
   const diagnostics = createPhase697V7WireDiagnostics({ appendStage: async () => undefined });
-  const adapter = createFirstPartyDeepSeekV4ProDirectAdapter(
-    {
-      provider: 'deepseek',
-      apiKey,
-      baseURL: RETRIEVER_QUERY_REWRITE_BASE_URL,
-      model: RETRIEVER_QUERY_REWRITE_MODEL,
-    },
-    diagnostics.capability,
-  );
-  if (adapter.provenance !== 'first_party_deepseek_v4_pro_direct') {
+  const adapter = syntheticFetch
+    ? createFirstPartyDeepSeekV4ProDirectAdapter(
+        {
+          provider: 'deepseek',
+          apiKey,
+          baseURL: RETRIEVER_QUERY_REWRITE_BASE_URL,
+          model: RETRIEVER_QUERY_REWRITE_MODEL,
+        },
+        diagnostics.capability,
+        { fetch: syntheticFetch },
+      )
+    : createFirstPartyDeepSeekV4ProDirectAdapter(
+        {
+          provider: 'deepseek',
+          apiKey,
+          baseURL: RETRIEVER_QUERY_REWRITE_BASE_URL,
+          model: RETRIEVER_QUERY_REWRITE_MODEL,
+        },
+        diagnostics.capability,
+      );
+  if (
+    adapter.provenance !==
+    (syntheticFetch ? 'synthetic_test' : 'first_party_deepseek_v4_pro_direct')
+  ) {
     throw new Phase698Task9RuntimeError('runtime_contract_invalid');
   }
   let invocations = 0;
@@ -348,6 +372,27 @@ async function runRewriteModel(
     usage: { ...usage },
     verifiedCostCny: calculatePhase698Task9DeepseekCostCny(usage.inputTokens, usage.outputTokens),
   });
+}
+
+export async function qualifyPhase698Task9RewriteDiagnosticForTest(
+  input: Readonly<{
+    testCase: Phase698Task8RewriteCase;
+    fetch: typeof fetch;
+  }>,
+): Promise<Phase698Task9RuntimeError> {
+  try {
+    await runRewriteModelInternal(
+      input.testCase,
+      new AbortController().signal,
+      'task9_diagnostic_qualification',
+      'synthetic-diagnostic-key',
+      input.fetch,
+    );
+  } catch (error) {
+    if (error instanceof Phase698Task9RuntimeError) return error;
+    throw error;
+  }
+  throw new Error('PHASE_6_9_8_TASK9_DIAGNOSTIC_QUALIFICATION_EXPECTED_FAILURE');
 }
 
 export function projectPhase698Task9RewriteFailureForTest(
