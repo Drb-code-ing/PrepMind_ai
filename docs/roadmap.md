@@ -7,7 +7,8 @@ direct-host 固化为整个 CLI 子进程的运行环境：preflight 与后续 P
 而不是只让 preflight 临时看见空代理配置。V10/V11 tag、授权、validator 和 evidence 保持不可变。
 
 当前 zero-provider focused/full/static 门已通过，Provider/credential/formal evidence/business writes=`0/0/0/0`，未触碰
-`.env`、Docker、API 或浏览器。功能提交 `4dec1299` 已推送，并以 `--no-ff` 合并为 `d763f32f` 推送到 `main`；merged-main
+`.env`、Docker、API 或浏览器。功能提交 `4dec1299` 已推送，并以 `--no-ff` 合并为 `d763f32f`；文档 closeout `2351a221`
+随后合并为 `bbe58918`，当前 `main == origin/main`，最终 commit 由 V12 annotated tag 绑定。merged-main
 Agent `1680/1680`（`25912 expect()`）、AI `346/346`（`2667 expect()`）、focused `19/19` 及静态门均通过。剩余收口顺序固定为：V12 annotated tag local/remote parity ->
 fresh V12 data-boundary/exact authorization -> 唯一 controlled-Live durable seal。只有
 V12 semantic gate 通过后，才进入 SR6 Docker/API/Trace/可见浏览器产品验收。

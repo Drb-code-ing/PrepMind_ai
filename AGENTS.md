@@ -4,8 +4,9 @@
 
 V11 唯一入口因 Git Bash login profile 注入失效的 `127.0.0.1:7897` proxy 而在 Provider/credential/evidence 前停止；
 V11 tag、授权和零证据终态保持不可复用。功能分支
-`drb/phase-6-9-8-sr5-v12-direct-host-recovery` 已提交为 `4dec1299`，并以 `--no-ff` 合并为 `main=d763f32f`，当前
-`main == origin/main == d763f32f`。该分支从当时已推送 `main=4b7c663b` 建立独立 V12 source、tag、授权与 evidence
+`drb/phase-6-9-8-sr5-v12-direct-host-recovery` 已提交为 `4dec1299`，并以 `--no-ff` 合并为 `d763f32f`；文档 closeout
+提交 `2351a221` 随后合并为 `bbe58918`。当前 `main == origin/main`，最终不可变 commit 由后续 V12 annotated tag 绑定。
+功能分支从当时已推送 `main=4b7c663b` 建立独立 V12 source、tag、授权与 evidence
 namespace，V10/V11 validator/runtime 文件均保持独立只读。
 
 V12 production launcher 不再只让 preflight 看一份伪直连环境，而是先启动同一 CLI 的受控子进程：子进程环境保留系统变量和
