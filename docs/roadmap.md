@@ -1,5 +1,14 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 SR5 V11 proxy preflight recovery（待开始，2026-08-17）
+
+V11 唯一 controlled-Live 入口已在 Provider/credential/evidence 前因 `127.0.0.1:7897` 无监听而停止；计数均为 0，未创建
+正式 bundle。本次授权不得重跑。下一原子任务从最新 `main` 新开普通分支，只做 zero-provider 宿主 proxy recovery：确认
+应启动 loopback proxy，或在明确的 native/no-profile direct host 中运行；不得通过随意清空环境变量绕过 preflight。
+
+proxy recovery 合并并推送 `main` 后，重新创建独立 tag/source parity，获得 fresh V11 data-boundary 与 exact authorization，
+再执行新的唯一 controlled-Live。只有 durable semantic gate 完成后才进入 SR6 Docker/API/Trace/可见浏览器验收。
+
 ## 当前原子阶段：Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider，已完成，2026-08-17）
 
 从 `main=610598c4` 新开 `drb/phase-6-9-8-sr5-v11-recovery`，功能提交 `1773625a` 已推送并以 `--no-ff` 合并为

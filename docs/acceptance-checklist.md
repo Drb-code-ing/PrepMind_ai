@@ -5,6 +5,19 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
+## 0K-V11-PF. SR5 V11 proxy preflight failure（当前）
+
+- [x] V11 annotated tag 已创建并推送，tag object=`20e2abfc`，peeled commit=`c077d654`
+- [x] 用户接受 V11 DeepSeek/Qwen 数据边界并授权唯一 controlled-Live 入口
+- [x] production preflight 返回 `loopback_proxy_unavailable`，`127.0.0.1:7897` 无监听
+- [x] provider/credential/formal evidence/business writes=`0/0/0/0`
+- [x] 无 marker/journal/report/artifact/runId；未读根 `.env`，未操作 Docker/API/browser
+- [x] 同一授权禁止重跑、直连绕过、curl、单 case 或追加 Provider 探测
+- [ ] 从最新 `main` 新开 zero-provider proxy recovery 分支并完成宿主入口修复
+- [ ] 新 source/tag parity 与 fresh V11 data-boundary/exact authorization
+- [ ] 新唯一 controlled-Live durable seal
+- [ ] SR6 Docker/API/Trace/可见浏览器验收
+
 ## 0K-V11. SR5 diagnostic recovery（已完成 zero-provider；Live/SR6 未开始）
 
 - [x] V10 sealed namespace、source/tag/authorization 与 V11 独立隔离
@@ -19,7 +32,7 @@
 - [x] merged-main parity：功能 merge=`7cf12916`，全量 Agent/AI 结果保持通过
 - [x] 功能与文档收口分支均已提交/推送并以 `--no-ff` 合并/推送 `main`，合并后二次回归完成
 - [ ] 新 V11 tag/source parity、fresh DeepSeek/Qwen data-boundary 与 exact authorization
-- [ ] 唯一 controlled-Live；未授权前不得读取根 `.env` 或调用 Provider
+- [ ] 唯一 controlled-Live semantic gate；本次 preflight 在零 Provider 前停止，必须新 source/tag/授权
 - [ ] SR6 Docker/API/Trace/可见浏览器验收
 
 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v11-diagnostic-recovery-zero-provider.md`。
