@@ -1,5 +1,19 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider，进行中，2026-08-17）
+
+从 `main=610598c4` 新开 `drb/phase-6-9-8-sr5-v11-recovery`。V11 不修改或复用 V10 sealed evidence，建立独立 source
+lineage/tag/authorization/evidence namespace；DeepSeek direct adapter V2 只放宽明确的非思考模式
+`reasoning_content: null`，非空 reasoning 继续 fail-closed。DQ1/DQ2 五类 bounded diagnostic 已通过 runner 写入顺序、
+breaker、journal、report、artifact 和 strict validator 回归，V11 focused `8/8`（`68 expect()`），既有 SR5 live `28/28`。
+
+当前仍 zero-provider，`qualityAuthority=none`；未读 `.env`/credential，未调用 Provider，未启动 Docker/API/browser。剩余顺序：
+Agent full `1671/1671`、AI full `346/346`、typecheck/lint/format 已通过；剩余 diff parity -> 单提交推送分支 ->
+`main --no-ff` 合并并推送 -> merged-main 二次回归 -> 新 tag
+和 fresh authorization 决策 -> 唯一 controlled-Live -> 通过后才进入 SR6 Docker/API/可见浏览器验收。
+
+验收记录：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v11-diagnostic-recovery-zero-provider.md`。
+
 ## 当前原子阶段：Phase 6.9.8 SR5 v10 diagnostic qualification DQ2（2026-08-17）
 
 DQ2 使用 `27` 个不复用 DQ1 canonical payload 的 held-out shape，对五类 bounded diagnostic 做 zero-provider robustness

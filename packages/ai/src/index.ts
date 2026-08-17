@@ -40,10 +40,13 @@ export * from './model-agent-structured-schema.ts';
 export * from './first-party-deepseek-v4-runtime.ts';
 export {
   createFirstPartyDeepSeekV4ProDirectAdapter,
+  createFirstPartyDeepSeekV4ProDirectAdapterV2,
   FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_VERSION,
+  FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_V2_VERSION,
 } from './first-party-deepseek-v4-pro-direct.ts';
 export type {
   FirstPartyDeepSeekV4ProDirectAdapter,
+  FirstPartyDeepSeekV4ProDirectAdapterV2,
   FirstPartyDeepSeekV4ProDirectConfig,
   FirstPartyDeepSeekV4ProDirectDependencies,
 } from './first-party-deepseek-v4-pro-direct.ts';

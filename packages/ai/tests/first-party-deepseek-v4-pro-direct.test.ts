@@ -3,8 +3,10 @@ import { z } from 'zod';
 
 import {
   createFirstPartyDeepSeekV4ProDirectAdapter,
+  createFirstPartyDeepSeekV4ProDirectAdapterV2,
   createPhase697V7WireDiagnostics,
   FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_VERSION,
+  FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_V2_VERSION,
   PHASE_6_9_7_V7_WIRE_FAILURE_CATEGORIES,
   PHASE_6_9_7_V7_WIRE_STAGES,
   type FirstPartyDeepSeekV4ProDirectAdapter,
@@ -432,6 +434,51 @@ describe('Phase 6.9.7 V7 first-party DeepSeek V4 Pro direct adapter', () => {
         category: 'invalid_response',
       });
     }
+  });
+
+  test('V2 accepts only an explicit null reasoning sentinel and keeps non-null reasoning rejected', async () => {
+    expect(FIRST_PARTY_DEEPSEEK_V4_PRO_DIRECT_ADAPTER_V2_VERSION).toBe(
+      'first-party-deepseek-v4-pro-direct-v2',
+    );
+    const diagnostics = diagnosticsWithoutIo();
+    const adapter = createFirstPartyDeepSeekV4ProDirectAdapterV2(CONFIG, diagnostics.capability, {
+      fetch: async () =>
+        providerResponse({
+          choices: [{ message: { content: '{"answer":"nullable"}', reasoning_content: null } }],
+          usage: { prompt_tokens: 2, completion_tokens: 1 },
+        }),
+    });
+    await expect(adapter.executor(executorInput(new AbortController().signal))).resolves.toEqual({
+      object: { answer: 'nullable' },
+      usage: { inputTokens: 2, outputTokens: 1 },
+    });
+    expect(diagnostics.readSnapshot()).toMatchObject({
+      state: 'succeeded',
+      counters: { providerResponses: 1, verifiedUsages: 1 },
+    });
+
+    const rejectingDiagnostics = diagnosticsWithoutIo();
+    const rejectingAdapter = createFirstPartyDeepSeekV4ProDirectAdapterV2(
+      CONFIG,
+      rejectingDiagnostics.capability,
+      {
+        fetch: async () =>
+          providerResponse({
+            choices: [{ message: { content: '{"answer":"x"}', reasoning_content: 'secret' } }],
+            usage: { prompt_tokens: 2, completion_tokens: 1 },
+          }),
+      },
+    );
+    const rejectingSignal = new AbortController().signal;
+    const thrown = await captureFailure(rejectingAdapter.executor(executorInput(rejectingSignal)));
+    expect(takeModelAgentProviderFailure(thrown, rejectingSignal)).toEqual({
+      category: 'invalid_response',
+    });
+    expect(rejectingDiagnostics.readSnapshot()).toMatchObject({
+      state: 'failed',
+      failureCategory: 'response_audit',
+      counters: { providerResponses: 1, verifiedUsages: 0 },
+    });
   });
 
   test('distinguishes transport, response audit, content, schema, and usage failures', async () => {
