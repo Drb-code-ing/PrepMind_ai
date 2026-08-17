@@ -10,11 +10,12 @@
 - [x] V11 annotated tag 已创建并推送，tag object=`20e2abfc`，peeled commit=`c077d654`
 - [x] 用户接受 V11 DeepSeek/Qwen 数据边界并授权唯一 controlled-Live 入口
 - [x] production preflight 返回 `loopback_proxy_unavailable`，`127.0.0.1:7897` 无监听
+- [x] 同仓库 no-profile diagnostic 返回 `direct_ready`，Provider calls=`0`
 - [x] provider/credential/formal evidence/business writes=`0/0/0/0`
 - [x] 无 marker/journal/report/artifact/runId；未读根 `.env`，未操作 Docker/API/browser
 - [x] 同一授权禁止重跑、直连绕过、curl、单 case 或追加 Provider 探测
-- [ ] 从最新 `main` 新开 zero-provider proxy recovery 分支并完成宿主入口修复
-- [ ] 新 source/tag parity 与 fresh V11 data-boundary/exact authorization
+- [ ] 从最新 `main` 新开新 lineage，固化 no-profile/direct host 前置验收
+- [ ] 新 source/tag parity 与 fresh data-boundary/exact authorization；不得复用 V11 tag/授权
 - [ ] 新唯一 controlled-Live durable seal
 - [ ] SR6 Docker/API/Trace/可见浏览器验收
 

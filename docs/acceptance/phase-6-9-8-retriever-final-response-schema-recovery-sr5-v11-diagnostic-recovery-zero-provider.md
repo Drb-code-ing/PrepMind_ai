@@ -59,9 +59,13 @@ marker、journal、report、artifact 或 runId；未读取根 `.env`，未调用
 该结果不能归因 Provider、账号、余额、模型、schema 或语义质量。本次唯一授权入口已使用，不得直接重跑、改为直连、
 retry/replay/backfill、curl、单 case或追加 Provider 探测。
 
+同一仓库随后通过 FastCtx `login_shell=false` 的 no-profile host 运行共享 proxy diagnostic，得到
+`direct_ready / mode=direct / configuredProxyVariables=0 / listener=not_required / listenerProbeCalls=0 /
+providerCalls=0`。这将根因收敛到 login-shell profile 注入的失效 loopback proxy；不是 Provider、Docker 或源码问题。
+
 ## 下一步
 
-zero-provider 功能、文档与 merged-main 重点 parity 已收口。下一步从最新 `main` 新开 zero-provider proxy recovery，确认宿主
-loopback proxy 或明确的 native/no-profile direct 环境；修复合并后重新核对 annotated tag/source bundle，并取得 fresh V11
+zero-provider 功能、文档与 merged-main 重点 parity 已收口。下一步从最新 `main` 新开独立 source lineage，保留 V11 tag 与
+本次授权不动，并把已验证的 no-profile/direct host 作为前置门；合并后重新核对 annotated tag/source bundle，并取得 fresh
 DeepSeek/Qwen 数据边界与唯一 controlled-Live 授权。Live
 成功或失败都要 durable seal，再决定是否进入 SR6 Docker/API/可见浏览器验收。

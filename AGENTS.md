@@ -12,9 +12,14 @@ peeled commit 与当时 `main` 相同。用户随后接受 V11 DeepSeek/Qwen 数
 credential/provider/formal evidence/business writes=`0/0/0/0`；没有 marker、journal、report、artifact 或 runId，未读取根
 `.env`，未调用 DeepSeek/Qwen，也未启动、停止或清理 Docker/API/browser。
 
+同仓库随后在 FastCtx `login_shell=false` 的 no-profile host 中运行共享 zero-provider proxy diagnostic，得到
+`direct_ready / configuredProxyVariables=0 / listenerProbeCalls=0 / providerCalls=0`。因此根因已确定为 login-shell profile
+注入失效 loopback proxy，不是仓库、Provider 或 Docker。未来入口应固定使用受验收的 no-profile/direct host，不能在已启动
+Live 命令内部临时清空 proxy 变量。
+
 本次唯一授权入口已使用，禁止在同一授权下重跑、改为直连、replay/backfill、curl 或单 case Provider 探测。下一任务只能从
-最新 `main` 新开普通分支，先 zero-provider 修复/确认宿主 proxy，再重新完成 source/tag parity，并取得 fresh V11 数据边界与
-exact authorization。SR6 继续阻断；详见
+最新 `main` 新开普通分支，建立不复用 V11 tag/授权的新 source lineage，并把 no-profile/direct host 固化为前置验收，再取得
+fresh 数据边界与 exact authorization。SR6 继续阻断；详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v11-diagnostic-recovery-zero-provider.md`。
 
 ## 当前状态：Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider，已完成，2026-08-17）
