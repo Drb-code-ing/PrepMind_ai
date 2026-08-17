@@ -1,5 +1,30 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 V12 local-rejection postmortem（zero-provider，2026-08-17）
+
+本任务从已推送 `main=93250de20660a6022808b134ea6b431adf8a5059` 新开普通分支
+`drb/phase-6-9-8-sr5-v12-local-rejection-postmortem`，不使用 worktree。Task9 不再把 response-observed 后的全部
+`baseInvalid` 压成一个不可区分的布尔值，而是按固定 first-failure priority 投影七类 bounded boundary：
+`invocation_mismatch -> adapter_state_mismatch -> adapter_wire_mismatch -> provenance_mismatch -> attempted_mismatch ->
+trace_mismatch -> candidate_not_applied`。原 `failureReason` 与 adapter diagnostic 保持兼容。
+
+只有 `candidate_not_applied` 才可携带既有 `rewriteCandidateDiagnostic` sidecar；该 strict schema 只含 stage/reason enum、
+shape bucket/fingerprint 与 `rawDataRetained=false`，不保存 query、Provider content、字段名或值。三条生产形状 synthetic
+回归已分别证明 `rewrite_safety_invalid / rewrite_unchanged / protected_terms_drift` 能穿过 candidate、Task9 runner、hash-chain
+journal、report、hard-link artifact 与 strict validator；raw sentinel 未落盘。成功、not-started、非 rewrite lane 及其他 boundary
+均不能携带该 sidecar，历史 V12 无新字段的 evidence 仍可验证。
+
+新增 focused `13/13`（`45 expect()`）；V10 DQ1/DQ2 + V11/V12 compatibility + postmortem 为 `36/36`
+（`402 expect()`）；Agent full `1693/1693`（`25960 expect()`，`208 files`），typecheck/lint/Prettier/diff check 通过。
+V12 sealed bundle 只读 validator 仍为 `ok=true / journal=67 / evidence_published`，report logical/physical SHA 保持
+`86f4e84e...3654 / 817bc897...e81`。
+
+本任务 Provider/credential/formal evidence/business writes=`0/0/0/0`，未读根 `.env`，未启动 Docker/API/browser，未写
+Trace/BackgroundJob/Outbox，`qualityAuthority=none`。它只能改善未来失败的诊断精度，不能反推 V12 的具体失败项，也不形成
+新模型质量、SR6、产品或 SLA authority。V12 run/tag/evidence/authorization 仍禁止重跑、恢复、移动或改写；下一真实质量门
+必须另建 source lineage、annotated tag、数据边界与 exact authorization。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-local-rejection-postmortem-zero-provider.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 V12 controlled-Live 已失败封存（2026-08-17）
 
 唯一 V12 run `49429392-857d-4635-80cc-0bca317cf9ff` 已在 clean/tag-verified source

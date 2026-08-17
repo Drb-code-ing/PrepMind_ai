@@ -36,6 +36,7 @@ import {
   runRetrieverQueryRewriteModelCandidateV1,
   type RetrieverQueryRewriteCandidateConfigV1,
 } from '../model-candidates/retriever-query-rewrite-model-candidate.ts';
+import type { RetrieverSchemaRecoveryBoundedDiagnostic } from '../model-candidates/retriever-schema-recovery-contract.ts';
 import {
   FINAL_RESPONSE_AGENT_CONFIG_VERSION,
   FINAL_RESPONSE_AGENT_INPUT_PRICE_PER_MILLION_CNY,
@@ -361,6 +362,7 @@ async function runRewriteModelInternal(
     attempted: candidate.observation.attempted,
     trace,
     snapshot,
+    candidateDiagnostic: candidate.schemaRecoveryDiagnostic,
   });
   if (failure !== null) throw failure;
   if (usage.inputTokens < 1 || usage.outputTokens < 1 || snapshot.counters.verifiedUsages !== 1) {
@@ -431,21 +433,30 @@ export function projectPhase698Task9RewriteFailureForTest(
         }>
       | undefined;
     snapshot: Phase697V7WireSnapshot;
+    candidateDiagnostic?: RetrieverSchemaRecoveryBoundedDiagnostic;
   }>,
 ): Phase698Task9RuntimeError | null {
   const category = input.snapshot.failureCategory;
-  const baseInvalid =
-    input.invocations !== 1 ||
-    !input.candidateApplied ||
-    input.provenance !== 'deepseek_network' ||
-    !input.attempted ||
-    input.trace?.status !== 'succeeded' ||
-    input.trace.provider !== 'deepseek' ||
-    input.trace.model !== RETRIEVER_QUERY_REWRITE_MODEL ||
-    input.snapshot.state !== 'succeeded' ||
-    input.snapshot.counters.providerDispatches !== 1 ||
-    input.snapshot.counters.providerResponses !== 1;
-  if (!baseInvalid) return null;
+  const rewriteFailureBoundary =
+    input.invocations !== 1 || input.snapshot.counters.executorInvocations !== 1
+      ? 'invocation_mismatch'
+      : input.snapshot.state !== 'succeeded'
+        ? 'adapter_state_mismatch'
+        : input.snapshot.counters.providerDispatches !== 1 ||
+            input.snapshot.counters.providerResponses !== 1
+          ? 'adapter_wire_mismatch'
+          : input.provenance !== 'deepseek_network'
+            ? 'provenance_mismatch'
+            : !input.attempted
+              ? 'attempted_mismatch'
+              : input.trace?.status !== 'succeeded' ||
+                  input.trace.provider !== 'deepseek' ||
+                  input.trace.model !== RETRIEVER_QUERY_REWRITE_MODEL
+                ? 'trace_mismatch'
+                : !input.candidateApplied
+                  ? 'candidate_not_applied'
+                  : null;
+  if (rewriteFailureBoundary === null) return null;
   const reason = mapDeepseekRewriteFailure(category);
   return new Phase698Task9RuntimeError(reason, {
     adapterFailureCategory: category ?? 'unknown',
@@ -456,6 +467,11 @@ export function projectPhase698Task9RewriteFailureForTest(
       // Task9 verifies usage only after a typed call result returns successfully.
       verifiedUsage: 0,
     },
+    rewriteFailureBoundary,
+    ...(rewriteFailureBoundary === 'candidate_not_applied' &&
+    input.candidateDiagnostic !== undefined
+      ? { rewriteCandidateDiagnostic: input.candidateDiagnostic }
+      : {}),
   });
 }
 

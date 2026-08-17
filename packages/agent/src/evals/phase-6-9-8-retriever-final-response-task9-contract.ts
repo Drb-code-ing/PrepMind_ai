@@ -29,6 +29,7 @@ import {
   RETRIEVER_QUERY_REWRITE_MODEL,
   RETRIEVER_QUERY_REWRITE_TIMEOUT_MS,
 } from '../model-candidates/retriever-query-rewrite-model-candidate.ts';
+import { RETRIEVER_SCHEMA_RECOVERY_BOUNDED_DIAGNOSTIC_SCHEMA } from '../model-candidates/retriever-schema-recovery-contract.ts';
 import {
   PHASE_6_9_8_RETRIEVER_BASELINE_FROZEN_MANIFEST_SHA256,
   PHASE_6_9_8_RETRIEVER_BASELINE_FROZEN_SHA256,
@@ -242,6 +243,21 @@ export const PHASE_6_9_8_TASK9_SOURCE_SCHEMA = SOURCE_SCHEMA;
 const PROVIDER_SCHEMA = z.enum(['deepseek', 'qwen']);
 const CALL_PHASE_SCHEMA = z.enum(PHASE_6_9_8_TASK9_CALL_PHASES);
 const FAILURE_REASON_SCHEMA = z.enum(PHASE_6_9_8_TASK9_FAILURE_REASONS);
+export const PHASE_6_9_8_TASK9_REWRITE_FAILURE_BOUNDARIES = [
+  'invocation_mismatch',
+  'adapter_state_mismatch',
+  'adapter_wire_mismatch',
+  'provenance_mismatch',
+  'attempted_mismatch',
+  'trace_mismatch',
+  'candidate_not_applied',
+] as const;
+export const PHASE_6_9_8_TASK9_REWRITE_FAILURE_BOUNDARY_SCHEMA = z.enum(
+  PHASE_6_9_8_TASK9_REWRITE_FAILURE_BOUNDARIES,
+);
+export type Phase698Task9RewriteFailureBoundary = z.infer<
+  typeof PHASE_6_9_8_TASK9_REWRITE_FAILURE_BOUNDARY_SCHEMA
+>;
 const CALL_DISPOSITION_SCHEMA = z.enum([
   'succeeded',
   'failed',
@@ -305,6 +321,8 @@ export const PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA = z
     failureReason: FAILURE_REASON_SCHEMA.nullable(),
     adapterFailureCategory: z.enum(PHASE_6_9_7_V7_WIRE_FAILURE_CATEGORIES).nullable().optional(),
     structuredOutputStage: z.enum(MODEL_AGENT_STRUCTURED_OUTPUT_STAGES).nullable().optional(),
+    rewriteFailureBoundary: PHASE_6_9_8_TASK9_REWRITE_FAILURE_BOUNDARY_SCHEMA.optional(),
+    rewriteCandidateDiagnostic: RETRIEVER_SCHEMA_RECOVERY_BOUNDED_DIAGNOSTIC_SCHEMA.optional(),
     wire: z
       .object({
         attempts: z.number().int().min(0).max(1),
@@ -349,6 +367,8 @@ export const PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA = z
         entry.failureReason !== expectedFailureReason ||
         entry.adapterFailureCategory !== undefined ||
         entry.structuredOutputStage !== undefined ||
+        entry.rewriteFailureBoundary !== undefined ||
+        entry.rewriteCandidateDiagnostic !== undefined ||
         entry.usage !== null ||
         entry.verifiedCostCny !== null ||
         entry.durationMs !== null
@@ -368,6 +388,8 @@ export const PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA = z
         entry.failureReason !== null ||
         entry.adapterFailureCategory !== undefined ||
         entry.structuredOutputStage !== undefined ||
+        entry.rewriteFailureBoundary !== undefined ||
+        entry.rewriteCandidateDiagnostic !== undefined ||
         entry.usage === null ||
         entry.verifiedCostCny === null
       ) {
@@ -415,6 +437,13 @@ export const PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA = z
         entry.failureReason !== adapterFailureReason(entry.adapterFailureCategory))
     ) {
       context.addIssue({ code: 'custom', message: 'bounded adapter diagnostic mismatch' });
+    }
+    if (
+      (entry.rewriteCandidateDiagnostic !== undefined &&
+        entry.rewriteFailureBoundary !== 'candidate_not_applied') ||
+      (entry.rewriteFailureBoundary !== undefined && entry.phase !== 'rewrite_candidate_model')
+    ) {
+      context.addIssue({ code: 'custom', message: 'bounded rewrite diagnostic mismatch' });
     }
   });
 

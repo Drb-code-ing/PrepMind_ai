@@ -1,5 +1,25 @@
 # PrepMind AI 开发日志
 
+> 2026-08-17 — Phase 6.9.8 SR5 V12 local-rejection postmortem（zero-provider）完成：
+>
+> 从 `main=93250de2` 新开普通分支 `drb/phase-6-9-8-sr5-v12-local-rejection-postmortem`。Task9 将旧 `baseInvalid`
+> 拆成七类 fixed enum，并冻结优先级：invocation、adapter state、adapter wire、provenance、attempted、trace、candidate not
+> applied。既有 `failureReason`、adapter category/stage 和历史 evidence 兼容性不变。
+>
+> `candidate_not_applied` 可选择性携带已有 strict bounded sidecar，只有 enum、bucket、shape fingerprint 与
+> `rawDataRetained=false`。三种真实 candidate-local rejection `rewrite_safety_invalid / rewrite_unchanged /
+> protected_terms_drift` 已通过 synthetic fetch、candidate、runner、journal/report/artifact 与 validator；raw sentinel 不进入
+> Error 或 durable evidence。成功、not-started、非 rewrite lane 和其他 boundary 均拒绝该 sidecar。
+>
+> 新增 focused `13/13`（`45 expect()`），兼容组 `36/36`（`402 expect()`）；Agent full `1693/1693`
+> （`25960 expect()`，`208 files`），typecheck/lint/Prettier/diff check 通过。历史 V12 bundle 只读 validator 仍为
+> `ok=true`，journal=`67`、final event=`evidence_published`，logical/physical SHA 未变化。
+>
+> Provider/credential/formal evidence/business writes=`0/0/0/0`；未读根 `.env`，未操作 Docker/API/browser，未写
+> Trace/BackgroundJob/Outbox，`qualityAuthority=none`。本任务不反推 V12 根因，不创建新 tag 或执行 Live；后续真实质量门
+> 必须使用新 lineage/tag/data-boundary/exact authorization。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-local-rejection-postmortem-zero-provider.md`。
+
 > 2026-08-17 — Phase 6.9.8 SR5 V12 controlled-Live 已失败封存：
 >
 > 唯一 run `49429392-857d-4635-80cc-0bca317cf9ff` 在 source/tag/object=
