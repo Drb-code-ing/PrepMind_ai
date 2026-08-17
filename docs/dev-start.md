@@ -3,6 +3,24 @@
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
+## 当前 SR5 v10 diagnostic qualification DQ2（zero-provider，2026-08-17）
+
+只运行 held-out synthetic response matrix 与静态门；不要读取根 `.env`，不要传 V10 authorization，不要执行 Live、
+recover、curl、单 case Provider 探测，也不要启动或清理 Docker：
+
+```powershell
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-sr5-v10-diagnostic-qualification-dq2.test.ts
+bun test packages/agent/tests/phase-6-9-8-retriever-final-response-sr5-v10-diagnostic-qualification.test.ts packages/agent/tests/phase-6-9-8-retriever-final-response-sr5-v10-diagnostic-qualification-dq2.test.ts
+bun test --timeout 30000 packages/agent/tests
+bun run --cwd packages/agent typecheck
+bun run --cwd packages/agent lint
+bunx --no-install prettier --check --end-of-line=crlf packages/agent/tests/phase-6-9-8-retriever-final-response-sr5-v10-diagnostic-qualification-dq2.test.ts
+git diff --check
+```
+
+DQ2 不修改生产 adapter/harness，只验证 `27` 个 held-out shape 的 category/stage/wire/no-leak 稳定性。它不创建正式
+evidence，不能用于解释封存 v10 的具体根因，也不能替代 Docker/API/可见浏览器产品验收。
+
 ## 当前 SR5 v10 diagnostic qualification DQ1（zero-provider，2026-08-17）
 
 只运行 synthetic response qualification 与本地静态门；不要读取根 `.env`，不要传 V10 authorization，不要执行 Live、

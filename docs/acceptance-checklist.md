@@ -5,6 +5,24 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
+## 0K-V10-DQ2. SR5 v10 diagnostic robustness（当前，zero-provider）
+
+- [x] `27` 个 held-out Provider shape，不复用 DQ1 canonical payload
+- [x] object/envelope `5`、JSON parse `5`、type/schema `6`、response audit `4`、usage `7`
+- [x] 每例穿过 direct adapter、runtime、Retriever candidate 与 Task9 projection
+- [x] 每例 fetch=`1`、wire=`1/1/0`，raw sentinel/`provider_secret` 不泄漏
+- [x] 生产实现无修改，DQ1 test-only seam 保持唯一 synthetic 注入边界
+- [x] authority=`zero_provider_sr5_v10_diagnostic_qualification_dq2`
+- [x] gate=`schema_adapter_diagnostic_robustness_not_evidence`，`qualityAuthority=none`
+- [x] DQ2 focused `1/1`（`190 expect()`），DQ1+DQ2 `2/2`（`210 expect()`）
+- [x] Agent full `1663/1663`（`25706 expect()`，`205 files`）
+- [x] typecheck/lint/CRLF-aware Prettier/diff check
+- [ ] 分支 commit/push、`main --no-ff` merge/push、merged-main parity
+- [ ] 新 lineage/source/tag/Live：不属于 DQ2，未授权
+- [ ] SR6 Docker/API/Trace/可见浏览器：继续阻断
+
+验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-diagnostic-qualification-dq2-zero-provider.md`。
+
 ## 0K-V10-DQ1. SR5 v10 diagnostic qualification（当前，zero-provider）
 
 - [x] test-only synthetic fetch 不改变生产 Live harness 的不可注入边界

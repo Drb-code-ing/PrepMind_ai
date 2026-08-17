@@ -1,5 +1,18 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 SR5 v10 diagnostic qualification DQ2（2026-08-17）
+
+DQ2 使用 `27` 个不复用 DQ1 canonical payload 的 held-out shape，对五类 bounded diagnostic 做 zero-provider robustness
+qualification。每例保持一次 synthetic fetch、Provider response 已观察、Task9 verified usage 为 0，并将逐 case raw sentinel
+限制在 adapter 内部。生产 Live harness 和共享内部实现均未修改。
+
+authority=`zero_provider_sr5_v10_diagnostic_qualification_dq2`，gate=
+`schema_adapter_diagnostic_robustness_not_evidence`，`qualityAuthority=none`。DQ2 `1/1`（`190 expect()`）、DQ1+DQ2
+`2/2`（`210 expect()`）、Agent full `1663/1663`（`25706 expect()`，`205 files`）、typecheck/lint/CRLF-aware
+Prettier/diff check 通过；Provider/credential/formal evidence/business writes=`0/0/0/0`。本任务不创建 tag、不请求授权、
+不执行 Live、不解锁 SR6。分支 commit/push、`--no-ff` merge/push 与 merged-main parity 完成后，才能从最新 `main` 决定
+新的 recovery lineage。
+
 ## 当前原子阶段：Phase 6.9.8 SR5 v10 diagnostic qualification DQ1（2026-08-17）
 
 DQ1 已把 postmortem 新增的 bounded diagnostic 放回生产形状调用链进行 zero-provider qualification：五类 synthetic

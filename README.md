@@ -1,5 +1,17 @@
 # PrepMind AI 智能备考助手
 
+## 当前工作回执：SR5 v10 diagnostic qualification DQ2（zero-provider，2026-08-17）
+
+DQ2 以 `27` 个 held-out Provider shape 对 DQ1 诊断链路做 anti-overfit 回归，覆盖 envelope、content JSON、rewrite schema、
+non-thinking audit 与 usage 数值边界。所有样例只执行一次 synthetic fetch，保持 wire=`1/1/0`，raw sentinel 不进入错误或
+diagnostic；生产代码没有新增注入点。
+
+DQ2 focused `1/1`（`190 expect()`），DQ1+DQ2 `2/2`（`210 expect()`），Agent full `1663/1663`
+（`25706 expect()`，`205 files`），typecheck/lint/CRLF-aware Prettier/diff check 通过。Provider、credential、formal
+evidence、business writes 均为 `0`；未启动 Docker/API/browser，也未触碰 v10 sealed bundle。DQ2 不是 Live、模型质量或
+产品 authority。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-diagnostic-qualification-dq2-zero-provider.md`。
+
 ## 当前工作回执：SR5 v10 diagnostic qualification DQ1（zero-provider，2026-08-17）
 
 DQ1 已用五类 synthetic Provider response 验证第一方 DeepSeek direct adapter 到 Task9 failure projection 的完整诊断链路。
