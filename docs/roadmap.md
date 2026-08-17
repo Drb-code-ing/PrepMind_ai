@@ -1,5 +1,19 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 SR5 v10 diagnostic qualification DQ1（2026-08-17）
+
+DQ1 已把 postmortem 新增的 bounded diagnostic 放回生产形状调用链进行 zero-provider qualification：五类 synthetic
+response 穿过 direct adapter、runtime、Retriever candidate 与 Task9 projection，固定区分 JSON parse、object missing、
+type validation、response audit 和 usage validation，同时证明 wire response 可被记录而 verified usage 仍为 0，且 raw
+payload 不外泄。生产 harness 保持不可注入。
+
+authority=`zero_provider_sr5_v10_diagnostic_qualification`，gate=
+`schema_adapter_diagnostic_qualification_not_evidence`，`qualityAuthority=none`。focused `39/39`、Agent full
+`1662/1662`、typecheck/lint/Prettier/diff check 通过；Provider/credential/formal evidence/business writes=`0/0/0/0`。
+本原子任务不创建 tag、不请求授权、不执行 Live，不解锁 SR6。完成分支 commit/push、`--no-ff` merge/push 与 merged-main
+zero-provider parity 后，才从最新 `main` 决定下一条独立 recovery lineage；任何 Live 都需要新 tag、数据边界与 fresh exact
+authorization。
+
 ## 当前原子阶段：Phase 6.9.8 SR5 v10 schema/adapter postmortem（2026-08-14）
 
 zero-provider postmortem 已定位两个独立诊断缺口：DeepSeek candidate 的细分类别在 `runRewriteModel` 被压成
