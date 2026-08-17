@@ -43,8 +43,25 @@ Provider/credential/formal evidence/business writes=`0/0/0/0`；未读取根 `.e
 Docker、PostgreSQL、Redis、MinIO、API、browser，未写产品 Trace/BackgroundJob/Outbox。`qualityAuthority=none`，本记录不
 宣称真实模型语义、产品可用、P95/SLA 或 main authority。
 
+## 后续 controlled-Live preflight 结果
+
+zero-provider 收口后的 `main == origin/main == c077d6546709c6af2e796ec861e8376355437466` 创建并推送 annotated tag
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v11-approved`，tag object=
+`20e2abfcedd5cbb759694f59cce92cae4ef9fc80`，peeled commit=`c077d6546709c6af2e796ec861e8376355437466`。
+用户随后接受 V11 DeepSeek/Qwen 数据边界并授权唯一入口。
+
+production CLI 在 authorization 后、source admission 与 credential projection 前返回 `proxy_preflight_not_ready`。bounded
+proxy 结果为 `loopback_proxy_unavailable / loopback_proxy / configuredProxyVariables=4 / listener=unavailable /
+listenerProbeCalls=1 / providerCalls=0`；宿主 Git Bash 环境的 `http_proxy/https_proxy` 指向
+`http://127.0.0.1:7897`，当时无监听。终态 credential/provider/formal evidence/business writes=`0/0/0/0`，没有
+marker、journal、report、artifact 或 runId；未读取根 `.env`，未调用 DeepSeek/Qwen，未操作 Docker/API/browser。
+
+该结果不能归因 Provider、账号、余额、模型、schema 或语义质量。本次唯一授权入口已使用，不得直接重跑、改为直连、
+retry/replay/backfill、curl、单 case或追加 Provider 探测。
+
 ## 下一步
 
-zero-provider 功能、文档与 merged-main 重点 parity 已收口。下一步核对新的 annotated tag/source bundle，重新接受 V11
-DeepSeek/Qwen 数据边界并请求唯一一次 controlled-Live；Live
+zero-provider 功能、文档与 merged-main 重点 parity 已收口。下一步从最新 `main` 新开 zero-provider proxy recovery，确认宿主
+loopback proxy 或明确的 native/no-profile direct 环境；修复合并后重新核对 annotated tag/source bundle，并取得 fresh V11
+DeepSeek/Qwen 数据边界与唯一 controlled-Live 授权。Live
 成功或失败都要 durable seal，再决定是否进入 SR6 Docker/API/可见浏览器验收。

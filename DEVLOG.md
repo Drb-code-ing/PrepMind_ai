@@ -1,5 +1,18 @@
 # PrepMind AI 开发日志
 
+> 2026-08-17 — Phase 6.9.8 SR5 V11 controlled-Live 在 proxy preflight 停止：
+>
+> `main == origin/main == c077d654` 时创建并推送 annotated tag
+> `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v11-approved`；tag object=`20e2abfc`，peeled commit=
+> `c077d654`。用户接受 V11 数据边界并授权唯一入口后，production CLI 在 credential 与 Provider 前被 proxy preflight 阻断。
+>
+> Git Bash profile 注入 `http_proxy/https_proxy=http://127.0.0.1:7897`，端口无监听；结果为
+> `loopback_proxy_unavailable / configuredProxyVariables=4 / listenerProbeCalls=1 / providerCalls=0`。credential/formal
+> evidence/business writes=`0/0/0`，没有 marker/journal/report/artifact/runId，未读根 `.env`，未调用 DeepSeek/Qwen，未操作
+> Docker/API/browser。本次授权入口不得直接重跑；后续必须先修复宿主 proxy，再从最新 `main` 建立新 source/tag 与 fresh
+> authorization。
+>
+
 > 2026-08-17 — Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider）完成：
 >
 > 从 `main=610598c4` 新开普通分支 `drb/phase-6-9-8-sr5-v11-recovery`，功能提交 `1773625a` 已推送并以 `--no-ff` 合并为

@@ -1,5 +1,22 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 V11 controlled-Live 在 proxy preflight 停止（2026-08-17）
+
+`main == origin/main == c077d6546709c6af2e796ec861e8376355437466` 时创建并推送 annotated tag
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v11-approved`；tag object=`20e2abfcedd5cbb759694f59cce92cae4ef9fc80`，
+peeled commit 与当时 `main` 相同。用户随后接受 V11 DeepSeek/Qwen 数据边界并授权唯一入口。
+
+正式 CLI 在 authorization gate 后、source admission 与 credential projection 前被 production proxy preflight 阻断：Git Bash
+环境包含 `http_proxy/https_proxy=http://127.0.0.1:7897`，但端口无监听，bounded 结果为
+`loopback_proxy_unavailable / configuredProxyVariables=4 / listenerProbeCalls=1 / providerCalls=0`。终态
+credential/provider/formal evidence/business writes=`0/0/0/0`；没有 marker、journal、report、artifact 或 runId，未读取根
+`.env`，未调用 DeepSeek/Qwen，也未启动、停止或清理 Docker/API/browser。
+
+本次唯一授权入口已使用，禁止在同一授权下重跑、改为直连、replay/backfill、curl 或单 case Provider 探测。下一任务只能从
+最新 `main` 新开普通分支，先 zero-provider 修复/确认宿主 proxy，再重新完成 source/tag parity，并取得 fresh V11 数据边界与
+exact authorization。SR6 继续阻断；详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v11-diagnostic-recovery-zero-provider.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider，已完成，2026-08-17）
 
 功能分支 `drb/phase-6-9-8-sr5-v11-recovery` 已从 `main=610598c4` 新开并以 `--no-ff` 合并为 `main=7cf12916`；
