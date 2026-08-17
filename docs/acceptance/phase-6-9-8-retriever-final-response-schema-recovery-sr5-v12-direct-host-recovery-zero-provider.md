@@ -2,7 +2,8 @@
 
 日期：2026-08-17  
 分支：`drb/phase-6-9-8-sr5-v12-direct-host-recovery`  
-基线：`main == origin/main == 4b7c663bdd1c87e4c583f3dcfa7c7b146deea018`
+基线：`main == origin/main == 4b7c663bdd1c87e4c583f3dcfa7c7b146deea018`；功能提交：`4dec1299`；合并提交：`d763f32f`；当前
+`main == origin/main == d763f32f`
 
 ## 目的
 
@@ -41,8 +42,13 @@ V11 tag object `20e2abfcedd5cbb759694f59cce92cae4ef9fc80`、peeled commit
 `c077d6546709c6af2e796ec861e8376355437466`、已使用授权和零证据终态均保持不可变；禁止重跑 V11、移动 tag、复用授权、
 curl 或单 case Provider 探测。
 
-## 下一步
+## 收口与下一步
 
-先完成 V12 功能分支 commit/push、`main --no-ff` merge/push 与 merged-main zero-provider parity。随后在最终 clean/pushed
-`main` 创建并推送 `phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v12-approved` annotated tag，核对 tag
-object、peeled commit 与远程 parity，再请求 fresh V12 数据边界和 exact authorization。当前不得执行 Provider 调用。
+V12 功能分支已提交并推送（`4dec1299`），已通过 `--no-ff` 合并并推送 `main`（`d763f32f`），merged-main focused/full/static
+parity 已通过：V10/V11/V12 focused `19/19`、Agent `1680/1680`（`25912 expect()`）、AI `346/346`
+（`2667 expect()`）、typecheck/lint/diff check 均通过。
+
+下一步是在当前 clean/pushed `main` 创建并推送
+`phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-v12-approved` annotated tag，核对 tag object、peeled commit、
+local/remote `main` parity 与最终只读 source verifier。完成后再请求 fresh V12 数据边界和 exact authorization；当前不得执行 Provider
+调用。Controlled-Live 成功或失败都必须按 V12 独立 namespace durable seal，之后才可评估 SR6 Docker/API/Trace/可见浏览器产品验收。
