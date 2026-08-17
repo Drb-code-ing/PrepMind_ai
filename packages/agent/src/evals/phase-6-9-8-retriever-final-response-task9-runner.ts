@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { ModelAgentStructuredOutputStage, Phase697V7WireFailureCategory } from '@repo/ai';
 
 import {
+  PHASE_6_9_8_TASK9_REWRITE_FAILURE_BOUNDARY_SCHEMA,
   PHASE_6_9_8_TASK9_CALL_ENTRY_SCHEMA,
   PHASE_6_9_8_TASK9_EVAL_POLICY,
   PHASE_6_9_8_TASK9_FINAL_ENTRY_SCHEMA,
@@ -20,8 +21,13 @@ import {
   type Phase698Task9GuardEntry,
   type Phase698Task9Report,
   type Phase698Task9RewriteEntry,
+  type Phase698Task9RewriteFailureBoundary,
   type Phase698Task9WireStage,
 } from './phase-6-9-8-retriever-final-response-task9-contract.ts';
+import {
+  RETRIEVER_SCHEMA_RECOVERY_BOUNDED_DIAGNOSTIC_SCHEMA,
+  type RetrieverSchemaRecoveryBoundedDiagnostic,
+} from '../model-candidates/retriever-schema-recovery-contract.ts';
 import { PHASE_6_9_8_TASK8_MANIFEST } from './phase-6-9-8-retriever-final-response-manifest.ts';
 import type {
   Phase698Task8FinalResponseCase,
@@ -176,6 +182,8 @@ export type Phase698Task9RuntimeDiagnostic = Readonly<{
     responses: 0 | 1;
     verifiedUsage: 0 | 1;
   }>;
+  rewriteFailureBoundary?: Phase698Task9RewriteFailureBoundary;
+  rewriteCandidateDiagnostic?: RetrieverSchemaRecoveryBoundedDiagnostic;
 }>;
 
 type RunnerDependencies = Readonly<{
@@ -558,6 +566,12 @@ export function runtimeDiagnosticFields(error: unknown) {
   return {
     adapterFailureCategory: error.diagnostic.adapterFailureCategory,
     structuredOutputStage: error.diagnostic.structuredOutputStage,
+    ...(error.diagnostic.rewriteFailureBoundary === undefined
+      ? {}
+      : { rewriteFailureBoundary: error.diagnostic.rewriteFailureBoundary }),
+    ...(error.diagnostic.rewriteCandidateDiagnostic === undefined
+      ? {}
+      : { rewriteCandidateDiagnostic: error.diagnostic.rewriteCandidateDiagnostic }),
   } as const;
 }
 
@@ -574,10 +588,30 @@ function freezeRuntimeDiagnostic(
   ) {
     throw new Error('PHASE_6_9_8_TASK9_RUNTIME_DIAGNOSTIC_INVALID');
   }
+  const rewriteFailureBoundary =
+    diagnostic.rewriteFailureBoundary === undefined
+      ? undefined
+      : PHASE_6_9_8_TASK9_REWRITE_FAILURE_BOUNDARY_SCHEMA.parse(diagnostic.rewriteFailureBoundary);
+  const rewriteCandidateDiagnostic =
+    diagnostic.rewriteCandidateDiagnostic === undefined
+      ? undefined
+      : RETRIEVER_SCHEMA_RECOVERY_BOUNDED_DIAGNOSTIC_SCHEMA.parse(
+          diagnostic.rewriteCandidateDiagnostic,
+        );
+  if (
+    rewriteCandidateDiagnostic !== undefined &&
+    rewriteFailureBoundary !== 'candidate_not_applied'
+  ) {
+    throw new Error('PHASE_6_9_8_TASK9_RUNTIME_DIAGNOSTIC_INVALID');
+  }
   return Object.freeze({
     adapterFailureCategory: diagnostic.adapterFailureCategory,
     structuredOutputStage: diagnostic.structuredOutputStage,
     providerWire: Object.freeze({ dispatches, responses, verifiedUsage }),
+    ...(rewriteFailureBoundary === undefined ? {} : { rewriteFailureBoundary }),
+    ...(rewriteCandidateDiagnostic === undefined
+      ? {}
+      : { rewriteCandidateDiagnostic: Object.freeze(rewriteCandidateDiagnostic) }),
   });
 }
 

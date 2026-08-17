@@ -1,18 +1,22 @@
 # PrepMind AI 学习与开发路线图
 
-## 当前原子阶段：Phase 6.9.8 SR5 V12 Live failure postmortem（待开始，2026-08-17）
+## 当前原子阶段：Phase 6.9.8 SR5 V12 local-rejection postmortem（zero-provider，已完成，2026-08-17）
 
-V12 唯一 controlled-Live 已正常 sealed：run=`49429392-857d-4635-80cc-0bca317cf9ff`，direct-host/source/guards 通过，
-DeepSeek/Qwen 调用=`2/3`。第一组 rewrite 全链路成功；第二组 DeepSeek response 已到达，但 Task9 typed result/usage 未验证，
-当前证据只保留 `runtime_contract_invalid / unknown / wire=1/1/1/0`。它不能区分 candidate 未应用、provenance/trace、V7
-state/counter 或 invocation mismatch；candidate 未应用内部也不能区分 safety scan、unchanged 与 protected-terms drift。
-breaker 后其余 `19` 槽未启动，终态 `quality_gate_failed / qualityAuthority=none`；validator=`ok=true`、journal=`67`、
-`evidence_published`。
+从已推送 `main=93250de2` 建立普通分支，不使用 worktree。Task9 现按确定性 first-failure priority 记录
+`invocation_mismatch / adapter_state_mismatch / adapter_wire_mismatch / provenance_mismatch / attempted_mismatch /
+trace_mismatch / candidate_not_applied`，原 failure reason 与 adapter diagnostic 保持兼容。只有最后一种 boundary 才可携带
+既有 bounded sidecar，并由 strict contract 保证只保存枚举、桶、shape fingerprint 与 `rawDataRetained=false`。
 
-V12 不得重跑、恢复或追加 Provider 探测，SR6 继续阻断。下一原子任务从最新 `main` 新开普通分支，仅做 zero-provider postmortem：
-把 response-observed 后的 Task9 `baseInvalid` 与 candidate-local rejection bounded reason 投影到 SR5 journal/report，补
-synthetic/held-out/metamorphic
-回归并保持 raw model content 不落盘。源码改变后必须建立新的 source/tag/authorization lineage，不能复用 V12。
+三种 candidate-local rejection safety/unchanged/protected-terms drift 已通过 synthetic candidate、runner、journal、report、
+artifact 与 validator 回归；raw sentinel 不落盘。新增 focused `13/13`，兼容组 `36/36`，Agent full `1693/1693`，
+typecheck/lint/Prettier/diff check 通过。历史 V12 validator 仍为 `ok=true`，journal `67` 与 logical/physical SHA 均未变化。
+
+本阶段 zero-provider 且 `qualityAuthority=none`，不反推 V12 的具体根因，也未进行 Docker/API/browser/Trace 产品验收。
+下一阶段只能从最新已推送 `main` 决定新的 source lineage：先做独立只读质量审查与 source/tag contract，再请求 fresh
+DeepSeek/Qwen data-boundary 和 exact authorization；不得复用或改写 V12 tag、授权与 sealed evidence。新语义质量门通过后，
+才可进入 SR6 Docker/API/Trace/可见浏览器验收。
+
+验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-local-rejection-postmortem-zero-provider.md`。
 
 ## 当前原子阶段：Phase 6.9.8 SR5 V12 direct-host recovery（zero-provider，已合并，2026-08-17）
 

@@ -5,6 +5,25 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
+## 0K-V12-PM. SR5 V12 local-rejection postmortem（zero-provider）
+
+- [x] 从最新已推送 `main=93250de2` 新开普通分支，不使用 worktree
+- [x] 七类 `rewriteFailureBoundary` 固定枚举与 first-failure priority
+- [x] `rewriteCandidateDiagnostic` 只允许出现在 `candidate_not_applied` rewrite lane
+- [x] strict sidecar 仅保留 enum/bucket/fingerprint，且 `rawDataRetained=false`
+- [x] safety/unchanged/protected-terms drift 三类 synthetic candidate-local rejection
+- [x] runner、breaker、journal、report、hard-link artifact 与 strict bundle validator
+- [x] raw Provider sentinel 不进入 Error、report、journal 或 artifact
+- [x] 新增 focused `13/13`（`45 expect()`）；兼容组 `36/36`（`402 expect()`）
+- [x] Agent full `1693/1693`（`25960 expect()`，`208 files`），typecheck/lint/Prettier/diff check
+- [x] V12 sealed validator 仍 `ok=true`，journal=`67`，logical/physical SHA 未变化
+- [x] Provider/credential/formal evidence/business writes=`0/0/0/0`
+- [x] 未读根 `.env`，未启动 Docker/API/browser，未写 Trace/BackgroundJob/Outbox
+- [ ] 新 source lineage/tag/data-boundary/exact authorization 下的下一次质量门
+- [ ] SR6 Docker/API/Trace/可见浏览器验收
+
+验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-local-rejection-postmortem-zero-provider.md`。
+
 ## 0K-V12-Live. SR5 V12 controlled-Live（失败封存）
 
 - [x] source/tag clean parity：commit=`550bc864`，tag object=`62d5d2d6`，source bundle=`d1ff73db...d381`
@@ -18,11 +37,12 @@
 - [x] validator=`ok=true`，journal=`67`，final event=`evidence_published`，recovery claim=`null`
 - [x] report logical SHA=`86f4e84e...3654`，physical artifact SHA=`817bc897...e81`
 - [x] 未启动 Docker/API/browser，未写 Trace/BackgroundJob/Outbox 或业务数据
-- [ ] 独立 zero-provider Task9 base-invalid/local-rejection diagnostic postmortem；V12 不得重跑
+- [x] 独立 zero-provider Task9 base-invalid/local-rejection diagnostic postmortem；V12 未重跑
 - [ ] 新 source/lineage/tag/authorization 后的下一次质量门
 - [ ] SR6 Docker/API/Trace/可见浏览器验收
 
-验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-controlled-live-quality-failure-sealed.md`。
+验收：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-controlled-live-quality-failure-sealed.md`；
+postmortem：`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-local-rejection-postmortem-zero-provider.md`。
 
 ## 0K-V12. SR5 direct-host recovery（zero-provider，已合并）
 

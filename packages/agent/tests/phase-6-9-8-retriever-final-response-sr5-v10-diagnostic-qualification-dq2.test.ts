@@ -164,6 +164,7 @@ describe('SR5 v10 DQ2 zero-provider diagnostic robustness', () => {
         adapterFailureCategory: item.expectedCategory,
         structuredOutputStage: item.expectedStage,
         providerWire: { dispatches: 1, responses: 1, verifiedUsage: 0 },
+        rewriteFailureBoundary: 'adapter_state_mismatch',
       });
       expect(Object.isFrozen(error.diagnostic), item.name).toBeTrue();
       expect(JSON.stringify(error), item.name).not.toContain(SENTINEL_PREFIX);
