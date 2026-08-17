@@ -1,5 +1,22 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 SR5 v10 diagnostic qualification DQ2（zero-provider，2026-08-17）
+
+DQ2 在 DQ1 生产形状 seam 上新增 `27` 个独立 held-out Provider shape：object/envelope missing=`5`、content JSON
+parse=`5`、rewrite type/schema=`6`、non-thinking response audit=`4`、usage validation=`7`。每例都实际穿过第一方 DeepSeek
+direct adapter、ModelAgentRuntime、Retriever query-rewrite candidate、V7 diagnostic 与 Task9 RuntimeError；固定为一次 fetch、
+wire=`1/1/0`，并确认 payload 中逐 case raw sentinel/`provider_secret` 不进入 Error 或 diagnostic。
+
+DQ2 不改生产实现，只新增 zero-provider test matrix。authority=`zero_provider_sr5_v10_diagnostic_qualification_dq2`，gate=
+`schema_adapter_diagnostic_robustness_not_evidence`，`qualityAuthority=none`。DQ2 focused `1/1`（`190 expect()`），DQ1+DQ2
+`2/2`（`210 expect()`），Agent full `1663/1663`（`25706 expect()`，`205 files`），typecheck/lint/CRLF-aware
+Prettier/diff check 通过。Provider/credential/formal evidence/business writes=`0/0/0/0`；未读取根 `.env`，未启动
+Docker/API/browser，未修改 v10 sealed bundle。
+
+DQ2 只证明新诊断在 held-out shape 上稳定，不反推 v10 根因，也不是 Live、模型质量、产品、SR6 或 SLA authority。本任务不
+创建 tag、不接受授权、不执行 Live。详见
+`docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-diagnostic-qualification-dq2-zero-provider.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 v10 diagnostic qualification DQ1（zero-provider，2026-08-17）
 
 DQ1 将五类 synthetic Provider response 注入第一方 DeepSeek direct adapter，并实际穿过 `ModelAgentRuntime -> Retriever
