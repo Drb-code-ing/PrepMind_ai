@@ -13,6 +13,9 @@ Prettier/diff check 通过；Provider/credential/formal evidence/business writes
 不执行 Live、不解锁 SR6。分支 commit/push、`--no-ff` merge/push 与 merged-main parity 完成后，才能从最新 `main` 决定
 新的 recovery lineage。
 
+收口已完成：功能提交 `9209a8e7` 推送后以 `--no-ff` 合并并推送，功能 merge=`2c3bcd17`。合并后二次 DQ1+DQ2
+`2/2`、Agent full `1663/1663`、typecheck/lint、CRLF-aware Prettier 与 diff check 通过。
+
 ## 当前原子阶段：Phase 6.9.8 SR5 v10 diagnostic qualification DQ1（2026-08-17）
 
 DQ1 已把 postmortem 新增的 bounded diagnostic 放回生产形状调用链进行 zero-provider qualification：五类 synthetic

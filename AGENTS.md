@@ -17,6 +17,9 @@ DQ2 只证明新诊断在 held-out shape 上稳定，不反推 v10 根因，也�
 创建 tag、不接受授权、不执行 Live。详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-diagnostic-qualification-dq2-zero-provider.md`。
 
+功能提交 `9209a8e7` 已推送，并以 `--no-ff` 合并并推送为 `2c3bcd17`。合并后 DQ1+DQ2 `2/2`、Agent full
+`1663/1663`、typecheck/lint、CRLF-aware Prettier 与 diff check 均通过。
+
 ## 当前状态：Phase 6.9.8 SR5 v10 diagnostic qualification DQ1（zero-provider，2026-08-17）
 
 DQ1 将五类 synthetic Provider response 注入第一方 DeepSeek direct adapter，并实际穿过 `ModelAgentRuntime -> Retriever

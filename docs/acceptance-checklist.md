@@ -17,7 +17,8 @@
 - [x] DQ2 focused `1/1`（`190 expect()`），DQ1+DQ2 `2/2`（`210 expect()`）
 - [x] Agent full `1663/1663`（`25706 expect()`，`205 files`）
 - [x] typecheck/lint/CRLF-aware Prettier/diff check
-- [ ] 分支 commit/push、`main --no-ff` merge/push、merged-main parity
+- [x] 功能提交 `9209a8e7` 推送，`main --no-ff` merge/push 为 `2c3bcd17`
+- [x] merged-main DQ1+DQ2 `2/2`、Agent full `1663/1663`、全部静态门
 - [ ] 新 lineage/source/tag/Live：不属于 DQ2，未授权
 - [ ] SR6 Docker/API/Trace/可见浏览器：继续阻断
 

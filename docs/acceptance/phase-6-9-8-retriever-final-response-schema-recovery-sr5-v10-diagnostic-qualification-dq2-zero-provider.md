@@ -65,3 +65,7 @@ DQ2 不创建 tag、不接受数据边界、不请求或执行 controlled-Live�
 合并并推送 `main` -> merged-main focused/typecheck/lint/full replay -> 文档 parity。之后如决定建立新 recovery lineage，必须
 从最新 `main` 创建新 source/tag，并重新取得当次数据边界接受与 fresh exact authorization；V10 tag、授权和 evidence
 均不可复用。
+
+本次功能收口已完成：功能提交=`9209a8e7`，merge=`2c3bcd17d2fabccacdcf052185d5d8a670dcf998`，功能验收时
+main/origin parity 通过。merged-main DQ1+DQ2=`2/2`（`210 expect()`）、Agent full=`1663/1663`
+（`25706 expect()`，`205 files`），typecheck/lint、CRLF-aware Prettier 与 diff check 均通过。

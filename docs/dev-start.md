@@ -21,6 +21,8 @@ git diff --check
 DQ2 不修改生产 adapter/harness，只验证 `27` 个 held-out shape 的 category/stage/wire/no-leak 稳定性。它不创建正式
 evidence，不能用于解释封存 v10 的具体根因，也不能替代 Docker/API/可见浏览器产品验收。
 
+DQ2 已合并并推送，功能 merge=`2c3bcd17`。合并后已复现 DQ1+DQ2 focused、Agent full 与全部静态门。
+
 ## 当前 SR5 v10 diagnostic qualification DQ1（zero-provider，2026-08-17）
 
 只运行 synthetic response qualification 与本地静态门；不要读取根 `.env`，不要传 V10 authorization，不要执行 Live、

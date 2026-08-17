@@ -15,6 +15,10 @@
 > Docker/API/browser，未触碰 v10 sealed evidence。本结果不反推 v10 根因，不创建 tag、不接受授权、不执行 Live。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-diagnostic-qualification-dq2-zero-provider.md`。
 >
+> 功能提交 `9209a8e7` 已推送，并以 `--no-ff` 合并并推送为
+> `2c3bcd17d2fabccacdcf052185d5d8a670dcf998`。merged-main DQ1+DQ2 `2/2`、Agent full `1663/1663`、
+> typecheck/lint、CRLF-aware Prettier 与 diff check 均通过。
+>
 
 > 2026-08-17 — Phase 6.9.8 SR5 v10 diagnostic qualification DQ1（zero-provider）完成：
 >
