@@ -1,8 +1,10 @@
 # Phase 6.9.8 SR5 V11 diagnostic recovery（zero-provider）
 
 日期：2026-08-17
-分支：`drb/phase-6-9-8-sr5-v11-recovery`
+功能分支：`drb/phase-6-9-8-sr5-v11-recovery`
+收口分支：`drb/phase-6-9-8-sr5-v11-closeout`
 基线：`main=610598c44ffa5a729c8ea5a212792322141a0447`
+功能提交：`1773625a`；功能 merge：`7cf12916`
 
 ## 目的
 
@@ -31,8 +33,9 @@ V10 controlled-Live 将 DeepSeek candidate 的失败压成 `schema_invalid`，�
   reasoning 仍为 `response_audit`。
 - Agent full `1671/1671`（`25804 expect()`，`206 files`）、AI full `346/346`（`2667 expect()`，`28 files`）、Agent/AI
   typecheck、lint 通过。
-- 本阶段已完成 format、focused/full zero-provider parity 与 V10/V11 identity isolation；尚未完成分支提交推送、`main --no-ff` 合并后二次回归、V11 annotated tag、
-  fresh authorization、controlled-Live 或 SR6 Docker/API/browser 验收。
+- 本阶段已完成 format、focused/full zero-provider parity 与 V10/V11 identity isolation；功能分支已推送并以 `--no-ff` 合并为
+  `main=7cf12916`，merged-main Agent `1671/1671`、AI `346/346` 全量结果保持通过。收口分支仅修复 Prettier 格式并同步文档，
+  不改变运行语义；本阶段仍未创建 V11 annotated tag、未接受 fresh authorization、未执行 controlled-Live，也未进行 SR6 Docker/API/browser 验收。
 
 ## 边界
 
@@ -42,6 +45,6 @@ Docker、PostgreSQL、Redis、MinIO、API、browser，未写产品 Trace/Backgro
 
 ## 下一步
 
-完成静态和全量 parity 后，以单提交推送分支，`--no-ff` 合并并推送 `main`，在 merged-main 做二次 zero-provider 回归。
-之后才能核对新的 annotated tag/source bundle，重新接受 V11 DeepSeek/Qwen 数据边界并请求唯一一次 controlled-Live；Live
+完成收口分支的格式与文档提交并合并推送 `main`，再做一次轻量静态/重点 focused parity。之后才能核对新的 annotated tag/source bundle，
+重新接受 V11 DeepSeek/Qwen 数据边界并请求唯一一次 controlled-Live；Live
 成功或失败都要 durable seal，再决定是否进入 SR6 Docker/API/可见浏览器验收。
