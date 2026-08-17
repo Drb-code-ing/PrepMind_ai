@@ -11,6 +11,9 @@ evidence、business writes 均为 `0`；未启动 Docker/API/browser，也未触
 产品 authority。详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-diagnostic-qualification-dq1-zero-provider.md`。
 
+功能提交 `243a4b97` 已以 `--no-ff` 合并并推送为 `main == origin/main == dde5c24a`；合并后二次 focused、全量、typecheck、
+lint、CRLF-aware code Prettier 与 diff check 均通过。
+
 ## 当前工作回执：SR5 v10 schema/adapter postmortem（zero-provider，2026-08-14）
 
 v10 DeepSeek `schema_invalid` 已完成无 credential、无 Provider 调用的源码级复盘。旧链路把多个 adapter/runtime 失败压成

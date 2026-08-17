@@ -16,6 +16,9 @@
 > 宣称模型/产品质量。验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-diagnostic-qualification-dq1-zero-provider.md`。
 >
+> 功能提交 `243a4b97` 已推送，并以 `--no-ff` 合并为 `dde5c24a13274d3c647fa7830839de8923b97ed8` 推送到 `main`。
+> merged-main DQ1 focused `39/39`、Agent full `1662/1662`、typecheck/lint、CRLF-aware code Prettier 与 diff check 均通过。
+>
 
 > 2026-08-14 — Phase 6.9.8 SR5 v10 schema/adapter postmortem（zero-provider）完成：
 >

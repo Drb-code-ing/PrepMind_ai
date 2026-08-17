@@ -15,7 +15,9 @@
 - [x] gate=`schema_adapter_diagnostic_qualification_not_evidence`，`qualityAuthority=none`
 - [x] focused `39/39`（`148 expect()`），Agent full `1662/1662`（`25516 expect()`，`204 files`）
 - [x] typecheck/lint/Prettier/diff check
-- [ ] 分支 commit/push、`main --no-ff` merge/push、merged-main parity
+- [x] 功能提交 `243a4b97` 推送，`main --no-ff` merge/push 为 `dde5c24a`，`main == origin/main`
+- [x] merged-main focused `39/39`（`148 expect()`）、Agent full `1662/1662`（`25516 expect()`，`204 files`）
+- [x] merged-main typecheck/lint、CRLF-aware code Prettier/diff check
 - [ ] 新 lineage/source/tag/Live：不属于 DQ1，未授权
 - [ ] SR6 Docker/API/Trace/可见浏览器：继续阻断
 
