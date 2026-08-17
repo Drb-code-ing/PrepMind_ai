@@ -68,6 +68,6 @@ DQ1 不创建 tag、不接受数据边界、不请求或执行 controlled-Live�
 schema recovery，必须从最新 `main` 创建独立 lineage/source/tag，并重新取得当次数据边界接受与 fresh exact
 authorization；V10 tag、授权和 evidence 均不可复用。
 
-本次收口已完成：功能提交=`243a4b97`，merge=`dde5c24a13274d3c647fa7830839de8923b97ed8`，且
-`main == origin/main`。merged-main focused=`39/39`（`148 expect()`）、Agent full=`1662/1662`
+本次功能收口已完成：功能提交=`243a4b97`，merge=`dde5c24a13274d3c647fa7830839de8923b97ed8`，功能验收时
+main/origin parity 通过。merged-main focused=`39/39`（`148 expect()`）、Agent full=`1662/1662`
 （`25516 expect()`，`204 files`），typecheck/lint、CRLF-aware code Prettier 与 diff check 均通过。

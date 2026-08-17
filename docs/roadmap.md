@@ -14,7 +14,7 @@ authority=`zero_provider_sr5_v10_diagnostic_qualification`，gate=
 zero-provider parity 后，才从最新 `main` 决定下一条独立 recovery lineage；任何 Live 都需要新 tag、数据边界与 fresh exact
 authorization。
 
-收口已完成：功能提交 `243a4b97` 推送后以 `--no-ff` 合并为 `dde5c24a`，并推送使 `main == origin/main`。合并后二次
+收口已完成：功能提交 `243a4b97` 推送后以 `--no-ff` 合并并推送，功能 merge=`dde5c24a`。合并后二次
 focused `39/39`、Agent full `1662/1662`、typecheck/lint、CRLF-aware code Prettier 与 diff check 通过。
 
 ## 当前原子阶段：Phase 6.9.8 SR5 v10 schema/adapter postmortem（2026-08-14）

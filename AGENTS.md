@@ -17,7 +17,7 @@ DQ1 不能反推 v10 的具体 Provider shape，也不是新的 Live、模型质
 授权、不执行 Live。详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v10-diagnostic-qualification-dq1-zero-provider.md`。
 
-功能提交 `243a4b97` 已推送，并以 `--no-ff` 合并为 `dde5c24a`；`main == origin/main`。合并后 DQ1 focused `39/39`、Agent
+功能提交 `243a4b97` 已推送，并以 `--no-ff` 合并并推送为 `dde5c24a`。合并后 DQ1 focused `39/39`、Agent
 full `1662/1662`、typecheck/lint、CRLF-aware code Prettier 与 diff check 均通过。
 
 ## 当前状态：Phase 6.9.8 SR5 v10 schema/adapter postmortem（zero-provider，2026-08-14）

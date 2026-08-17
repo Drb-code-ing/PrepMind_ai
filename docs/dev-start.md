@@ -20,7 +20,7 @@ DQ1 只验证 synthetic payload 经过真实 adapter/runtime/candidate/projectio
 合同。生产 Live harness 仍不可注入；该检查不创建正式 evidence，不能用于解释已封存 v10 的具体根因，也不能替代
 Docker/API/可见浏览器产品验收。
 
-当前 DQ1 已合并到 `main == origin/main == dde5c24a`。合并后应复现上面的 focused/full 与静态命令；代码 Prettier 在
+当前 DQ1 已合并并推送，功能 merge=`dde5c24a`。合并后应复现上面的 focused/full 与静态命令；代码 Prettier 在
 Windows checkout 使用 `--end-of-line=crlf`。
 
 ## 当前 SR5 v10 schema/adapter postmortem（zero-provider，2026-08-14）
