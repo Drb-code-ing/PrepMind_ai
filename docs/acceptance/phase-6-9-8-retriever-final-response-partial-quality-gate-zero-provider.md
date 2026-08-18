@@ -18,8 +18,7 @@ prompt、字段或敏感值。
 
 ## 门槛语义
 
-未来 runtime live report 只有同时满足以下条件才可得到
-`retriever_final_response_transport_completion_authority`：
+runtime live-shaped report 只有同时满足以下条件才可得到 `partial_transport_completion` eligibility：
 
 1. completion mode 为 `runtime`。
 2. 8/8 guards 通过，8/8 zero-call 已验证，安全失败为 0。
@@ -27,7 +26,8 @@ prompt、字段或敏感值。
 4. 每个失败槽位都有既有 bounded failure reason。
 5. execution mode 与 report authority 一致，且不是 synthetic。
 
-通过时 gate 状态为 `partial_transport_completion`，但 `semantic.status=not_established`、
+通过时 gate 状态为 `partial_transport_completion`，projector 自身仍固定 `authority=none`。只有独立 closure 对 exact sealed
+artifact 完成 provenance/hash 验证后，才可在外层签发 V12 retrospective transport authority。`semantic.status=not_established`、
 `qualityAuthority=none`，预算 input/output/cost 固定为 `null`。因此该门不代表 Retriever recall/NDCG、FinalResponse
 grounding/citation、完整成本、billing、产品可用、P95 或 SLA。reviewed Mock/zero-provider 始终以
 `partial_gate_failed / synthetic_authority` 收口。
@@ -45,5 +45,5 @@ grounding/citation、完整成本、billing、产品可用、P95 或 SLA。revie
 
 ## 后续
 
-真实 partial live 仍需从最新 `main` 建立新的 source lineage、annotated tag、data-boundary 和 exact authorization；
-不得复用 V12 已消费授权或 sealed evidence。partial gate 不直接解锁 SR6 产品验收。
+后续如需新的真实 partial Live，仍须从最新 `main` 建立新的 source lineage、annotated tag、data-boundary 和 exact
+authorization；不得复用 V12 已消费授权或改写 sealed evidence。partial gate 不直接解锁 SR6 产品验收。

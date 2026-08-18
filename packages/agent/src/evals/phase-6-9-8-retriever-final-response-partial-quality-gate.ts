@@ -12,15 +12,14 @@ const SHA256 = z.string().regex(/^sha256:[0-9a-f]{64}$/u);
 
 export const PHASE_6_9_8_RETRIEVER_PARTIAL_GATE_VERSION =
   'phase-6.9.8-retriever-final-response-partial-quality-gate-v1' as const;
-export const PHASE_6_9_8_RETRIEVER_PARTIAL_GATE_AUTHORITY =
-  'retriever_final_response_transport_completion_authority' as const;
+export const PHASE_6_9_8_RETRIEVER_PARTIAL_GATE_AUTHORITY = 'none' as const;
 export const PHASE_6_9_8_RETRIEVER_PARTIAL_GATE_QUALITY_AUTHORITY = 'none' as const;
 
 const GATE_SCHEMA = z
   .object({
     status: z.enum(['partial_transport_completion', 'partial_gate_failed']),
     passed: z.boolean(),
-    authority: z.enum(['none', PHASE_6_9_8_RETRIEVER_PARTIAL_GATE_AUTHORITY]),
+    authority: z.literal(PHASE_6_9_8_RETRIEVER_PARTIAL_GATE_AUTHORITY),
     qualityAuthority: z.literal(PHASE_6_9_8_RETRIEVER_PARTIAL_GATE_QUALITY_AUTHORITY),
     failureReasons: z.array(SAFE_CODE),
   })
@@ -28,7 +27,6 @@ const GATE_SCHEMA = z
   .superRefine((value, context) => {
     const passed =
       value.status === 'partial_transport_completion' &&
-      value.authority === PHASE_6_9_8_RETRIEVER_PARTIAL_GATE_AUTHORITY &&
       value.qualityAuthority === 'none' &&
       value.failureReasons.length === 0;
     if (value.passed !== passed) {
@@ -152,7 +150,7 @@ export function buildPhase698RetrieverPartialGateReport(
     gate: {
       status: passed ? ('partial_transport_completion' as const) : ('partial_gate_failed' as const),
       passed,
-      authority: passed ? PHASE_6_9_8_RETRIEVER_PARTIAL_GATE_AUTHORITY : ('none' as const),
+      authority: PHASE_6_9_8_RETRIEVER_PARTIAL_GATE_AUTHORITY,
       qualityAuthority: 'none' as const,
       failureReasons: failures,
     },

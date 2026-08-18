@@ -112,7 +112,7 @@ describe('Phase 6.9.8 partial quality gate', () => {
     expect(livePartial.gate).toEqual({
       status: 'partial_transport_completion',
       passed: true,
-      authority: 'retriever_final_response_transport_completion_authority',
+      authority: 'none',
       qualityAuthority: 'none',
       failureReasons: [],
     });

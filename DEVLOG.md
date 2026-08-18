@@ -1,12 +1,28 @@
 # PrepMind AI 开发日志
 
+> 2026-08-18 — Phase 6.9.8 Retriever/FinalResponse partial closure（zero-provider）完成：
+>
+> 用户明确降低当前质量门后，停止继续复制 V13 Provider runner。新增只读 closure CLI，先后两次运行 V12 strict validator，
+> 中间校验固定 runId、controlled-Live authority、report logical SHA、artifact physical SHA 与 exact partial counts；V12
+> marker/journal/report/artifact/tag/authorization 均不改写。
+>
+> closure 输出 `partial_completion_closed / retriever_final_response_v12_retrospective_transport_completion_authority`，
+> planned/started/succeeded/response/usage/deferred/failed=`24/5/4/5/4/19/1`、guards=`8/8/0`。本进程
+> Provider/credential/formal evidence/business/V12 mutation writes=`0/0/0/0/0`。质量 authority 仍为 `none`，semantic
+> 仍 `not_established`，完整 token/cost 仍为 `null`；这是追溯式 transport completion，不是新 Live、完整语义、billing、
+> 产品或 SLA 证据。focused gate+closure 为 `6/6`（`25 expect()`）。详见
+> V10/V11/V12 compatibility + partial 为 `38/38`（`410 expect()`），Agent full 为 `1699/1699`
+> （`25988 expect()`，`210 files`）；typecheck/lint/Prettier/diff check 与 V12 sealed validator 均通过。详见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-partial-quality-closure-zero-provider.md`。
+
 > 2026-08-18 — Phase 6.9.8 Retriever/FinalResponse partial quality gate（zero-provider）实现：
 >
 > 为降低 V12 首个真实 candidate 合同失败造成的全链路阻塞，新增独立
 > `phase-6.9.8-retriever-final-response-partial-quality-gate-v1` 投影。它绑定 V12 base report canonical SHA，记录
 > started/succeeded/responsesObserved/usageVerified/deferred/failed 计数和 bounded failure reason；8/8 guard、安全失败为
-> 0、存在 response 进展且失败均有 bounded reason 时，未来 live 可获得
-> `retriever_final_response_transport_completion_authority`。reviewed Mock/zero-provider 明确保持
+> 0、存在 response 进展且失败均有 bounded reason 时满足算法条件；projector 自身始终保持 `authority=none`。
+> 生产追溯式 authority 只能由 closure 绑定 exact V12 sealed artifact 后授予；
+> reviewed Mock/zero-provider 明确保持
 > `partial_gate_failed / synthetic_authority`。
 >
 > partial gate 的 `semantic.status=not_established`、`qualityAuthority=none`，budget 的 input/output/cost 固定为 `null`，

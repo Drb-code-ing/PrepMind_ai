@@ -1,5 +1,17 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 Retriever/FinalResponse partial closure（zero-provider，已完成，2026-08-18）
+
+用户选择降低当前质量门后，本阶段不再建立新的 V13 Provider runner/tag/authorization。read-only closure 以 V12 strict
+validator 的前后两次一致结果为 provenance，固定绑定 run `49429392-857d-4635-80cc-0bca317cf9ff`、logical SHA
+`86f4e84e...23654`、physical SHA `817bc897...9be81` 与 exact partial counts。输出为
+`partial_completion_closed / retriever_final_response_v12_retrospective_transport_completion_authority`，计数
+`24/5/4/5/4/19/1`，本 closure 五类调用/写入为 0，V12 bytes 不变。
+
+该 authority 只确认历史 V12 已达到降低后的 transport completion 门；semantic/quality/billing/product/SLA/SR6 authority
+仍未建立，完整 token/cost 仍为 `null`。Phase 6.9.8 在该明确限制下完成工程收口。下一原子任务为 SR6 Docker/API/Trace/
+可见浏览器功能验收，必须继续把功能可用性与真实语义质量分开记录。
+
 ## 当前原子阶段：Phase 6.9.8 Retriever/FinalResponse partial quality gate（zero-provider，2026-08-18）
 
 在 V12 真实运行因 DeepSeek candidate 本地合同失败而打开 quality breaker 后，新增独立 partial gate 投影，避免把
@@ -7,11 +19,8 @@
 canonical SHA，记录 planned/started/succeeded/responsesObserved/usageVerified/deferred/failed 计数与 bounded failure
 reason；预算、semantic quality 固定为未建立，raw Provider 内容不进入结果。V12 封存合同不变。
 
-该门在未来 runtime live report 满足 8/8 guards、8/8 zero-call、安全失败为 0、存在 response 进展且失败均有 bounded
-reason 时授予 `retriever_final_response_transport_completion_authority`；reviewed Mock/zero-provider 明确失败为
-`synthetic_authority`。它不授予 semantic/product/SLA/billing authority，也不允许重跑 V12。当前仅完成 zero-provider
-合同和 synthetic 回归；后续真实运行仍需全新 source lineage/tag/data-boundary/exact authorization，SR6 Docker/API/
-Trace/可见浏览器验收继续阻断。
+该门满足算法条件后，仍须由 read-only closure 绑定 exact V12 sealed artifact 才能授予追溯式 authority；reviewed
+Mock/zero-provider 明确失败为 `synthetic_authority`。它不授予 semantic/product/SLA/billing authority，也不允许重跑 V12。
 
 实现与验收：`packages/agent/src/evals/phase-6-9-8-retriever-final-response-partial-quality-gate.ts`、
 `packages/agent/tests/phase-6-9-8-retriever-final-response-partial-quality-gate.test.ts`、
