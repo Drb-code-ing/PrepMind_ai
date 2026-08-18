@@ -1,5 +1,24 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 Retriever/FinalResponse partial closure（zero-provider，2026-08-18）
+
+用户明确降低当前质量门后，本任务不再复制 V13 Provider runner，而是对 immutable V12 controlled-Live evidence 做只读、
+追溯式 partial closure。独立 CLI 先后两次运行 V12 strict validator，中间固定校验 run
+`49429392-857d-4635-80cc-0bca317cf9ff`、report logical SHA `86f4e84e...23654`、artifact physical SHA
+`817bc897...9be81`、controlled-Live authority 与精确计数。V12 marker/journal/report/artifact/tag/authorization 全部保持只读。
+
+闭环结果为 `partial_completion_closed / retriever_final_response_v12_retrospective_transport_completion_authority`：planned/
+started/succeeded/response/usage/deferred/failed=`24/5/4/5/4/19/1`，guards=`8/8/0`。本次 closure 自身
+Provider/credential/formal evidence/business/V12 mutation writes=`0/0/0/0/0`；`qualityAuthority=none`、semantic
+`not_established`、完整 token/cost 为 `null`。它是基于历史 V12 的降级验收，不是新 Live，不形成 semantic、billing、产品、
+SLA 或 SR6 authority。Phase 6.9.8 在该降低门槛下工程收口；下一任务为独立 SR6 Docker/API/Trace/可见浏览器功能验收。
+
+实现：`packages/agent/src/evals/phase-6-9-8-retriever-final-response-partial-quality-closure.ts`；入口：
+`bun run eval:phase-6-9-8:partial-quality:close`；验收：
+`docs/acceptance/phase-6-9-8-retriever-final-response-partial-quality-closure-zero-provider.md`。focused gate+closure 为
+`6/6`（`25 expect()`），V10/V11/V12 compatibility + partial 为 `38/38`（`410 expect()`），Agent full 为
+`1699/1699`（`25988 expect()`，`210 files`）；typecheck/lint/Prettier/diff check 与 V12 sealed validator 均通过。
+
 ## 当前状态：Phase 6.9.8 Retriever/FinalResponse partial quality gate（zero-provider，2026-08-18）
 
 为降低“首个真实 Provider 合同失败就无法继续判断”的阻塞，本任务新增独立
@@ -8,11 +27,10 @@ report，统计已启动、已成功、已观察 response、已验证 usage、�
 `baseReportSha256` 绑定原报告；`rawDataRetained=false`。V12 report/schema/journal/artifact/tag 不变、不可重写。
 
 partial gate 只有在 runtime、8/8 guard、8/8 zero-call、安全失败为 0、存在 bounded transport progress 且所有失败都有
-bounded reason 时才可在未来 live report 上授予
-`retriever_final_response_transport_completion_authority`。它永远不会授予 semantic quality、billing、产品可用或 SLA
-authority；`semantic.status=not_established`，budget 三项固定为 `null`。reviewed Mock/zero-provider 只能得到
-`partial_gate_failed / synthetic_authority`。本任务只完成合同与 synthetic 回归，未读取 `.env`、未调用 Provider、未启动
-Docker/API/browser，也未执行 V12 重跑；未来 Live 必须另立 source/tag/data-boundary/exact authorization。
+bounded reason 时才满足算法条件；projector 自身始终保持 `authority=none`。生产追溯式 authority 只能由上述 closure 对 exact
+V12 sealed artifact 完成前后双重验证后授予。它永远不会授予 semantic quality、billing、产品可用或 SLA
+authority；`semantic.status=not_established`，budget 三项固定为 `null`。普通 reviewed Mock/zero-provider 输入只能得到
+`partial_gate_failed / synthetic_authority`，手工 live-shaped 对象不构成生产 provenance。
 
 实现：`packages/agent/src/evals/phase-6-9-8-retriever-final-response-partial-quality-gate.ts`；测试：
 `packages/agent/tests/phase-6-9-8-retriever-final-response-partial-quality-gate.test.ts`；验收见

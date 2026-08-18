@@ -15,10 +15,16 @@
 - [x] `rawDataRetained=false`，不保存 Provider 原文或敏感哨兵
 - [x] focused synthetic `1/1`（`13 expect()`）
 - [x] Provider/credential/formal evidence/business writes=`0/0/0/0`；未启动 Docker/API/browser
-- [ ] 新 source lineage/tag/data-boundary/exact authorization 下执行一次 partial live
-- [ ] SR6 Docker/API/Trace/可见浏览器验收（partial gate 不直接解锁）
+- [x] read-only closure 前后两次验证 exact V12 sealed bundle
+- [x] closure 输出 exact counts=`24/5/4/5/4/19/1`，V12 marker/journal/report bytes 不变
+- [x] `partial_completion_closed`，仅授予 V12 retrospective transport completion authority
+- [x] gate+closure focused `6/6`（`25 expect()`）
+- [x] V10/V11/V12 compatibility + partial `38/38`（`410 expect()`）
+- [x] Agent full `1699/1699`（`25988 expect()`，`210 files`）；typecheck/lint/Prettier/diff check 通过
+- [ ] SR6 Docker/API/Trace/可见浏览器功能验收
 
-验收：`docs/acceptance/phase-6-9-8-retriever-final-response-partial-quality-gate-zero-provider.md`。
+验收：`docs/acceptance/phase-6-9-8-retriever-final-response-partial-quality-gate-zero-provider.md`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-partial-quality-closure-zero-provider.md`。
 
 ## 0K-V12-PM. SR5 V12 local-rejection postmortem（zero-provider）
 
