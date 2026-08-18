@@ -1,5 +1,23 @@
 # PrepMind AI — 仓库协作指南
 
+## 当前状态：Phase 6.9.8 Retriever/FinalResponse partial quality gate（zero-provider，2026-08-18）
+
+为降低“首个真实 Provider 合同失败就无法继续判断”的阻塞，本任务新增独立
+`phase-6.9.8-retriever-final-response-partial-quality-gate-v1` 投影。它只读取既有 V12
+report，统计已启动、已成功、已观察 response、已验证 usage、失败和 quality-breaker 延后槽位，并以
+`baseReportSha256` 绑定原报告；`rawDataRetained=false`。V12 report/schema/journal/artifact/tag 不变、不可重写。
+
+partial gate 只有在 runtime、8/8 guard、8/8 zero-call、安全失败为 0、存在 bounded transport progress 且所有失败都有
+bounded reason 时才可在未来 live report 上授予
+`retriever_final_response_transport_completion_authority`。它永远不会授予 semantic quality、billing、产品可用或 SLA
+authority；`semantic.status=not_established`，budget 三项固定为 `null`。reviewed Mock/zero-provider 只能得到
+`partial_gate_failed / synthetic_authority`。本任务只完成合同与 synthetic 回归，未读取 `.env`、未调用 Provider、未启动
+Docker/API/browser，也未执行 V12 重跑；未来 Live 必须另立 source/tag/data-boundary/exact authorization。
+
+实现：`packages/agent/src/evals/phase-6-9-8-retriever-final-response-partial-quality-gate.ts`；测试：
+`packages/agent/tests/phase-6-9-8-retriever-final-response-partial-quality-gate.test.ts`；验收见
+`docs/acceptance/phase-6-9-8-retriever-final-response-partial-quality-gate-zero-provider.md`。
+
 ## 当前状态：Phase 6.9.8 SR5 V12 local-rejection postmortem（zero-provider，2026-08-17）
 
 本任务从已推送 `main=93250de20660a6022808b134ea6b431adf8a5059` 新开普通分支

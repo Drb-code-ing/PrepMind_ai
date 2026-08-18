@@ -60,6 +60,7 @@
     "./retriever-schema-recovery-sr5-v12-live-runner": "./src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-live-runner.ts",
     "./retriever-schema-recovery-sr5-v12-live-durability": "./src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-live-durability.ts",
     "./retriever-schema-recovery-sr5-v12-live-cli-core": "./src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-v12-live-cli-core.ts",
+    "./retriever-final-response-partial-quality-gate": "./src/evals/phase-6-9-8-retriever-final-response-partial-quality-gate.ts",
     "./retriever-schema-recovery-sr5-next-lineage-admission": "./src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-next-lineage-admission.ts",
     "./retriever-schema-recovery-sr5-next-lineage-tag-contract": "./src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-next-lineage-tag-contract.ts",
     "./retriever-schema-recovery-sr5-next-lineage-authorization-contract": "./src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr5-next-lineage-authorization-contract.ts",

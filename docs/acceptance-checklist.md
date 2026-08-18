@@ -5,6 +5,21 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
+## 0K-Partial. Retriever/FinalResponse partial quality gate（zero-provider，2026-08-18）
+
+- [x] 新增独立 partial gate 版本，不修改 V12 封存 report/schema/journal/artifact/tag
+- [x] 以 V12 base report canonical SHA 绑定输入，统计 started/succeeded/response/usage/deferred/failed
+- [x] 8/8 guard、8/8 zero-call、安全失败为 0、transport 有进展、失败有 bounded reason 的规则固化
+- [x] reviewed Mock/zero-provider 固定为 `partial_gate_failed / synthetic_authority`
+- [x] semantic 固定 `not_established`，qualityAuthority=`none`，budget input/output/cost 固定 `null`
+- [x] `rawDataRetained=false`，不保存 Provider 原文或敏感哨兵
+- [x] focused synthetic `1/1`（`13 expect()`）
+- [x] Provider/credential/formal evidence/business writes=`0/0/0/0`；未启动 Docker/API/browser
+- [ ] 新 source lineage/tag/data-boundary/exact authorization 下执行一次 partial live
+- [ ] SR6 Docker/API/Trace/可见浏览器验收（partial gate 不直接解锁）
+
+验收：`docs/acceptance/phase-6-9-8-retriever-final-response-partial-quality-gate-zero-provider.md`。
+
 ## 0K-V12-PM. SR5 V12 local-rejection postmortem（zero-provider）
 
 - [x] 从最新已推送 `main=93250de2` 新开普通分支，不使用 worktree
