@@ -1,5 +1,20 @@
 # PrepMind AI 开发日志
 
+> 2026-08-18 — Phase 6.9.8 Retriever/FinalResponse partial quality gate（zero-provider）实现：
+>
+> 为降低 V12 首个真实 candidate 合同失败造成的全链路阻塞，新增独立
+> `phase-6.9.8-retriever-final-response-partial-quality-gate-v1` 投影。它绑定 V12 base report canonical SHA，记录
+> started/succeeded/responsesObserved/usageVerified/deferred/failed 计数和 bounded failure reason；8/8 guard、安全失败为
+> 0、存在 response 进展且失败均有 bounded reason 时，未来 live 可获得
+> `retriever_final_response_transport_completion_authority`。reviewed Mock/zero-provider 明确保持
+> `partial_gate_failed / synthetic_authority`。
+>
+> partial gate 的 `semantic.status=not_established`、`qualityAuthority=none`，budget 的 input/output/cost 固定为 `null`，
+> `rawDataRetained=false`；因此不伪造 Retriever/FinalResponse 语义、billing、产品或 SLA authority，也不改写 V12
+> report/journal/artifact/tag。新增 focused synthetic 回归 `1/1`（`13 expect()`）；Provider/credential/formal
+> evidence/business writes=`0/0/0/0`，未读根 `.env`，未启动 Docker/API/browser，未执行 V12 重跑。验收见
+> `docs/acceptance/phase-6-9-8-retriever-final-response-partial-quality-gate-zero-provider.md`。
+
 > 2026-08-17 — Phase 6.9.8 SR5 V12 local-rejection postmortem（zero-provider）完成：
 >
 > 从 `main=93250de2` 新开普通分支 `drb/phase-6-9-8-sr5-v12-local-rejection-postmortem`。Task9 将旧 `baseInvalid`

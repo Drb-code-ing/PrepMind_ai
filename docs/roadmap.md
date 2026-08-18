@@ -1,5 +1,22 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 Retriever/FinalResponse partial quality gate（zero-provider，2026-08-18）
+
+在 V12 真实运行因 DeepSeek candidate 本地合同失败而打开 quality breaker 后，新增独立 partial gate 投影，避免把
+“已观察到有限 transport 进展”和“完整 Retriever/FinalResponse 语义质量”混为一谈。投影绑定 V12 base report 的
+canonical SHA，记录 planned/started/succeeded/responsesObserved/usageVerified/deferred/failed 计数与 bounded failure
+reason；预算、semantic quality 固定为未建立，raw Provider 内容不进入结果。V12 封存合同不变。
+
+该门在未来 runtime live report 满足 8/8 guards、8/8 zero-call、安全失败为 0、存在 response 进展且失败均有 bounded
+reason 时授予 `retriever_final_response_transport_completion_authority`；reviewed Mock/zero-provider 明确失败为
+`synthetic_authority`。它不授予 semantic/product/SLA/billing authority，也不允许重跑 V12。当前仅完成 zero-provider
+合同和 synthetic 回归；后续真实运行仍需全新 source lineage/tag/data-boundary/exact authorization，SR6 Docker/API/
+Trace/可见浏览器验收继续阻断。
+
+实现与验收：`packages/agent/src/evals/phase-6-9-8-retriever-final-response-partial-quality-gate.ts`、
+`packages/agent/tests/phase-6-9-8-retriever-final-response-partial-quality-gate.test.ts`、
+`docs/acceptance/phase-6-9-8-retriever-final-response-partial-quality-gate-zero-provider.md`。
+
 ## 当前原子阶段：Phase 6.9.8 SR5 V12 local-rejection postmortem（zero-provider，已完成，2026-08-17）
 
 从已推送 `main=93250de2` 建立普通分支，不使用 worktree。Task9 现按确定性 first-failure priority 记录
