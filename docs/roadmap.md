@@ -1,5 +1,22 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6 Agent 运行时总审计（2026-08-19，进行中）
+
+先完成全部 Agent 的职责、真实/混合/确定性模式、路由通信、权限、预算、并发、Trace 与失败降级审计，再进入分层记忆系统。
+当前 inventory checkpoint 已完成，运行时修复和产品逐项真实验收尚未完成；面试博客必须后置。
+
+已确认的高优先级缺口：
+
+- `packages/agent/src/graph/index.ts` 只是 catalog descriptor，没有 edges/executor/enforcement；产品 `/api/chat` 使用独立 Web 编排。
+- 文档规划中的 Tool-Using Orchestrator 尚未实现，不能计入已完成 Agent。
+- Review/Planner controller 未传播 HTTP AbortSignal，客户端断开后可能继续消耗模型预算。
+- Chat Trace 为 best-effort，流式回答依赖后续客户端 sync，断连时存在未持久化边界。
+- Router/Verifier、Tutor、FinalResponse 各有局部预算，尚无全链路 budget ledger。
+- MemoryAgent 当前确定性生成候选，无模型 gate/runtime/Trace；需要先定义隐私和确认合同。
+
+矩阵和证据分级见 `docs/acceptance/phase-6-agent-runtime-audit.md`。本阶段仍遵循一任务一提交、推送 feature、`--no-ff` 合并 main、
+合并后在 main 复验；不清理 Docker，不触碰用户预先修改的三个 WrongQuestionOrganizer 文件。
+
 ## 当前原子阶段：Phase 6.9.8 真实模型产品运行时可用性（2026-08-19）
 
 分支产品 smoke 已打通：`/api/chat` 实际调用 DeepSeek 并返回 `200 / mode=live / traceRecorded=true`。修复点是让本地

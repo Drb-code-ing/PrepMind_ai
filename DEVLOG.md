@@ -1,5 +1,13 @@
 # PrepMind AI 开发日志
 
+> 2026-08-19 — Phase 6 Agent 运行时总审计启动：
+>
+> 新建 `docs/acceptance/phase-6-agent-runtime-audit.md`，盘点 11 个 graph Agent 与 ConversationSummary 支持子系统，区分
+> deterministic authority、模型增强、gate、预算、权限、通信、Trace 和证据等级。审计确认产品 `/api/chat` 与
+> `packages/agent/src/graph` descriptor 不是同一执行器；Tool-Using Orchestrator 仍未实现；Review/Planner 缺少 HTTP
+> AbortSignal；Chat 断连持久化和全链路预算 ledger 仍有待决策。当前只完成 inventory checkpoint，不能宣称 Phase 6 Agent
+> 架构完成，也不能提前写面试博客。用户预先修改的三个 WrongQuestionOrganizer 文件未触碰。
+
 > 2026-08-19 — Phase 6.9.8 真实模型产品运行时打通：
 >
 > `/api/chat` 首次 Live 启动暴露两类配置错误：server Compose 丢弃根 `DEEPSEEK_API_KEY`，Retriever/FinalResponse 又要求

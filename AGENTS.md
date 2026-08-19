@@ -1,5 +1,24 @@
 # PrepMind AI — 仓库协作指南
 
+## 2026-08-19 Phase 6 Agent 运行时总审计（进行中）
+
+当前工作分支为 `drb/phase-6-agent-runtime-audit`，基线为 `main == origin/main == b3709aff`。
+本阶段先盘点全部 Agent，再修复运行时缺口；尚未完成全部 Agent 的真实模型验收，也未开始分层记忆实现或面试博客收尾。
+
+权威审计矩阵：`docs/acceptance/phase-6-agent-runtime-audit.md`。
+
+重要边界：`packages/agent/src/graph/index.ts` 目前只是 11 节点 descriptor，不是执行器；真实 `/api/chat` 编排位于
+`apps/web/src/app/api/chat/route.ts` 及其组合模块。行为文档中的 Tool-Using Orchestrator 尚未实现。Review/Planner
+的 HTTP AbortSignal、Chat 断连 durability、全链路预算 ledger 和 MemoryAgent 模型合同仍待处理。
+
+本分支工作树中以下三个用户预先修改文件必须保持原样，不得暂存或提交：
+
+- `apps/server/src/wrong-question-organizer/wrong-question-organizer-agent-trace.ts`
+- `apps/server/src/wrong-question-organizer/wrong-question-organizer.service.spec.ts`
+- `apps/server/src/wrong-question-organizer/wrong-question-organizer.service.ts`
+
+下方 Phase 6.9.8/SR6 段落是已完成阶段的历史记录；若与本横幅冲突，以本横幅和最新验收文档为准。
+
 ## 2026-08-19 Phase 6.9.8 真实模型运行时状态
 
 产品 `/api/chat` 已在 Docker 中实际使用 DeepSeek 返回 `200`，并记录 `mode=live`、`traceRecorded=true`。本地 Compose

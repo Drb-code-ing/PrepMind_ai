@@ -2,6 +2,16 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
+## 2026-08-19 Phase 6 Agent 总审计状态
+
+当前产品 `/api/chat` 已有合并后的真实 DeepSeek 主回答 smoke，但该证据只证明一次产品入口成功，不证明 Router、Tutor、Retriever
+rewrite、KnowledgeVerifier、Review/Planner 或 Knowledge agents 均真实成功。`packages/agent/src/graph/index.ts` 仍是
+descriptor-only catalog；Tool-Using Orchestrator 仍未实现。Review/Planner AbortSignal、Chat 断连 durability、全链路预算
+和 MemoryAgent 模型合同属于当前待办，不得从旧阶段段落推断为已完成。
+
+全部 Agent 的职责、权限、通信、证据等级和缺口以 `docs/acceptance/phase-6-agent-runtime-audit.md` 为准；本文下方的 SR5/SR6
+段落保留为历史验收记录。
+
 ## Phase 6.9.8 SR5 run-bound recovery（当前，zero-provider，2026-08-12）
 
 本阶段仅证明正式 runner 的 source/durability 门禁时序不再被自身 marker 拒绝，并能在 late drift 时保持
