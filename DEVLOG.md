@@ -1,5 +1,18 @@
 # PrepMind AI 开发日志
 
+> 2026-08-19 — Phase 6.9.8 真实模型产品运行时打通：
+>
+> `/api/chat` 首次 Live 启动暴露两类配置错误：server Compose 丢弃根 `DEEPSEEK_API_KEY`，Retriever/FinalResponse 又要求
+> 重复配置组件专用 key。现在显式组件 key 保持最高优先级，本地 Docker 缺省时可回退到根 DeepSeek key；服务 allowlist、
+> gate、timeout 和默认关闭边界不变。
+>
+> 修复后使用一次性合成账号完成真实 DeepSeek 请求，得到 `status=200 / mode=live / trace=true`，回答为模型生成的中文
+> 幂等性解释。账号随后精确删除（`DELETE 1`）。独立复审后补齐“非法非空组件 key 必须 fail-closed、不得借 fallback
+> 掩盖配置错误”的边界。Web `491/491`、Server Compose 边界 `25/25`、Compose quiet config、
+> lint、生产 build 与 diff check 通过。验收后只重建 server/web 恢复 Mock 和全部相关 gate=false；没有清理 Docker 卷、
+> 数据库、Redis 或 MinIO。该 smoke 证明真实模型产品链路可用，不替代完整语义、billing 或 SLA 评测。详见
+> `docs/acceptance/phase-6-9-8-real-model-runtime-usability.md`。
+
 > 2026-08-19 — Phase 6.9.8 SR6 Docker/API/Trace/可见浏览器功能验收完成：
 >
 > 从 `main=a1663ecf` 新开普通分支，未使用 worktree。Compose 静态配置通过；在不清理 Docker 数据的前提下启动
@@ -57,7 +70,7 @@
 >
 > `candidate_not_applied` 可选择性携带已有 strict bounded sidecar，只有 enum、bucket、shape fingerprint 与
 > `rawDataRetained=false`。三种真实 candidate-local rejection `rewrite_safety_invalid / rewrite_unchanged /
-> protected_terms_drift` 已通过 synthetic fetch、candidate、runner、journal/report/artifact 与 validator；raw sentinel 不进入
+protected_terms_drift` 已通过 synthetic fetch、candidate、runner、journal/report/artifact 与 validator；raw sentinel 不进入
 > Error 或 durable evidence。成功、not-started、非 rewrite lane 和其他 boundary 均拒绝该 sidecar。
 >
 > 新增 focused `13/13`（`45 expect()`），兼容组 `36/36`（`402 expect()`）；Agent full `1693/1693`

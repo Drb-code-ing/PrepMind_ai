@@ -1,5 +1,13 @@
 # PrepMind AI — 仓库协作指南
 
+## 2026-08-19 Phase 6.9.8 真实模型运行时状态
+
+产品 `/api/chat` 已在 Docker 中实际使用 DeepSeek 返回 `200`，并记录 `mode=live`、`traceRecorded=true`。本地 Compose
+允许组件专用 DeepSeek key 缺省时回退到根 `DEEPSEEK_API_KEY`，显式组件 key 仍优先；所有模型 gate 继续默认关闭。
+Live smoke 后 server/web 已恢复 `mock + live=false + component gates=false`，测试账号精确删除，Docker 数据未清理。
+该结果证明产品运行时可用，不建立完整语义基准、billing、SLA 或新的 quality authority。记录见
+`docs/acceptance/phase-6-9-8-real-model-runtime-usability.md`。
+
 ## 2026-08-19 SR6 状态
 
 Phase 6.9.8 SR6 Docker/API/Trace/可见浏览器默认关闭功能验收已完成，且合并后 `main=d7a62094` 已复验。Docker 数据未清理；若长期卷缺少已提交迁移，使用

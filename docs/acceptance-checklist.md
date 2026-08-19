@@ -5,6 +5,23 @@
 
 > 我现在改完一个功能，应该启动什么、看什么页面、跑什么命令，才能说明它真的可用？
 
+## 0L. Phase 6.9.8 真实模型产品运行时可用性（2026-08-19）
+
+- [x] 普通分支从最新已推送 `main=cb833cdd` 创建，未使用 worktree
+- [x] 显式组件 DeepSeek key 优先，根 `DEEPSEEK_API_KEY` 只作为本地 Docker 缺省回退
+- [x] 非空非法组件 key fail-closed，不允许通用 fallback 掩盖配置错误
+- [x] Retriever/FinalResponse 两条 executor 配置回归覆盖专用 key 与通用 key
+- [x] server/web Compose allowlist 保持组件和服务边界，模型 gate 默认关闭
+- [x] 真实 DeepSeek `/api/chat`：`200 / mode=live / traceRecorded=true`
+- [x] 一次性合成账号精确删除：`DELETE 1`
+- [x] Web tests `491/491`，Server Compose 边界 tests `25/25`
+- [x] Compose quiet config、Web lint/build、`git diff --check`
+- [x] 分支验收后 server/web 恢复 Mock/default-off，Docker 数据未清理
+- [x] 独立只读复审；P1 fallback 边界已修复并补回归
+- [ ] `--no-ff` 合并并推送 `main` 后的 Live smoke、default-off 恢复和账号清理
+
+验收：`docs/acceptance/phase-6-9-8-real-model-runtime-usability.md`。
+
 ## 0K-Partial. Retriever/FinalResponse partial quality gate（zero-provider，2026-08-18）
 
 - [x] 新增独立 partial gate 版本，不修改 V12 封存 report/schema/journal/artifact/tag
@@ -21,7 +38,7 @@
 - [x] gate+closure focused `6/6`（`25 expect()`）
 - [x] V10/V11/V12 compatibility + partial `38/38`（`410 expect()`）
 - [x] Agent full `1699/1699`（`25988 expect()`，`210 files`）；typecheck/lint/Prettier/diff check 通过
-- [ ] SR6 Docker/API/Trace/可见浏览器功能验收
+- [x] SR6 Docker/API/Trace/可见浏览器功能验收
 
 验收：`docs/acceptance/phase-6-9-8-retriever-final-response-partial-quality-gate-zero-provider.md`、
 `docs/acceptance/phase-6-9-8-retriever-final-response-partial-quality-closure-zero-provider.md`。
@@ -3054,6 +3071,7 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Validator=`ok=true`, journal=`54`, final event=`evidence_published`, report SHA=`bbd3f59e...2db6`, artifact SHA=`c0714172...ce39`.
 - [x] Gate=`schema_recovery_sr5_branch_quality_gate_failed`, `qualityAuthority=none`; retry/recover/appended Provider probes are forbidden.
 - [x] Zero-provider schema/adapter postmortem and DQ1 diagnostic qualification completed; SR6 remains blocked.
+
 # SR6 2026-08-19 Docker/API/Trace/可见浏览器功能验收补充
 
 - [x] 从 `main=a1663ec` 新开普通分支，不使用 worktree；Compose 静态配置通过。

@@ -82,7 +82,13 @@ export function resolveFinalResponseLiveExecutorConfig(
   try {
     const config = resolveFinalResponseModelConfig(env);
     if (!config.enabled || config.runtimeAuthority !== 'production_live') return null;
-    const apiKey = readRequiredCredential(env, 'FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY');
+    // Local Docker uses the root DeepSeek key unless a component-specific secret is supplied.
+    // The dedicated variable remains preferred for deployments that isolate credentials.
+    const apiKey = readPreferredCredential(
+      env,
+      'FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY',
+      'DEEPSEEK_API_KEY',
+    );
     if (apiKey === null) return null;
     return Object.freeze({
       apiKey,
@@ -150,7 +156,23 @@ function readOptionalString(env: Environment, key: string): string | undefined {
 
 function readRequiredCredential(env: Environment, key: string): string | null {
   const value = readOptionalString(env, key);
-  if (value === undefined || value !== value.trim() || value.length < 1 || value.length > 512) {
+  return value === undefined ? null : validateCredential(value);
+}
+
+function readPreferredCredential(
+  env: Environment,
+  componentKey: string,
+  fallbackKey: string,
+): string | null {
+  const componentValue = readOptionalString(env, componentKey);
+  if (componentValue !== undefined && componentValue !== '') {
+    return validateCredential(componentValue);
+  }
+  return readRequiredCredential(env, fallbackKey);
+}
+
+function validateCredential(value: string): string | null {
+  if (value !== value.trim() || value.length < 1 || value.length > 512) {
     return null;
   }
   return /^[\x21-\x7e]+$/u.test(value) ? value : null;
