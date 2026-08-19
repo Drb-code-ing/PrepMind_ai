@@ -12,6 +12,12 @@
 > lint、生产 build 与 diff check 通过。验收后只重建 server/web 恢复 Mock 和全部相关 gate=false；没有清理 Docker 卷、
 > 数据库、Redis 或 MinIO。该 smoke 证明真实模型产品链路可用，不替代完整语义、billing 或 SLA 评测。详见
 > `docs/acceptance/phase-6-9-8-real-model-runtime-usability.md`。
+>
+> 功能提交 `be390e07` 已推送并以 `--no-ff` 合并、推送为 `main=b6df0150`。合并后构建首次命中已知 Docker Desktop
+> Bake shared-key 异常，按手册仅在当前进程设置 `COMPOSE_BAKE=false` 并分开构建 server/web；没有清 cache 或卷。
+> merged-main Live smoke 再次得到 `200/live/trace=true/non-empty`。首次清理命令因 PowerShell/psql 引号失败，随后使用
+> stdin 精确删除同一账号，结果 `DELETE 1 / remaining=0`。最终 server/web 已恢复 Mock、live=false 和全部当前 Agent
+> gate=false，server healthy。
 
 > 2026-08-19 — Phase 6.9.8 SR6 Docker/API/Trace/可见浏览器功能验收完成：
 >

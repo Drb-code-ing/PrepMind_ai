@@ -6,9 +6,10 @@
 Compose 和 Retriever/FinalResponse executor 在组件专用 key 缺省时回退到根 `DEEPSEEK_API_KEY`，同时保留专用 key
 优先、服务 allowlist、独立 gate 和默认关闭行为。合成账号已精确清理，Docker 已恢复 Mock/default-off，数据卷未清理。
 
-该结果只建立产品运行时可用性，不建立完整语义、billing、SLA 或新的 quality authority。完成独立复审、`main` 合并推送和
-merged-main Live smoke/default-off 恢复后，本阶段才最终关闭；随后从最新 `main` 进入 Phase 6 多 Agent 运行时总审计，先确认
-剩余 Agent 的真实/混合模型、路由、权限、预算和降级边界，再进入分层记忆系统工作，不提前写收尾博客。
+该结果只建立产品运行时可用性，不建立完整语义、billing、SLA 或新的 quality authority。独立复审 P1 已修复；实现以
+`--no-ff` 合并推送为 `main=b6df0150`，merged-main Live smoke 再次得到 `200/live/trace=true/non-empty`，账号精确删除且
+残留为 0，随后恢复 Mock/default-off 并确认 server healthy。本阶段已关闭。下一步从最新 `main` 进入 Phase 6 多 Agent
+运行时总审计，先确认剩余 Agent 的真实/混合模型、路由、权限、预算和降级边界，再进入分层记忆系统工作，不提前写收尾博客。
 
 ## 当前原子阶段：Phase 6.9.8 SR6 Docker/API/Trace/可见浏览器功能验收（2026-08-19）
 
