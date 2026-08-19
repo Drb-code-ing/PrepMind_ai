@@ -1,5 +1,18 @@
 # PrepMind AI 开发日志
 
+> 2026-08-19 — Phase 6.9.8 SR6 Docker/API/Trace/可见浏览器功能验收完成：
+>
+> 从 `main=a1663ecf` 新开普通分支，未使用 worktree。Compose 静态配置通过；在不清理 Docker 数据的前提下启动
+> PostgreSQL、Redis、MinIO、server、worker、web、admin。首次产品验收发现数据库卷缺少已提交的
+> `20260805090000_realtime_agent_trace_lifecycle` 迁移，导致 `/api/chat` 仍能返回 Mock 流，但 Trace best-effort 写入失败、
+> `/agent-traces` 查询 500。容器内执行标准 `prisma migrate deploy` 后复验恢复：Chat `200`、Mock、`traceRecorded=true`，
+> Trace 为 `completed/route=chat/provider=mock/qualityAuthority=none`。
+>
+> 可见浏览器完成登录、Chat Mock 流式回答和 Agent Trace 调试台验收，并在 `390x844` 移动宽度检查无重叠；窗口保持打开。
+> 本轮精确删除 7 个 `sr6-*` 合成账号及级联记录；未执行 `down -v`、prune、reset、flush 或 MinIO wipe。没有读取 Provider
+> credential、真实模型调用或新的 semantic/billing/SLA authority。完整证据见
+> `docs/acceptance/phase-6-9-8-sr6-docker-api-trace-visible-browser.md`。
+
 > 2026-08-18 — Phase 6.9.8 Retriever/FinalResponse partial closure（zero-provider）完成：
 >
 > 用户明确降低当前质量门后，停止继续复制 V13 Provider runner。新增只读 closure CLI，先后两次运行 V12 strict validator，

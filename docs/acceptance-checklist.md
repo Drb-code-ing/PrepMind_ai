@@ -3054,3 +3054,13 @@ qualityAuthority=none`；不形成 reviewed Mock、Live、产品、SLA 或 main 
 - [x] Validator=`ok=true`, journal=`54`, final event=`evidence_published`, report SHA=`bbd3f59e...2db6`, artifact SHA=`c0714172...ce39`.
 - [x] Gate=`schema_recovery_sr5_branch_quality_gate_failed`, `qualityAuthority=none`; retry/recover/appended Provider probes are forbidden.
 - [x] Zero-provider schema/adapter postmortem and DQ1 diagnostic qualification completed; SR6 remains blocked.
+# SR6 2026-08-19 Docker/API/Trace/可见浏览器功能验收补充
+
+- [x] 从 `main=a1663ec` 新开普通分支，不使用 worktree；Compose 静态配置通过。
+- [x] Docker 保留现有容器、命名卷和数据；server/worker healthy，web/admin/API 可访问。
+- [x] 合成账号认证、Mock `/api/chat` 流式回答、owner-bound Trace 写入与查询通过。
+- [x] 可见浏览器完成登录、Chat、Agent Trace 调试台和 `390x844` 移动端检查，窗口保持打开。
+- [x] 发现并通过 `prisma migrate deploy` 补齐缺失的 `20260805090000_realtime_agent_trace_lifecycle` 迁移；未重置数据库。
+- [x] 精确删除 7 个 `sr6-*` 合成账号及级联数据；semantic/quality authority 仍未建立。
+
+详见 `docs/acceptance/phase-6-9-8-sr6-docker-api-trace-visible-browser.md`。
