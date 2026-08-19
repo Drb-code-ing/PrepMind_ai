@@ -6,6 +6,7 @@
 - [x] 区分 implemented、mock/static、controlled-Live、product real-model smoke、production-used
 - [x] 确认 graph descriptor 与 `/api/chat` 产品执行器不是同一实现
 - [x] 标记 Tool-Using Orchestrator 尚未实现
+- [x] graph catalog 增加 `catalog_only` authority、typed edges、模型模式与领域写权限（focused `3/3`、typecheck）
 - [x] Review/Planner AbortSignal 与 candidate 外层 fail-safe（controller/service focused `13/13`，Server build）
 - [ ] Chat 断连 durability/丢失语义与测试
 - [ ] 全链路 owner capability 与 budget ledger

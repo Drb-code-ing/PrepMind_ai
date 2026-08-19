@@ -15,6 +15,13 @@
 > 保留 bounded `fallback_runtime_error`。controller/service 回归共 `13/13`，Server build 与 diff check 通过。该修复只改变
 > 取消和异常边界，不改变业务事实或写权限。
 
+> 2026-08-19 — Phase 6 Agent 审计 Task 2：治理 catalog 与产品执行契约：
+>
+> `createAgentGraph()` 保留原有 11 节点兼容字段，同时新增 `executionAuthority=catalog_only`、产品 Web/Nest 组合层权威、
+> 6 条 typed communication edge、每个 Agent 的模型模式与领域写权限，以及仅处于 planned 状态的
+> `ToolUsingOrchestrator`。因此 graph 不再暗示自己执行整条产品链，也没有伪造统一 budget/owner/terminal enforcement。
+> Graph focused `3/3`、`1197 expect()` 与 Agent typecheck 通过。
+
 > 2026-08-19 — Phase 6.9.8 真实模型产品运行时打通：
 >
 > `/api/chat` 首次 Live 启动暴露两类配置错误：server Compose 丢弃根 `DEEPSEEK_API_KEY`，Retriever/FinalResponse 又要求

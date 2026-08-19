@@ -50,7 +50,7 @@ HTTP request
 
 ### 3.2 目前的架构断点
 
-1. `packages/agent/src/graph/index.ts` 仅有字符串列表，没有边、输入输出 contract、owner capability、budget ledger 或 terminal policy；不能作为执行器。
+1. `packages/agent/src/graph/index.ts` 已升级为受治理 catalog：明确 `executionAuthority=catalog_only`、产品组合层权威、typed communication edges、模型模式、领域写权限和 planned Orchestrator；它仍不执行 Agent，也不伪造 owner capability、budget ledger 或 terminal policy。
 2. `packages/agent/src/runtime.ts` 的通用运行时与产品 `/api/chat` 不是同一执行契约，不能用它证明产品链路已经串联。
 3. 行为文档中的 Tool-Using Orchestrator 尚未实现，不能列入“已完成 Agent”。
 4. Chat Trace 是旁路 best-effort，写入超时或失败不会阻断回答；断连时服务端没有独立答案 durable/outbox 语义，存在回答未落库的边界，需要单独决定和验收。
@@ -72,7 +72,7 @@ HTTP request
 ## 5. 本审计后续顺序
 
 1. ~~先修复并测试 Review/Planner 的 AbortSignal 与 candidate 外层 fail-safe。~~ 已完成：controller 将 HTTP `aborted` 映射为请求级 AbortSignal，service 传入两个 candidate；两个 candidate runner 额外有 deterministic 外层 fallback。`review-agent.controller.spec.ts` + `review-agent.service.spec.ts` 为 `13/13`，Server build 通过。
-2. 定义 graph descriptor 与产品组合层的关系；补 typed edges/permissions/budget 只读描述，或明确 graph 仅为 catalog，避免误导。
+2. ~~定义 graph descriptor 与产品组合层的关系。~~ 已完成：catalog 明确不是执行器，补 typed edges、model mode、domain write permission、产品组合位置和 planned Orchestrator；graph focused `3/3`、Agent typecheck 通过。
 3. 为 Chat 增加全链路预算/断连 durability 的明确合同和测试；不在未决策前擅自写 BackgroundJob/Outbox。
 4. 为 MemoryAgent 定义真实模型增强的隐私、候选确认、预算和 Trace 合同；完成 Agent 架构后再进入分层记忆实现。
 5. 做独立 Review/Planner、Knowledge agents、Router/Verifier/Tutor/Rewrite 的产品验收，保持浏览器窗口可见并保留证据。
