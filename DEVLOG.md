@@ -22,6 +22,14 @@
 > `ToolUsingOrchestrator`。因此 graph 不再暗示自己执行整条产品链，也没有伪造统一 budget/owner/terminal enforcement。
 > Graph focused `3/3`、`1197 expect()` 与 Agent typecheck 通过。
 
+> 2026-08-19 — Phase 6 Agent 审计 Task 3：Chat durability/budget 设计 checkpoint：
+>
+> 现有 `/api/chat` 的模型生成在 Web 进程内完成，回答落库依赖浏览器后续完整 snapshot sync；Trace 是 best-effort，不能承担 durable
+> answer authority。新增设计文档明确后续应由 Server 同事务创建 `ChatTurn + BackgroundJob + chat.response.requested OutboxEvent`，
+> Worker 运行 owner-bound chain，并以 `chat.response.completed/failed` Outbox 和 turn replay 收口；BackgroundJob 与 Outbox 不能分开写。
+> 同时定义 run-level budget ledger、scope reservation、幂等和不保存 provider 原文的边界。本 checkpoint 未修改 schema、Docker、业务数据，
+> 不能宣称当前 Chat 已具备断线恢复。
+
 > 2026-08-19 — Phase 6.9.8 真实模型产品运行时打通：
 >
 > `/api/chat` 首次 Live 启动暴露两类配置错误：server Compose 丢弃根 `DEEPSEEK_API_KEY`，Retriever/FinalResponse 又要求

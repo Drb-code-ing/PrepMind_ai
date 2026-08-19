@@ -1,0 +1,102 @@
+# Phase 6 Chat Durability and Budget Design
+
+更新时间：2026-08-19  
+状态：设计 checkpoint，尚未实现，不代表当前 Chat 已具备断线可恢复语义。
+
+## 1. 当前问题
+
+当前 `POST /api/chat` 在 Web 进程内完成 Router/Tutor/Retriever/Verifier/FinalResponse 编排并流式输出。回答完成后，浏览器再通过
+`/chat-messages/sync` 回传完整消息 snapshot；Server 的 sync 会删除并重建该 conversation 的消息。
+
+这条链路有三个明确边界：
+
+1. Web 进程在模型完成、浏览器 sync 之前崩溃，模型回答没有服务端 durable owner。
+2. 客户端断开会触发 request AbortSignal，生成可能被中止；如果回答已经产生部分内容，当前 sync 会拒绝不完整 assistant。
+3. Trace 是 best-effort 旁路，不能承担回答持久化；单独在 `/api/chat` 里追加 Outbox 也不能覆盖 Web 进程崩溃、重复请求和 worker 重试。
+
+因此当前产品只能宣称“流式功能可用”，不能宣称“回答断线可恢复、任务不丢失”。
+
+## 2. 推荐生产链路
+
+```text
+authenticated request
+  -> Server transaction:
+       ChatTurn(QUEUED, ownerId, idempotencyKey, inputHash, conversationId)
+       BackgroundJob(QUEUED, resourceType=CHAT_RESPONSE, resourceId=turnId)
+       OutboxEvent(chat.response.requested, same transaction, idempotencyKey)
+  -> worker claims job/outbox
+  -> worker loads owner-scoped input by turnId (never trusts payload owner)
+  -> ChatRunBudget ledger reserves child scopes
+  -> Router -> Tutor -> Retriever -> Verifier -> FinalResponse
+  -> append assistant message + ChatTurn terminal state in one transaction
+  -> OutboxEvent(chat.response.completed|failed, same transaction)
+  -> Redis stream / SSE publishes bounded deltas and terminal cursor
+  -> browser reconnects by turnId and replays from durable cursor/result
+```
+
+`BackgroundJob` 和 `OutboxEvent` 必须在同一个数据库事务中创建。BackgroundJob 负责任务状态、attempt、队列归属和用户可见进度；Outbox
+负责把“请求已入队”和“终态已落库”可靠交给 dispatcher。两者不能一个成功、另一个失败，也不能把 provider 原文或完整 prompt 放进 payload。
+
+## 3. 数据与幂等合同
+
+### 3.1 ChatTurn（需要新迁移）
+
+建议新增 `ChatTurn`，而不是继续把完整 snapshot 当作写模型：
+
+- `id`、`userId`、`conversationId`、`clientRequestId`（owner 范围唯一）
+- `status`: `QUEUED | ACTIVE | SUCCEEDED | FAILED | CANCELLED`
+- `inputHash`、`inputMessageIds`、`budgetPolicyVersion`
+- `responseMessageId`、`errorCode`、`startedAt`、`finishedAt`
+- `createdAt`、`updatedAt`
+
+输入正文继续放在 owner-scoped `ChatMessage`/turn input 表中；队列 payload 只保存 `turnId`、版本、hash 和有限诊断。
+
+### 3.2 Idempotency
+
+- `clientRequestId` 在同一用户下唯一；重复 enqueue 返回既有 turn/job，不再次调用模型。
+- worker 通过 `updateMany(where: status=QUEUED)` 抢占；lease 过期只能进入明确的 stale/retry 状态，不能并发生成两个 assistant。
+- 完成写入以 `turnId + responseMessageId` 唯一约束保护；重复 `chat.response.completed` 只做幂等确认。
+- Outbox 使用 `chat.response.requested:${turnId}` 与 `chat.response.completed:${turnId}` 两个唯一 key。
+
+## 4. 全链路预算合同
+
+当前 Router/Verifier、Tutor、FinalResponse 各自拥有局部 budget。下一实现应创建一个 run-level ledger：
+
+```text
+ChatRunBudget {
+  maxCalls: 5,
+  maxInputTokens: 10_000,
+  maxOutputTokens: 2_800,
+  maxCostCny: configured_cap,
+  usedCalls/input/output/cost,
+  policyVersion,
+}
+```
+
+- ledger 由 Server/Worker 创建，子 Agent 只能取得不可变 scope view 和一次性 reservation；不能自行重置或扩大上限。
+- 推荐 scope：Router+Verifier `2/2400/800`、Tutor `1/1200/300`、Rewrite `1/1200/160`、FinalResponse `1/2500/1200`；全链路最大值应大于等于实际可选路径，但 `maxCalls` 和 token/cost 必须由同一 ledger 结算。
+- 每次 reservation 在 dispatch 前写入 Trace/ledger 的 bounded event；provider 原文、prompt、credential 不落库。
+- 失败、abort、timeout、schema invalid 都释放“未使用”预算但不回滚已发生调用；重试必须新 turn 或显式 retry policy，不能隐式 replay。
+
+## 5. 权限、Trace 与 Outbox 边界
+
+- turn、job、message、outbox 全部以 `userId`/owner capability 绑定；worker 不接受客户端传入的 owner。
+- 模型只消费 server 生成的 bounded projection；BackgroundJob/Outbox payload 只放 opaque ids、hash、枚举和版本。
+- Trace 继续 best-effort，不作为回答 durable authority；`chat.response.completed` handler 负责 reconciliation，发现“已落库但 Trace 缺失”时只补 bounded 状态，不补 provider 原文。
+- `chat.response.failed` 必须有固定 error enum；客户端可通过 turn 查询终态，不能仅依据 SSE 是否断开判断成功。
+
+## 6. 分阶段实施顺序
+
+1. 新增 ChatTurn schema/migration 与 owner-scoped repository，补唯一键、状态机和 concurrency tests。
+2. 在同一事务新增 `BackgroundJob + chat.response.requested OutboxEvent`，补 crash-before-commit/duplicate enqueue tests。
+3. Worker 先实现 deterministic/mock 生成与 durable assistant commit，再接入真实模型 gate；不改变现有 `/api/chat` 默认 mock/off。
+4. 增加 Redis/SSE bounded delta stream 与 turn replay；浏览器断开后可通过 turn 查询最终结果。
+5. 将现有 `/api/chat` 切换到 turn-backed path，保留旧 sync 只读兼容窗口；迁移完成后禁止 delete/recreate snapshot 作为权威写入。
+6. 进行 Docker、API、可见浏览器和真实模型 controlled smoke；每一步单独提交、推送、合并 main 后复验。
+
+## 7. 本 checkpoint 的明确结论
+
+- 当前不修改 Prisma schema，不创建 Chat BackgroundJob，不写 Outbox，不触碰 Docker 数据。
+- “BackgroundJob + Outbox 同事务”是后续生产实现的硬要求；只写其中一个仍然存在任务丢失窗口。
+- 在 ChatTurn/Worker/replay 完成前，产品文档必须继续使用“流式功能可用、断连 durability 未建立”的表述。
+

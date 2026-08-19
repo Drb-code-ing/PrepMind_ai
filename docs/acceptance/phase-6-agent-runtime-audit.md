@@ -73,7 +73,7 @@ HTTP request
 
 1. ~~先修复并测试 Review/Planner 的 AbortSignal 与 candidate 外层 fail-safe。~~ 已完成：controller 将 HTTP `aborted` 映射为请求级 AbortSignal，service 传入两个 candidate；两个 candidate runner 额外有 deterministic 外层 fallback。`review-agent.controller.spec.ts` + `review-agent.service.spec.ts` 为 `13/13`，Server build 通过。
 2. ~~定义 graph descriptor 与产品组合层的关系。~~ 已完成：catalog 明确不是执行器，补 typed edges、model mode、domain write permission、产品组合位置和 planned Orchestrator；graph focused `3/3`、Agent typecheck 通过。
-3. 为 Chat 增加全链路预算/断连 durability 的明确合同和测试；不在未决策前擅自写 BackgroundJob/Outbox。
+3. ~~为 Chat 增加全链路预算/断连 durability 的明确合同和测试。~~ 本轮已完成设计 checkpoint：明确 ChatTurn、BackgroundJob+Outbox 同事务、worker/replay、owner/幂等和 run-level budget；实现与 Docker 验收仍未完成，详见 `docs/acceptance/phase-6-chat-durability-budget-design.md`。
 4. 为 MemoryAgent 定义真实模型增强的隐私、候选确认、预算和 Trace 合同；完成 Agent 架构后再进入分层记忆实现。
 5. 做独立 Review/Planner、Knowledge agents、Router/Verifier/Tutor/Rewrite 的产品验收，保持浏览器窗口可见并保留证据。
 6. 所有代码/文档任务逐项提交、推送、`--no-ff` 合并 main，再在 merged-main 复验；全部 Agent 架构与真实验收完成后，才写两篇面试博客。
