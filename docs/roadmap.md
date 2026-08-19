@@ -2,7 +2,7 @@
 
 ## 当前原子阶段：Phase 6.9.8 SR6 Docker/API/Trace/可见浏览器功能验收（2026-08-19）
 
-SR6 默认关闭 Mock 功能验收已完成：Compose、server/worker health、认证、`/api/chat`、Trace 持久化、可见浏览器和移动端
+SR6 默认关闭 Mock 功能验收已完成，且合并后 `main=d7a62094` 已复验：Compose、server/worker health、认证、`/api/chat`、Trace 持久化、可见浏览器和移动端
 布局均通过。首次验收发现长期 Docker 数据卷缺少已提交的 `20260805090000_realtime_agent_trace_lifecycle`，按标准
 `prisma migrate deploy` 补齐后 Trace 恢复正常；没有清空或重置 Docker 数据。7 个 `sr6-*` 合成账号已精确清理，浏览器窗口
 保留。

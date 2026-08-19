@@ -4,6 +4,9 @@
 分支：`drb/phase-6-9-8-sr6-docker-api-browser-acceptance`  
 基线：`main=a1663ecf1a87333183571270336b3b8822d60df5`
 
+说明：工作树另有 3 个预先存在且与本阶段无关的 `wrong-question-organizer` 未提交修改；它们未被读取、暂存、修改或提交。
+SR6 文档提交只包含本文件及相关开发文档，合并后的验证基线为 `main=d7a62094`。
+
 ## 结论
 
 SR6 功能验收通过。当前结论限定为 Docker、API、认证、Mock Chat、Trace 持久化、移动端布局和降级边界可用；
@@ -23,6 +26,29 @@ SR6 功能验收通过。当前结论限定为 Docker、API、认证、Mock Chat
   未发生重叠，窗口保持打开。
 - Trace 只保留摘要、哈希、计数、模式、provider/model 标识和固定 authority；未验证或持久化完整 prompt、provider 原文、
   完整回答、credential 或 raw error。
+
+## 可复核证据
+
+以下输出来自合并前分支和合并后 `main` 的同一默认关闭环境；命令均未打印解析后的 Compose 环境：
+
+```text
+docker compose ... config --quiet                 exit 0
+docker compose ... ps                             server healthy, worker healthy, web/admin Up
+GET http://127.0.0.1:3001/health                  200 {"success":true,"data":{"status":"ok"}}
+prisma migrate status                             Database schema is up to date! (18 migrations)
+```
+
+合并后复验使用匿名化前缀 `sr6-evidence-*` 的一次性账号，账号在输出后立即删除：
+
+```text
+chatStatus=200 mode=mock traceRecorded=true
+runId=e6ed2ac4-3780-4c8c-be49-fed41dcfb6ae
+status=completed route=chat provider=mock qualityAuthority=none
+DELETE 1
+```
+
+可见浏览器证据为 Playwright MCP 页面快照：`/login`、`/chat`、`/agent-trace`，以及 `390x844` 快照；浏览器窗口保持
+打开，未将包含账号或回答正文的截图写入仓库。首次缺迁移时 `/agent-traces` 返回 `500`，迁移后同一 API 返回上述成功结果。
 
 ## 发现并修复的问题
 
@@ -48,5 +74,5 @@ bunx prisma migrate deploy --schema prisma/schema.prisma
 - 本轮未开启真实 Provider，也未读取根 `.env` 中的 credential；没有新的 Provider、billing 或 semantic evidence。
 - 浏览器控制台曾出现一次登录页遗留 refresh cookie 的 `401`，不影响随后重新登录、Chat 或 Trace 页面功能；该现象记录为
   浏览器状态清理问题，不修改生产认证逻辑。
-- 合并后需要在 `main` 上重复一次默认关闭的 Docker/API/可见浏览器验收，确认分支合并没有回归。
+- 合并后 `main=d7a62094` 已重复完成默认关闭的 Docker/API/可见浏览器验收；该复验仍不建立 Provider 语义 authority。
 
