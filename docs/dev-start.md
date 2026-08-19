@@ -1,5 +1,11 @@
 # PrepMind 本地启动命令
 
+> 2026-08-19 真实模型运行时：本地 Docker 只需在未跟踪的根 `.env` 配置一次 `DEEPSEEK_API_KEY`；Review/Planner、
+> Knowledge、WrongQuestionOrganizer、Retriever query rewrite 与 FinalResponse 的组件变量未显式提供时会引用同一底层
+> secret，显式组件 key 始终优先。能力仍由各自 gate 独立控制，日常保持 `AI_PROVIDER_MODE=mock`、
+> `AI_ENABLE_LIVE_CALLS=false` 和组件 gate=false。不要输出解析后的 Compose 配置或 key 值。验收见
+> `docs/acceptance/phase-6-9-8-real-model-runtime-usability.md`。
+
 > 2026-08-19 SR6 记录：长期 Docker 数据卷可能落后于当前 Prisma schema。启动已有数据卷后，先在目标 Compose
 > PostgreSQL 对应的 `server` 容器内执行 `bunx prisma migrate deploy --schema prisma/schema.prisma`，再验收 `/api/chat`
 > 与 `/agent-traces`；不得用会加载根 `.env` credential 的 host wrapper，也不得用 reset、
@@ -1168,7 +1174,7 @@ Remove-Item Env:COMPOSE_BAKE
 
 > 当前 Compose 以 `docker/docker-compose.dev.yml` 为准：`server`、`worker`、`web`、`admin` 都不再通过 service `env_file` 导入整份根 `.env`，只接收各自 `environment` 中明列的 allowlist。`web` 接收 Chat、Router、Verifier 与 Tutor；`server` 接收 Review/Planner、KnowledgeDedup/Organizer 与 WrongQuestionOrganizer；`worker` 只接收 RAG/队列/运维变量；`admin` 只接收后台所需 URL。根 `.env` 只是宿主 Compose 插值输入，不会整份进入任一容器。
 
-Compose CLI 不会因为 `-f docker/docker-compose.dev.yml` 自动把仓库根 `.env` 当作该文件的插值源；标准命令必须显式传 `--env-file .env` 做 `${VAR:-default}` 替换。CLI `--env-file` 仅影响 Compose 插值，不等于 service `env_file`。Tutor 只使用 `TUTOR_AGENT_DEEPSEEK_API_KEY`，WrongQuestionOrganizer 只使用 `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；generic key、另一组件 key、Review/Planner 或 Knowledge credential 都不能替代。Review/Planner、Knowledge 与 WrongQuestionOrganizer 的 gate/timeout 只进入 `server`；`SERVER_ROLE=worker` 即使被宿主额外伪造注入 Organizer gate/key，模块也强制关闭 executor。Compose 的 RAG 默认占位是 `qwen` + `text-embedding-v4` + 1536，但 production-mode 容器仍要求 provider/model 显式且与对应凭据匹配；Qwen base URL 必须是无凭据 HTTPS URL。宿主传入的 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 只是兼容别名，容器内统一为 `QWEN_API_KEY`。仓库只提交变量名和空/default 引用，不提交值。
+Compose CLI 不会因为 `-f docker/docker-compose.dev.yml` 自动把仓库根 `.env` 当作该文件的插值源；标准命令必须显式传 `--env-file .env` 做 `${VAR:-default}` 替换。CLI `--env-file` 仅影响 Compose 插值，不等于 service `env_file`。本地 Docker 可让 Review/Planner、Knowledge、WrongQuestionOrganizer、Retriever 与 FinalResponse 的组件变量回退到根 `DEEPSEEK_API_KEY`，但显式组件 key 始终优先；这只是同一底层 secret 的部署映射，不合并组件 gate、预算、timeout 或服务权限。Tutor 当前仍只使用 `TUTOR_AGENT_DEEPSEEK_API_KEY`。Review/Planner、Knowledge 与 WrongQuestionOrganizer 的 gate/timeout 只进入 `server`；`SERVER_ROLE=worker` 即使被宿主额外伪造注入 Organizer gate/key，模块也强制关闭 executor。Compose 的 RAG 默认占位是 `qwen` + `text-embedding-v4` + 1536，但 production-mode 容器仍要求 provider/model 显式且与对应凭据匹配；Qwen base URL 必须是无凭据 HTTPS URL。宿主传入的 `Qwen_API_KEY` / `DASHSCOPE_API_KEY` 只是兼容别名，容器内统一为 `QWEN_API_KEY`。仓库只提交变量名和空/default 引用，不提交值。
 
 不要运行或粘贴会输出完整解析配置的 `docker compose config`；静态校验只使用：
 
@@ -1221,7 +1227,7 @@ Tutor candidate 只在 Next `web` 的 `/api/chat` server runtime 中运行。Com
 
 真实 executor 只有在 `AI_PROVIDER_MODE=live`、`AI_ENABLE_LIVE_CALLS=true`、Tutor gate=true、`AI_BASE_URL=https://api.deepseek.com/v1`、独立 key 非空、价格/timeout 已知且请求 eligibility 安全时才创建。模型固定 `deepseek-v4-pro` non-thinking JSON、无 tools/retry；单请求预算 `1 call / 1200 input / 300 output`，硬 cap `0.006 CNY`，并与 Router -> Verifier 的共享预算隔离。非 Tutor final route、明确教学指令、不安全输入、abort 或任一配置失败都保持 zero-call；运行失败保留 deterministic Tutor strategy。
 
-WrongQuestionOrganizer candidate 只在 Nest `server` 的 `SERVER_ROLE=api|both` 中运行。Compose 只向 `server` 投影 `WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED`、固定 5000ms timeout 与 `WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY`；`web`、`worker`、`admin` 不接收。真实配置固定 DeepSeek V4 Pro non-thinking JSON、无 tools/retry、`1 call / 3500 input / 800 output` 与 `0.016 CNY` cap；generic 或 Tutor key 都不能替代 Organizer key。worker 模块还会在代码层把 gate 强制为 false，Compose 隔离和运行时隔离缺一不可。
+WrongQuestionOrganizer candidate 只在 Nest `server` 的 `SERVER_ROLE=api|both` 中运行。Compose 只向 `server` 投影 `WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED`、固定 5000ms timeout 与组件变量；`web`、`worker`、`admin` 不接收。显式 Organizer key 优先，本地 Docker 缺省时组件变量可回退到根 `DEEPSEEK_API_KEY`；这不改变模型合同、预算、服务边界或 gate。真实配置固定 DeepSeek V4 Pro non-thinking JSON、无 tools/retry、`1 call / 3500 input / 800 output` 与 `0.016 CNY` cap。worker 模块还会在代码层把 gate 强制为 false，Compose 隔离和运行时隔离缺一不可。
 
 Task 10 只完成部署 allowlist、tracked example、角色隔离测试和回滚说明；它本身没有启动 Docker service、执行 API 或可见浏览器验收。日常开发必须保持两个 gate=false、两条 component key 空；不要把 `config --quiet` 或 Mock 解释为真实模型可用性。Task 5/7/10 证据分别见 `docs/acceptance/phase-6-9-7-tutor-web-runtime.md`、`docs/acceptance/phase-6-9-7-wrong-question-organizer-runtime.md` 与 `docs/acceptance/phase-6-9-7-runtime-boundaries.md`。
 
@@ -2014,8 +2020,8 @@ SR7 完整证据见
 ### Phase 6.9.8 Task 0--9C 运行边界
 
 Task 5/6 已把 Retriever query rewrite 与 FinalResponse 的三项变量分别加入 tracked safe example 与 Docker
-Compose `web` allowlist；默认仍关闭，不会因为根 `.env` 有通用 key 或 Chat Live 开关而启用。不要开启 gate、
-复制通用 key，或把这些变量投影给其它服务：
+Compose `web` allowlist；默认仍关闭，不会因为根 `.env` 有通用 key 或 Chat Live 开关而启用。日常不要开启 gate，
+也不要把这些变量投影给其它服务：
 
 ```dotenv
 RETRIEVER_QUERY_REWRITE_MODEL_ENABLED=false
@@ -2026,9 +2032,9 @@ FINAL_RESPONSE_AGENT_MODEL_TIMEOUT_MS=20000
 FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY=
 ```
 
-两组变量只允许显式投影给 Next `web` server runtime，不能注入 Nest `server`、`worker`、`admin` 或浏览器
-client bundle；独立 key 不能由 `DEEPSEEK_API_KEY`、Tutor/Organizer、Review/Planner 或 Knowledge credential
-替代。Task 7 已把两组 runtime bundle 接入 `/api/chat`，但 tracked default 仍为 false；普通本地启动不会执行
+两组变量只允许投影给 Next `web` server runtime，不能注入 Nest `server`、`worker`、`admin` 或浏览器 client bundle；
+显式组件 key 优先，本地 Docker 缺省时允许回退到根 `DEEPSEEK_API_KEY`。该回退不改变独立 gate、预算、timeout、
+模型合同或 Trace 边界。Task 7 已把两组 runtime bundle 接入 `/api/chat`，但 tracked default 仍为 false；普通本地启动不会执行
 query rewrite 或新的真实 FinalResponse Provider stream，只走 gate-off/Mock/安全降级路径。Task 8 的静态 runner
 只使用 prompt-only in-process Mock 与固定 fake search，不读取模型 credential、调用 Qwen/DeepSeek、启动 Docker/
 API/browser 或修改业务数据。Task 9A 的 Qwen provider module 同样不读取 env，所有测试只使用 injected fetch；
@@ -2183,7 +2189,7 @@ Mock 只能得到 `mock_quality_not_evidence`，不能开启 gate。controlled-L
 
 ### Phase 6.9.6 KnowledgeDedup / Organizer 模型建议配置
 
-Knowledge 两个 candidate 只在 Nest `server` 的 owner-scoped suggestions 编排中运行。Compose 仅把 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`、两个独立 gate 和两个 4500ms timeout 投影给 API server；worker/web/admin 都不接收这些变量。独立凭据可以由 secret manager 与其它 DeepSeek 能力引用同一个底层 secret，但变量名和能力边界必须分开，不能借用 `DEEPSEEK_API_KEY` 或 `REVIEW_PLANNER_PRODUCT_DEEPSEEK_API_KEY`。
+Knowledge 两个 candidate 只在 Nest `server` 的 owner-scoped suggestions 编排中运行。Compose 仅把 `KNOWLEDGE_AGENT_DEEPSEEK_API_KEY`、两个独立 gate 和两个 4500ms timeout 投影给 API server；worker/web/admin 都不接收这些变量。显式 Knowledge key 优先，本地 Docker 缺省时组件变量可回退到根 `DEEPSEEK_API_KEY`；变量名、gate、预算和能力边界仍保持独立。
 
 真实候选必须同时满足 `AI_PROVIDER_MODE=live`、`AI_ENABLE_LIVE_CALLS=true`、对应 Knowledge gate=true、精确无凭据 DeepSeek HTTPS base URL、有效独立凭据、已知价格、owner snapshot eligibility 与可证明的冻结 reservation。Dedup/Organizer 可单独开启和回滚；两个候选共享 `2 calls / 6000 input / 1200 output`，单请求最坏 `0.0252 CNY`，硬 cap `0.03 CNY`，SDK 不自动重试。任一条件失败都回到只读本地建议。
 

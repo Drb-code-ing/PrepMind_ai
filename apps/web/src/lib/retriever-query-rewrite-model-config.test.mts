@@ -114,7 +114,7 @@ test('resolves only the exact non-secret Live conjunction and defers the compone
   );
 });
 
-test('fails invalid config and borrowed generic or sibling credentials closed', () => {
+test('fails invalid config and accepts the documented local generic-key fallback', () => {
   const cases = [
     { ...LIVE_ENV, AI_PROVIDER_MODE: 'mock' },
     { ...LIVE_ENV, AI_ENABLE_LIVE_CALLS: 'false' },
@@ -131,12 +131,40 @@ test('fails invalid config and borrowed generic or sibling credentials closed', 
     const config = resolveRetrieverQueryRewriteModelConfig(env);
     if (env.RETRIEVER_QUERY_REWRITE_DEEPSEEK_API_KEY === '') {
       assert.equal(config.enabled, true);
-      assert.equal(resolveRetrieverQueryRewriteLiveExecutorConfig(env), null);
+      assert.deepEqual(
+        { ...resolveRetrieverQueryRewriteLiveExecutorConfig(env), apiKey: '[redacted]' },
+        {
+          provider: 'deepseek',
+          apiKey: '[redacted]',
+          baseURL: 'https://api.deepseek.com/v1',
+          model: 'deepseek-v4-pro',
+          structuredOutputMode: 'deepseek_v4_pro_nonthinking_json',
+        },
+      );
     } else {
       assert.equal(config.enabled, false);
       assert.equal(resolveRetrieverQueryRewriteLiveExecutorConfig(env), null);
     }
   }
+});
+
+test('prefers the component credential when the generic fallback also exists', () => {
+  const config = resolveRetrieverQueryRewriteLiveExecutorConfig({
+    ...LIVE_ENV,
+    DEEPSEEK_API_KEY: 'generic_fallback_must_not_win',
+  });
+
+  assert.equal(config?.apiKey, LIVE_ENV.RETRIEVER_QUERY_REWRITE_DEEPSEEK_API_KEY);
+});
+
+test('fails closed when an explicit component credential is invalid', () => {
+  const config = resolveRetrieverQueryRewriteLiveExecutorConfig({
+    ...LIVE_ENV,
+    RETRIEVER_QUERY_REWRITE_DEEPSEEK_API_KEY: ' invalid_component_key',
+    DEEPSEEK_API_KEY: 'valid_generic_fallback_must_not_hide_the_error',
+  });
+
+  assert.equal(config, null);
 });
 
 test('constructs credential and executor lazily and exposes a single-consume runtime factory', () => {

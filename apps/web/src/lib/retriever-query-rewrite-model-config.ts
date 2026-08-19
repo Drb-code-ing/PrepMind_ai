@@ -23,10 +23,7 @@ export type RetrieverQueryRewriteModelConfig = RetrieverQueryRewriteCandidateCon
   Readonly<{
     configured: boolean;
     disabledReason?:
-      | 'gate_disabled'
-      | 'mock_mode'
-      | 'global_live_disabled'
-      | 'invalid_component_config';
+      'gate_disabled' | 'mock_mode' | 'global_live_disabled' | 'invalid_component_config';
   }>;
 
 type Environment = Record<string, unknown>;
@@ -88,7 +85,11 @@ export function resolveRetrieverQueryRewriteLiveExecutorConfig(
   try {
     const config = resolveRetrieverQueryRewriteModelConfig(env);
     if (!config.enabled || config.runtimeAuthority !== 'production_live') return null;
-    const apiKey = readRequiredCredential(env, 'RETRIEVER_QUERY_REWRITE_DEEPSEEK_API_KEY');
+    const apiKey = readPreferredCredential(
+      env,
+      'RETRIEVER_QUERY_REWRITE_DEEPSEEK_API_KEY',
+      'DEEPSEEK_API_KEY',
+    );
     if (apiKey === null) return null;
     return Object.freeze({
       provider: 'deepseek' as const,
@@ -158,7 +159,23 @@ function readOptionalString(env: Environment, key: string): string | undefined {
 
 function readRequiredCredential(env: Environment, key: string): string | null {
   const value = readOptionalString(env, key);
-  if (value === undefined || value !== value.trim() || value.length < 1 || value.length > 512) {
+  return value === undefined ? null : validateCredential(value);
+}
+
+function readPreferredCredential(
+  env: Environment,
+  componentKey: string,
+  fallbackKey: string,
+): string | null {
+  const componentValue = readOptionalString(env, componentKey);
+  if (componentValue !== undefined && componentValue !== '') {
+    return validateCredential(componentValue);
+  }
+  return readRequiredCredential(env, fallbackKey);
+}
+
+function validateCredential(value: string): string | null {
+  if (value !== value.trim() || value.length < 1 || value.length > 512) {
     return null;
   }
   return /^[\x21-\x7e]+$/u.test(value) ? value : null;

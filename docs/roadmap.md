@@ -1,5 +1,15 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 真实模型产品运行时可用性（2026-08-19）
+
+分支产品 smoke 已打通：`/api/chat` 实际调用 DeepSeek 并返回 `200 / mode=live / traceRecorded=true`。修复点是让本地
+Compose 和 Retriever/FinalResponse executor 在组件专用 key 缺省时回退到根 `DEEPSEEK_API_KEY`，同时保留专用 key
+优先、服务 allowlist、独立 gate 和默认关闭行为。合成账号已精确清理，Docker 已恢复 Mock/default-off，数据卷未清理。
+
+该结果只建立产品运行时可用性，不建立完整语义、billing、SLA 或新的 quality authority。完成独立复审、`main` 合并推送和
+merged-main Live smoke/default-off 恢复后，本阶段才最终关闭；随后从最新 `main` 进入 Phase 6 多 Agent 运行时总审计，先确认
+剩余 Agent 的真实/混合模型、路由、权限、预算和降级边界，再进入分层记忆系统工作，不提前写收尾博客。
+
 ## 当前原子阶段：Phase 6.9.8 SR6 Docker/API/Trace/可见浏览器功能验收（2026-08-19）
 
 SR6 默认关闭 Mock 功能验收已完成，且合并后 `main=d7a62094` 已复验：Compose、server/worker health、认证、`/api/chat`、Trace 持久化、可见浏览器和移动端

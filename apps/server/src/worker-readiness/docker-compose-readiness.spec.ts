@@ -303,7 +303,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
       'AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com/v1}',
     );
     expect(serverService).toContain(
-      'DEEPSEEK_API_KEY: ${REVIEW_PLANNER_PRODUCT_DEEPSEEK_API_KEY:-}',
+      'DEEPSEEK_API_KEY: ${REVIEW_PLANNER_PRODUCT_DEEPSEEK_API_KEY:-${DEEPSEEK_API_KEY:-}}',
     );
     expect(serverService).not.toContain(
       'DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}',
@@ -349,7 +349,7 @@ describe('Docker Compose worker readiness healthcheck', () => {
     const webService = extractYamlSection(compose, '  web:', 2);
     const adminService = extractYamlSection(compose, '  admin:', 2);
     const controls = [
-      'KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: ${KNOWLEDGE_AGENT_DEEPSEEK_API_KEY:-}',
+      'KNOWLEDGE_AGENT_DEEPSEEK_API_KEY: ${KNOWLEDGE_AGENT_DEEPSEEK_API_KEY:-${DEEPSEEK_API_KEY:-}}',
       'KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED: ${KNOWLEDGE_DEDUP_AGENT_MODEL_ENABLED:-false}',
       'KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED: ${KNOWLEDGE_ORGANIZER_AGENT_MODEL_ENABLED:-false}',
       'KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS: ${KNOWLEDGE_DEDUP_AGENT_MODEL_TIMEOUT_MS:-4500}',

@@ -125,7 +125,7 @@ test('resolves only the exact Live conjunction and defers the dedicated componen
   assert.equal(reads, 1);
 });
 
-test('fails invalid config and borrowed generic or sibling credentials closed', () => {
+test('fails invalid config and accepts the documented local generic-key fallback', () => {
   for (const env of [
     { ...LIVE_ENV, AI_PROVIDER_MODE: 'mock' },
     { ...LIVE_ENV, AI_ENABLE_LIVE_CALLS: 'false' },
@@ -144,7 +144,33 @@ test('fails invalid config and borrowed generic or sibling credentials closed', 
     RETRIEVER_QUERY_REWRITE_DEEPSEEK_API_KEY: 'sibling_key_must_not_be_borrowed',
   };
   assert.equal(resolveFinalResponseModelConfig(borrowedOnly).enabled, true);
-  assert.equal(resolveFinalResponseLiveExecutorConfig(borrowedOnly), null);
+  assert.deepEqual(
+    { ...resolveFinalResponseLiveExecutorConfig(borrowedOnly), apiKey: '[redacted]' },
+    {
+      apiKey: '[redacted]',
+      baseURL: 'https://api.deepseek.com/v1',
+      model: 'deepseek-v4-pro',
+    },
+  );
+});
+
+test('prefers the component credential when the generic fallback also exists', () => {
+  const config = resolveFinalResponseLiveExecutorConfig({
+    ...LIVE_ENV,
+    DEEPSEEK_API_KEY: 'generic_fallback_must_not_win',
+  });
+
+  assert.equal(config?.apiKey, LIVE_ENV.FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY);
+});
+
+test('fails closed when an explicit component credential is invalid', () => {
+  const config = resolveFinalResponseLiveExecutorConfig({
+    ...LIVE_ENV,
+    FINAL_RESPONSE_AGENT_DEEPSEEK_API_KEY: ' invalid_component_key',
+    DEEPSEEK_API_KEY: 'valid_generic_fallback_must_not_hide_the_error',
+  });
+
+  assert.equal(config, null);
 });
 
 test('constructs the credential and executor lazily through a single-consume factory', () => {
