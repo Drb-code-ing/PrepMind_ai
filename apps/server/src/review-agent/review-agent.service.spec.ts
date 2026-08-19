@@ -432,6 +432,48 @@ describe('ReviewAgentService', () => {
     );
   });
 
+  it('falls back to deterministic values when a candidate runner throws unexpectedly', async () => {
+    const runtime = {
+      invokeStructured: jest.fn().mockRejectedValue(
+        new Error('unexpected runtime failure'),
+      ),
+    } as unknown as ModelAgentRuntime;
+
+    const result = await createService(
+      enabledRuntimes(runtime),
+    ).getSuggestions('user_1', query);
+
+    expect(result.review.weakPoints).not.toHaveLength(0);
+    expect(result.planner.suggestedBlocks).not.toHaveLength(0);
+    expect(result.modelObservations).toMatchObject({
+      review: {
+        attempted: true,
+        disposition: 'fallback_runtime_error',
+        provenance: 'local_deterministic',
+      },
+      planner: {
+        attempted: true,
+        disposition: 'fallback_runtime_error',
+        provenance: 'local_deterministic',
+      },
+    });
+  });
+
+  it('stops every enabled candidate when the request is already aborted', async () => {
+    const executor = jest.fn<ReturnType<StructuredModelExecutor>, Parameters<StructuredModelExecutor>>();
+    const abortController = new AbortController();
+    abortController.abort();
+    const result = await createService(
+      enabledRuntimes(liveRuntime(executor as StructuredModelExecutor)),
+    ).getSuggestions('user_1', query, undefined, abortController.signal);
+
+    expect(executor).not.toHaveBeenCalled();
+    expect(result.modelObservations).toMatchObject({
+      review: { attempted: false, disposition: 'fallback_aborted' },
+      planner: { attempted: false, disposition: 'fallback_aborted' },
+    });
+  });
+
   it('claims the review acceptance capability immediately before its only runtime call', async () => {
     const events: string[] = [];
     const executor: StructuredModelExecutor = () => {

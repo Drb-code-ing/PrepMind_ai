@@ -71,7 +71,7 @@ HTTP request
 
 ## 5. 本审计后续顺序
 
-1. 先修复并测试 Review/Planner 的 AbortSignal 与 candidate 外层 fail-safe。
+1. ~~先修复并测试 Review/Planner 的 AbortSignal 与 candidate 外层 fail-safe。~~ 已完成：controller 将 HTTP `aborted` 映射为请求级 AbortSignal，service 传入两个 candidate；两个 candidate runner 额外有 deterministic 外层 fallback。`review-agent.controller.spec.ts` + `review-agent.service.spec.ts` 为 `13/13`，Server build 通过。
 2. 定义 graph descriptor 与产品组合层的关系；补 typed edges/permissions/budget 只读描述，或明确 graph 仅为 catalog，避免误导。
 3. 为 Chat 增加全链路预算/断连 durability 的明确合同和测试；不在未决策前擅自写 BackgroundJob/Outbox。
 4. 为 MemoryAgent 定义真实模型增强的隐私、候选确认、预算和 Trace 合同；完成 Agent 架构后再进入分层记忆实现。

@@ -8,6 +8,13 @@
 > AbortSignal；Chat 断连持久化和全链路预算 ledger 仍有待决策。当前只完成 inventory checkpoint，不能宣称 Phase 6 Agent
 > 架构完成，也不能提前写面试博客。用户预先修改的三个 WrongQuestionOrganizer 文件未触碰。
 
+> 2026-08-19 — Phase 6 Agent 审计 Task 1：Review/Planner 请求取消与 fail-safe：
+>
+> `ReviewAgentController` 现在监听 HTTP `aborted` 事件，将同一 `AbortSignal` 传入 Review 与 Planner candidate；请求完成后移除
+> listener。Service 侧新增两个 candidate runner 的 deterministic 外层 fallback，意外 runtime throw 不再穿透 HTTP，observation
+> 保留 bounded `fallback_runtime_error`。controller/service 回归共 `13/13`，Server build 与 diff check 通过。该修复只改变
+> 取消和异常边界，不改变业务事实或写权限。
+
 > 2026-08-19 — Phase 6.9.8 真实模型产品运行时打通：
 >
 > `/api/chat` 首次 Live 启动暴露两类配置错误：server Compose 丢弃根 `DEEPSEEK_API_KEY`，Retriever/FinalResponse 又要求

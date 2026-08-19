@@ -1,5 +1,6 @@
-import { Controller, Get, Headers, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Headers, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
 import { reviewAgentSuggestionQuerySchema } from '@repo/types/api/review-agent';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -16,19 +17,29 @@ export class ReviewAgentController {
   constructor(private readonly reviewAgentService: ReviewAgentService) {}
 
   @Get('suggestions')
-  getSuggestions(
+  async getSuggestions(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: unknown,
     @Headers(REVIEW_PLANNER_PRODUCT_ACCEPTANCE_HEADER)
     rawAcceptanceCapability: unknown,
+    @Req() request: Request,
   ) {
-    const input = reviewAgentSuggestionQuerySchema.parse(query);
-    return this.reviewAgentService.getSuggestions(
-      user.id,
-      input,
-      typeof rawAcceptanceCapability === 'string'
-        ? rawAcceptanceCapability
-        : undefined,
-    );
+    const abortController = new AbortController();
+    const abort = () => abortController.abort();
+    request.once('aborted', abort);
+    if (request.aborted) abort();
+    try {
+      const input = reviewAgentSuggestionQuerySchema.parse(query);
+      return await this.reviewAgentService.getSuggestions(
+        user.id,
+        input,
+        typeof rawAcceptanceCapability === 'string'
+          ? rawAcceptanceCapability
+          : undefined,
+        abortController.signal,
+      );
+    } finally {
+      request.off('aborted', abort);
+    }
   }
 }
