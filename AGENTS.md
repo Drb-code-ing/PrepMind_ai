@@ -2,7 +2,7 @@
 
 ## 2026-08-19 SR6 状态
 
-Phase 6.9.8 SR6 Docker/API/Trace/可见浏览器默认关闭功能验收已完成。Docker 数据未清理；若长期卷缺少已提交迁移，使用
+Phase 6.9.8 SR6 Docker/API/Trace/可见浏览器默认关闭功能验收已完成，且合并后 `main=d7a62094` 已复验。Docker 数据未清理；若长期卷缺少已提交迁移，使用
 容器内 `bunx prisma migrate deploy --schema prisma/schema.prisma` 补齐，不得 reset。验收保持
 `semantic=not_established`、`qualityAuthority=none`。记录见
 `docs/acceptance/phase-6-9-8-sr6-docker-api-trace-visible-browser.md`。
