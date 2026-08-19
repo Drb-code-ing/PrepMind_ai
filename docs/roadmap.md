@@ -1,5 +1,16 @@
 # PrepMind AI 学习与开发路线图
 
+## 当前原子阶段：Phase 6.9.8 SR6 Docker/API/Trace/可见浏览器功能验收（2026-08-19）
+
+SR6 默认关闭 Mock 功能验收已完成：Compose、server/worker health、认证、`/api/chat`、Trace 持久化、可见浏览器和移动端
+布局均通过。首次验收发现长期 Docker 数据卷缺少已提交的 `20260805090000_realtime_agent_trace_lifecycle`，按标准
+`prisma migrate deploy` 补齐后 Trace 恢复正常；没有清空或重置 Docker 数据。7 个 `sr6-*` 合成账号已精确清理，浏览器窗口
+保留。
+
+本阶段只建立功能可用性结论，不建立 Provider 语义、billing、SLA 或产品质量 authority；继续保持
+`semantic=not_established`、`qualityAuthority=none`。验收记录：
+`docs/acceptance/phase-6-9-8-sr6-docker-api-trace-visible-browser.md`。
+
 ## 当前原子阶段：Phase 6.9.8 Retriever/FinalResponse partial closure（zero-provider，已完成，2026-08-18）
 
 用户选择降低当前质量门后，本阶段不再建立新的 V13 Provider runner/tag/authorization。read-only closure 以 V12 strict

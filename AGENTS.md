@@ -1,5 +1,12 @@
 # PrepMind AI — 仓库协作指南
 
+## 2026-08-19 SR6 状态
+
+Phase 6.9.8 SR6 Docker/API/Trace/可见浏览器默认关闭功能验收已完成。Docker 数据未清理；若长期卷缺少已提交迁移，使用
+容器内 `bunx prisma migrate deploy --schema prisma/schema.prisma` 补齐，不得 reset。验收保持
+`semantic=not_established`、`qualityAuthority=none`。记录见
+`docs/acceptance/phase-6-9-8-sr6-docker-api-trace-visible-browser.md`。
+
 ## 当前状态：Phase 6.9.8 Retriever/FinalResponse partial closure（zero-provider，2026-08-18）
 
 用户明确降低当前质量门后，本任务不再复制 V13 Provider runner，而是对 immutable V12 controlled-Live evidence 做只读、

@@ -1,5 +1,11 @@
 # PrepMind 本地启动命令
 
+> 2026-08-19 SR6 记录：长期 Docker 数据卷可能落后于当前 Prisma schema。启动已有数据卷后先执行
+> `bun packages/database/scripts/prisma-with-root-env.mjs migrate deploy`（或容器内等价的
+> `bunx prisma migrate deploy --schema prisma/schema.prisma`），再验收 `/api/chat` 与 `/agent-traces`；不得用 reset、
+> `down -v`、prune、Redis flush 或 MinIO wipe 修复迁移缺失。SR6 结果保持 `semantic=not_established`、
+> `qualityAuthority=none`，详见 `docs/acceptance/phase-6-9-8-sr6-docker-api-trace-visible-browser.md`。
+
 > 适用于 Windows PowerShell。本地开发数据库使用 Docker PostgreSQL + pgvector。
 > 如果你想按功能验收而不是只启动项目，先看 `docs/acceptance-checklist.md`。
 
