@@ -13,6 +13,10 @@
 > credential、真实模型调用或新的 semantic/billing/SLA authority。完整证据见
 > `docs/acceptance/phase-6-9-8-sr6-docker-api-trace-visible-browser.md`。
 
+> 独立文档审查随后修正了迁移命令的 credential 边界（改为目标 server 容器内 migrate deploy），并补入可复核的 Compose、
+> migration status、health、Chat/Trace 输出与合并后复验记录。最终 `main=b5d84d7c` 与 `origin/main` 一致；工作树仅保留
+> 用户预先留下的 3 个 `wrong-question-organizer` 未提交修改。
+
 > 2026-08-18 — Phase 6.9.8 Retriever/FinalResponse partial closure（zero-provider）完成：
 >
 > 用户明确降低当前质量门后，停止继续复制 V13 Provider runner。新增只读 closure CLI，先后两次运行 V12 strict validator，
