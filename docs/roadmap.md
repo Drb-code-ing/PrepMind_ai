@@ -14,6 +14,9 @@
 - Router/Verifier、Tutor、FinalResponse 各有局部预算，尚无全链路 budget ledger。
 - MemoryAgent 当前确定性生成候选，无模型 gate/runtime/Trace；需要先定义隐私和确认合同。
 
+Task 1 已完成：Review/Planner controller 传播 HTTP AbortSignal，service 对 candidate runner 增加 deterministic fallback；
+聚焦 `13/13`、Server build 和 diff check 通过。下一项转向 graph/catalog 与产品执行契约，暂不把 descriptor 当作可执行 graph。
+
 矩阵和证据分级见 `docs/acceptance/phase-6-agent-runtime-audit.md`。本阶段仍遵循一任务一提交、推送 feature、`--no-ff` 合并 main、
 合并后在 main 复验；不清理 Docker，不触碰用户预先修改的三个 WrongQuestionOrganizer 文件。
 

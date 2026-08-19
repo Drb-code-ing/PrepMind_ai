@@ -1,4 +1,5 @@
 import type { ModelCandidateObservation } from '@repo/agent/model-candidates';
+import type { ModelAgentRunBudget } from '@repo/ai';
 import type {
   ReviewPlannerModelObservation,
   ReviewPlannerModelObservations,
@@ -15,11 +16,25 @@ const LOCAL_BUDGET = Object.freeze({
   usedOutputTokens: 0,
 });
 
-export function createLocalReviewPlannerCandidateObservation(): CandidateObservation {
+export function createLocalReviewPlannerCandidateObservation(options?: {
+  budget?: ModelAgentRunBudget;
+  reasonCode?: 'not_eligible' | 'fallback_runtime_error';
+}): CandidateObservation {
+  const reasonCode = options?.reasonCode ?? 'not_eligible';
+  const budget = options?.budget ? { ...options.budget } : { ...LOCAL_BUDGET };
+  if (reasonCode === 'fallback_runtime_error') {
+    return {
+      attempted: false,
+      disposition: 'fallback_runtime_error',
+      budget,
+      usage: { inputTokens: 0, outputTokens: 0 },
+      reasonCodes: ['fallback_runtime_error'],
+    };
+  }
   return {
     attempted: false,
     disposition: 'not_eligible',
-    budget: { ...LOCAL_BUDGET },
+    budget,
     usage: { inputTokens: 0, outputTokens: 0 },
     reasonCodes: ['not_eligible'],
   };

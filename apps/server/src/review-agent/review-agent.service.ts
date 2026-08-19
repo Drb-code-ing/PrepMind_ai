@@ -92,6 +92,7 @@ export class ReviewAgentService {
     userId: string,
     input: ReviewAgentSuggestionQuery,
     rawAcceptanceCapability?: unknown,
+    signal?: AbortSignal,
   ): Promise<ReviewAgentSuggestionResponse> {
     const now = new Date();
     const [plan, preference, reviewInput] = await Promise.all([
@@ -117,11 +118,12 @@ export class ReviewAgentService {
           'review',
           rawAcceptanceCapability,
         ))
-        ? await runReviewModelCandidate({
+        ? await this.safeRunReviewModelCandidate({
             runId,
             deterministic: deterministicReview,
             budget,
             runtime: this.modelRuntimes.reviewRuntime,
+            ...(signal ? { signal } : {}),
           })
         : {
             value: deterministicReview,
@@ -139,11 +141,12 @@ export class ReviewAgentService {
           'planner',
           rawAcceptanceCapability,
         ))
-        ? await runPlannerModelCandidate({
+        ? await this.safeRunPlannerModelCandidate({
             runId,
             deterministic: deterministicPlanner,
             budget: reviewCandidate.observation.budget,
             runtime: this.modelRuntimes.plannerRuntime,
+            ...(signal ? { signal } : {}),
           })
         : {
             value: deterministicPlanner,
@@ -181,6 +184,34 @@ export class ReviewAgentService {
       planSummary: plan.summary,
       modelObservations,
     };
+  }
+
+  private async safeRunReviewModelCandidate(input: Parameters<typeof runReviewModelCandidate>[0]) {
+    try {
+      return await runReviewModelCandidate(input);
+    } catch {
+      return {
+        value: input.deterministic,
+        observation: createLocalReviewPlannerCandidateObservation({
+          budget: input.budget,
+          reasonCode: 'fallback_runtime_error',
+        }),
+      };
+    }
+  }
+
+  private async safeRunPlannerModelCandidate(input: Parameters<typeof runPlannerModelCandidate>[0]) {
+    try {
+      return await runPlannerModelCandidate(input);
+    } catch {
+      return {
+        value: input.deterministic,
+        observation: createLocalReviewPlannerCandidateObservation({
+          budget: input.budget,
+          reasonCode: 'fallback_runtime_error',
+        }),
+      };
+    }
   }
 
   private async buildReviewInput(
