@@ -1,5 +1,21 @@
 # PrepMind 统一验收与调试清单
 
+## 0M. Phase 6 Agent 运行时总审计（2026-08-19，进行中）
+
+- [x] 建立 11 个 graph Agent + ConversationSummary 的职责/模式/权限/预算/Trace/证据矩阵
+- [x] 区分 implemented、mock/static、controlled-Live、product real-model smoke、production-used
+- [x] 确认 graph descriptor 与 `/api/chat` 产品执行器不是同一实现
+- [x] 标记 Tool-Using Orchestrator 尚未实现
+- [ ] Review/Planner AbortSignal 与 candidate 外层 fail-safe
+- [ ] Chat 断连 durability/丢失语义与测试
+- [ ] 全链路 owner capability 与 budget ledger
+- [ ] Trace 完整性/对账策略
+- [ ] MemoryAgent 模型增强隐私、确认、预算、Trace 合同
+- [ ] Router/Verifier/Tutor/Rewrite/Review/Planner/Knowledge agents 产品真实模型逐项验收
+- [ ] 合并 main、推送远程并在 merged-main 复验
+
+权威矩阵：`docs/acceptance/phase-6-agent-runtime-audit.md`。未完成项不得因 mock/static 通过而勾选完成。
+
 这份文档是日常开发、阶段收尾、面试复盘前的统一入口。它不替代
 `docs/dev-start.md`、`docs/ai-behavior-acceptance.md` 和各阶段设计文档，而是回答一个更直接的问题：
 
