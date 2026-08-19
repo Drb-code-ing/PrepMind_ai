@@ -14,7 +14,8 @@
 > `docs/acceptance/phase-6-9-8-sr6-docker-api-trace-visible-browser.md`。
 
 > 独立文档审查随后修正了迁移命令的 credential 边界（改为目标 server 容器内 migrate deploy），并补入可复核的 Compose、
-> migration status、health、Chat/Trace 输出与合并后复验记录。最终 `main=b5d84d7c` 与 `origin/main` 一致；工作树仅保留
+> migration status、health、Chat/Trace 输出与合并后复验记录。运行时复验基线为 `main=b5d84d7c`；最终仅文档收口后的
+> `main=76be41f2` 与 `origin/main` 一致；工作树仅保留
 > 用户预先留下的 3 个 `wrong-question-organizer` 未提交修改。
 
 > 2026-08-18 — Phase 6.9.8 Retriever/FinalResponse partial closure（zero-provider）完成：
