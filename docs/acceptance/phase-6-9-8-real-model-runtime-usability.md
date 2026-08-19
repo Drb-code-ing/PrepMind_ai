@@ -75,6 +75,29 @@ web FINAL_RESPONSE_AGENT_MODEL_ENABLED         false
 
 Docker 命名卷和已有数据保持不变，可见浏览器窗口保持打开。
 
-## 待完成
+## merged-main 复验
 
-- 合并并推送 `main` 后，再执行一次真实模型产品 smoke；随后立即恢复默认 Mock、精确清理合成账号，并记录最终 commit parity。
+功能提交 `be390e07` 已推送，并以 `--no-ff` 合并、推送为 `main=b6df0150`。合并后首次多服务构建命中已记录的
+Docker Desktop Bake shared-key 非打印字符异常；按运行手册只在当前 PowerShell 设置 `COMPOSE_BAKE=false`，分别构建
+server/web，再用 `--no-build --force-recreate` 启动。未清 build cache、容器、镜像或卷。
+
+merged-main 使用新一次性合成账号复验：
+
+```text
+status=200
+mode=live
+trace=true
+body_nonempty=True
+```
+
+首次 cleanup 命令因 PowerShell 到 `psql` 的引号转义失败，没有执行删除。随后把精确 SQL 通过 stdin 传入同一 PostgreSQL
+容器，未放宽条件：
+
+```text
+DELETE 1
+remaining=0
+```
+
+最后只重建 server/web 恢复日常状态。server 为 `healthy`；server/web 均为 `AI_PROVIDER_MODE=mock`、
+`AI_ENABLE_LIVE_CALLS=false`，Router、Verifier、Tutor、Review、Planner、KnowledgeDedup、KnowledgeOrganizer、
+WrongQuestionOrganizer、Retriever rewrite 与 FinalResponse gate 均为 `false`。Docker 数据和可见浏览器窗口保留。

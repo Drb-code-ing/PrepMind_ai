@@ -18,7 +18,10 @@
 - [x] Compose quiet config、Web lint/build、`git diff --check`
 - [x] 分支验收后 server/web 恢复 Mock/default-off，Docker 数据未清理
 - [x] 独立只读复审；P1 fallback 边界已修复并补回归
-- [ ] `--no-ff` 合并并推送 `main` 后的 Live smoke、default-off 恢复和账号清理
+- [x] `--no-ff` 合并并推送 `main=b6df0150`
+- [x] merged-main Live smoke：`200 / live / trace=true / non-empty`
+- [x] merged-main 合成账号：`DELETE 1 / remaining=0`
+- [x] merged-main 恢复 Mock/live=false、全部当前 Agent gate=false，server healthy
 
 验收：`docs/acceptance/phase-6-9-8-real-model-runtime-usability.md`。
 

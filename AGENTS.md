@@ -4,7 +4,8 @@
 
 产品 `/api/chat` 已在 Docker 中实际使用 DeepSeek 返回 `200`，并记录 `mode=live`、`traceRecorded=true`。本地 Compose
 允许组件专用 DeepSeek key 缺省时回退到根 `DEEPSEEK_API_KEY`，显式组件 key 仍优先；所有模型 gate 继续默认关闭。
-Live smoke 后 server/web 已恢复 `mock + live=false + component gates=false`，测试账号精确删除，Docker 数据未清理。
+实现以 `--no-ff` 合并并推送为 `main=b6df0150`，合并后 Live smoke 再次通过。随后 server/web 已恢复
+`mock + live=false + all current Agent gates=false`，测试账号 `DELETE 1` 且残留为 0，Docker 数据未清理。
 该结果证明产品运行时可用，不建立完整语义基准、billing、SLA 或新的 quality authority。记录见
 `docs/acceptance/phase-6-9-8-real-model-runtime-usability.md`。
 
