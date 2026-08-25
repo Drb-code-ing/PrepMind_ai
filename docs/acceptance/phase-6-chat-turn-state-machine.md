@@ -1,7 +1,7 @@
 # Phase 6 ChatTurn 状态机与 Owner Repository
 
 更新时间：2026-08-25
-状态：本原子任务完成；已合并前的 feature 分支证据，尚未代表完整 Chat 断连 durability。
+状态：本原子任务已实现、推送、`--no-ff` 合并并完成 merged-main 复验；尚未代表完整 Chat 断连 durability。
 
 ## 1. 本任务范围
 
@@ -47,6 +47,10 @@ git diff --check: passed
 Prisma validate: passed
 Prisma client generate + repair: passed
 ```
+
+功能提交 `1ce14fc9` 已推送；首次 `--no-ff` 合并为 `main=abca94ab` 并推送。merged-main 再次通过 repository `10/10`、
+database `9/9`、Server build、targeted ESLint、Prisma validate 与 commit diff check。三个用户预先修改的
+WrongQuestionOrganizer 文件始终未暂存、未提交；Docker 数据未清理。
 
 ## 5. 未完成与下一步
 
