@@ -10,6 +10,9 @@
 > focused repository `10/10`、database schema/migration `9/9`、Server build、database typecheck/test、Prisma validate/generate 和
 > `git diff --check` 通过。没有启动 Docker、没有读取 Provider credential、没有创建 BackgroundJob/Outbox、没有接入 Worker、Replay、
 > `/api/chat` 或真实模型；产品仍不能宣称断线可恢复或任务不丢失。下一步是 BackgroundJob + `chat.response.requested` Outbox 同事务。
+>
+> 功能提交 `1ce14fc9` 已推送，并以 `--no-ff` 首次合并、推送为 `main=abca94ab`。merged-main repository `10/10`、database
+> `9/9`、Server build、targeted ESLint、Prisma validate 与 commit diff check 再次通过；三个用户 dirty 文件保持未提交。
 
 > 2026-08-19 — Phase 6 Agent 运行时总审计启动：
 >
