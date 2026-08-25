@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { AgentTracesModule } from './agent-traces/agent-traces.module';
 import { BackgroundJobsModule } from './background-jobs/background-jobs.module';
 import { ChatMessagesModule } from './chat-messages/chat-messages.module';
+import { ChatTurnsModule } from './chat-turns/chat-turns.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { ConfigModule } from './config/config.module';
 import { ConversationContextModule } from './conversation-context/conversation-context.module';
@@ -43,6 +44,7 @@ import { WrongQuestionsModule } from './wrong-questions/wrong-questions.module';
     UsersModule,
     WrongQuestionsModule,
     ChatMessagesModule,
+    ChatTurnsModule,
     ConversationContextModule,
     OcrRecordsModule,
     OperatorAuditModule,

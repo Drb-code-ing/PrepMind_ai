@@ -21,7 +21,9 @@ Task 2 已完成：graph 明确为 `catalog_only`，补齐产品组合位置、t
 focused `3/3`、Agent typecheck 通过。下一项是 Chat 断连 durability 与全链路预算合同，二者先设计后实现。
 
 Task 3 设计 checkpoint 已完成：`ChatTurn + BackgroundJob + Outbox` 同事务、Worker/replay、owner/幂等和 run-level budget 合同已记录；
-尚未改 schema 或实现 worker。下一项是 ChatTurn 状态机与 repository，完成前不得宣称任务不丢失。
+Task 4 已完成 ChatTurn schema/migration、owner-scoped repository、状态机、幂等与 CAS 测试；下一项是在同一事务写入
+`BackgroundJob + chat.response.requested OutboxEvent`，完成前不得宣称任务不丢失。证据见
+`docs/acceptance/phase-6-chat-turn-state-machine.md`。
 
 矩阵和证据分级见 `docs/acceptance/phase-6-agent-runtime-audit.md`。本阶段仍遵循一任务一提交、推送 feature、`--no-ff` 合并 main、
 合并后在 main 复验；不清理 Docker，不触碰用户预先修改的三个 WrongQuestionOrganizer 文件。

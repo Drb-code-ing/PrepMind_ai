@@ -45,6 +45,7 @@ model User {
   operatorAuditExports       OperatorAuditExport[]
   conversationSummaries      ConversationSummary[]
   conversationStates         ConversationState[]
+  chatTurns                  ChatTurn[]
 }
 
 model Account {
@@ -102,6 +103,24 @@ enum MessageRole {
   USER
   ASSISTANT
   SYSTEM
+}
+
+enum ChatTurnStatus {
+  QUEUED
+  ACTIVE
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum ChatTurnErrorCode {
+  CANCELLED_BY_USER
+  BUDGET_EXHAUSTED
+  GENERATION_ABORTED
+  GENERATION_TIMEOUT
+  PROVIDER_FAILURE
+  OUTPUT_INVALID
+  INTERNAL_FAILURE
 }
 
 enum ConversationSummaryMode {
@@ -612,20 +631,20 @@ model OutboxEvent {
 }
 
 model OperatorAuditLog {
-  id             String              @id @default(cuid())
-  actorUserId    String?
-  action         OperatorAuditAction
-  status         OperatorAuditStatus
-  targetType     String
-  targetId       String?
-  reason         String?             @db.VarChar(240)
-  metadata       Json?
-  errorCode      String?
-  errorPreview   String?             @db.VarChar(240)
-  requestId      String?             @db.VarChar(80)
-  ipAddressHash  String?             @db.VarChar(80)
-  userAgentHash  String?             @db.VarChar(80)
-  createdAt      DateTime            @default(now())
+  id            String              @id @default(cuid())
+  actorUserId   String?
+  action        OperatorAuditAction
+  status        OperatorAuditStatus
+  targetType    String
+  targetId      String?
+  reason        String?             @db.VarChar(240)
+  metadata      Json?
+  errorCode     String?
+  errorPreview  String?             @db.VarChar(240)
+  requestId     String?             @db.VarChar(80)
+  ipAddressHash String?             @db.VarChar(80)
+  userAgentHash String?             @db.VarChar(80)
+  createdAt     DateTime            @default(now())
 
   actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
 
@@ -770,6 +789,7 @@ model Conversation {
   messages ChatMessage[]
   summary  ConversationSummary?
   state    ConversationState?
+  turns    ChatTurn[]
 
   @@unique([id, userId])
   @@index([userId, updatedAt])
@@ -833,10 +853,39 @@ model ChatMessage {
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  responseFor  ChatTurn?
 
   @@unique([conversationId, order])
+  @@unique([id, userId])
   @@index([userId, conversationId])
   @@index([userId, createdAt])
+}
+
+model ChatTurn {
+  id                  String             @id @default(cuid())
+  userId              String
+  conversationId      String
+  clientRequestId     String             @db.VarChar(120)
+  status              ChatTurnStatus     @default(QUEUED)
+  inputHash           String             @db.VarChar(71)
+  inputMessageIds     String[]
+  budgetPolicyVersion String             @db.VarChar(80)
+  responseMessageId   String?
+  errorCode           ChatTurnErrorCode?
+  startedAt           DateTime?
+  finishedAt          DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation    Conversation @relation(fields: [conversationId, userId], references: [id, userId], onDelete: Cascade)
+  responseMessage ChatMessage? @relation(fields: [responseMessageId, userId], references: [id, userId], onDelete: Restrict)
+
+  @@unique([id, userId])
+  @@unique([userId, clientRequestId])
+  @@unique([responseMessageId, userId])
+  @@index([userId, conversationId, createdAt])
+  @@index([userId, status, createdAt])
 }
 
 model OcrRecord {
