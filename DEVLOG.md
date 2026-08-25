@@ -1,5 +1,16 @@
 # PrepMind AI 开发日志
 
+> 2026-08-25 — Phase 6 ChatTurn 状态机与 owner-scoped repository：
+>
+> 从 `main=af1e385a` 新开普通 Git 分支，未使用 worktree。新增 `ChatTurnStatus`、固定 `ChatTurnErrorCode`、ChatTurn 表和迁移，
+> 以 `(userId, clientRequestId)` 实现幂等，以 `(conversationId, userId)` 绑定会话 owner，并以 response message 的 owner/会话/角色校验
+> 保护 durable response。Repository 使用 Serializable enqueue 重试、owner-scoped 查询和 expected-state CAS，覆盖 queued/active/
+> succeeded/failed/cancelled 合法路径、竞争丢失、重复终态、跨 owner 与输入不一致。
+>
+> focused repository `10/10`、database schema/migration `9/9`、Server build、database typecheck/test、Prisma validate/generate 和
+> `git diff --check` 通过。没有启动 Docker、没有读取 Provider credential、没有创建 BackgroundJob/Outbox、没有接入 Worker、Replay、
+> `/api/chat` 或真实模型；产品仍不能宣称断线可恢复或任务不丢失。下一步是 BackgroundJob + `chat.response.requested` Outbox 同事务。
+
 > 2026-08-19 — Phase 6 Agent 运行时总审计启动：
 >
 > 新建 `docs/acceptance/phase-6-agent-runtime-audit.md`，盘点 11 个 graph Agent 与 ConversationSummary 支持子系统，区分

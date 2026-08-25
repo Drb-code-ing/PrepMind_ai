@@ -8,6 +8,7 @@
 - [x] 标记 Tool-Using Orchestrator 尚未实现
 - [x] graph catalog 增加 `catalog_only` authority、typed edges、模型模式与领域写权限（focused `3/3`、typecheck）
 - [x] Chat durability/budget 设计 checkpoint（ChatTurn、BackgroundJob+Outbox 同事务、Worker/replay、run-level ledger）
+- [x] ChatTurn schema/migration、owner-scoped repository、状态机、幂等与 CAS 测试
 - [x] Review/Planner AbortSignal 与 candidate 外层 fail-safe（controller/service focused `13/13`，Server build）
 - [ ] Chat 断连 durability/丢失语义与测试
 - [ ] 全链路 owner capability 与 budget ledger
