@@ -1,7 +1,7 @@
 # Phase 6 Chat Response Worker：Outbox 到 Durable Reply
 
 更新时间：2026-08-28
-状态：本原子任务已在功能分支完成实现、边界加固与 focused 验收；合并后的 main 复验结果在末节记录。
+状态：本原子任务已完成实现、边界加固、功能分支验收、远程推送、`--no-ff` 合并 main 和合并后复验。
 分支：`drb/phase-6-chat-response-worker`
 
 ## 1. 任务目的
@@ -131,15 +131,21 @@ Docker、重置数据库或修改用户数据。
 
 ## 7. 分支与合并回执
 
-以下字段在功能分支提交、推送、`--no-ff` 合并 main 并完成合并后复验后填写：
+本任务的 Git 与合并回执：
 
 ```text
-feature commit: pending
-feature remote: pending
-main merge: pending
-main == origin/main: pending
-merged-main focused/build/static: pending
+feature commit: 04ef0f6fa75cef0740c7a46005d7a915fba02b4e
+feature remote: origin/drb/phase-6-chat-response-worker
+main merge: d034d3be7c859659d85e5e0ed48903fe9bb52ba7
+main == origin/main: yes
+merged-main focused: 9 suites / 137 tests passed
+merged-main build: passed
+merged-main ESLint: passed
+merged-main Prettier check: passed
+merged-main git diff --check: passed
 ```
 
 Docker、PostgreSQL、Redis、MinIO 未清理；未使用 worktree；三个用户预先修改的
-`wrong-question-organizer` 文件未暂存、未提交。
+`wrong-question-organizer` 文件未暂存、未提交。合并后的全量 Server Jest 保持
+`234 passed / 2 failed / 3 skipped` suites；两个失败仍是既有 worker-readiness 退出码断言和本地 PostgreSQL
+`127.0.0.1:5433` 不可达，不能归因于本任务。Docker 未运行，因此未执行 Docker/API/浏览器集成验收。
