@@ -16,6 +16,15 @@
 
 只有 assistant 消息和 ChatTurn 终态在同一事务中落库，才可作为回答的 durable authority。Trace、SSE 和浏览器 snapshot sync 都不能单独替代该 authority。
 
+## Chat response worker
+
+`chat.response.requested` 由 Outbox dispatcher 幂等桥接到固定 BullMQ job id；`SERVER_ROLE=worker|both` 才注册
+`ChatResponseProcessor`。Worker 重新按 owner 加载输入，进行有限 claim/retry/Abort 处理，并在同一 Serializable 事务中提交
+assistant 消息、ChatTurn 终态、BackgroundJob 终态和 `chat.response.completed|failed` Outbox。当前生成器是明确标注的
+`deterministic-worker-v1` 基线，不是真实模型。队列由 `ChatResponseQueueModule` 单点注册，active claim 的 Outbox 重试必须先
+验证同 id Bull 记录；缺失记录时 fail-closed。生成超时与 Bull lease 在 env schema 中保持至少 30 秒裕量。Redis/SSE replay、
+`/api/chat` turn-backed 切换和真实模型 Worker 仍是后续任务。
+
 ## Reliable chat enqueue
 
 新的 Chat 请求必须由 `ChatTurnEnqueueService` 在同一个 `Serializable` 事务中创建 `ChatTurn(QUEUED)`、

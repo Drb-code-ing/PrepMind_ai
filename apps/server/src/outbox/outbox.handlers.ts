@@ -1,9 +1,16 @@
 import { OPERATOR_AUDIT_EXPORT_REQUESTED_EVENT } from '../operator-audit-exports/operator-audit-export.constants';
+import {
+  chatResponseCompletedEventPayloadSchema,
+  chatResponseFailedEventPayloadSchema,
+} from '../chat-turns/chat-response.job';
 
 export type OutboxEventLike = {
   id: string;
   type: string;
   payload: unknown;
+  aggregateType?: string | null;
+  aggregateId?: string | null;
+  payloadHash?: string | null;
 };
 
 export type OutboxEventHandler = (event: OutboxEventLike) => Promise<void>;
@@ -26,15 +33,21 @@ export class OutboxHandlerError extends Error {
 export const outboxHandlers: Record<string, OutboxEventHandler> = {
   'knowledge.document.processing.requested':
     handleKnowledgeDocumentProcessingRequested,
+  'chat.response.completed': handleChatResponseCompleted,
+  'chat.response.failed': handleChatResponseFailed,
 };
 
 export function createOutboxHandlers(
   operatorAuditExportRequestedHandler: OutboxEventHandler,
+  chatResponseRequestedHandler?: OutboxEventHandler,
 ): Record<string, OutboxEventHandler> {
   return {
     ...outboxHandlers,
     [OPERATOR_AUDIT_EXPORT_REQUESTED_EVENT]:
       operatorAuditExportRequestedHandler,
+    ...(chatResponseRequestedHandler === undefined
+      ? {}
+      : { 'chat.response.requested': chatResponseRequestedHandler }),
   };
 }
 
@@ -59,6 +72,33 @@ export async function handleKnowledgeDocumentProcessingRequested(
     );
   }
 
+  await Promise.resolve();
+}
+
+/** Terminal chat events are durable notifications for replay/push layers. */
+export async function handleChatResponseCompleted(
+  event: OutboxEventLike,
+): Promise<void> {
+  if (
+    !chatResponseCompletedEventPayloadSchema.safeParse(event.payload).success
+  ) {
+    throw new OutboxHandlerError(
+      'OUTBOX_INVALID_PAYLOAD',
+      'Chat response completed payload is invalid',
+    );
+  }
+  await Promise.resolve();
+}
+
+export async function handleChatResponseFailed(
+  event: OutboxEventLike,
+): Promise<void> {
+  if (!chatResponseFailedEventPayloadSchema.safeParse(event.payload).success) {
+    throw new OutboxHandlerError(
+      'OUTBOX_INVALID_PAYLOAD',
+      'Chat response failed payload is invalid',
+    );
+  }
   await Promise.resolve();
 }
 

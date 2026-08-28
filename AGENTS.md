@@ -2,7 +2,7 @@
 
 ## 2026-08-28 Phase 6 Agent 运行时总审计（进行中）
 
-本原子任务分支为 `drb/phase-6-chat-enqueue-outbox`，建立时基线为 `main == origin/main == 82b693e081b7d4e8fc6c6f3126b8cc95cca8baa3`。
+本原子任务分支为 `drb/phase-6-chat-response-worker`，建立时基线为 `main == origin/main == f26634f0`。
 本阶段先盘点全部 Agent，再修复运行时缺口；尚未完成全部 Agent 的真实模型验收，也未开始分层记忆实现或面试博客收尾。
 
 权威审计矩阵：`docs/acceptance/phase-6-agent-runtime-audit.md`。
@@ -10,9 +10,14 @@
 重要边界：`packages/agent/src/graph/index.ts` 目前只是 11 节点 descriptor，不是执行器；真实 `/api/chat` 编排位于
 `apps/web/src/app/api/chat/route.ts` 及其组合模块。行为文档中的 Tool-Using Orchestrator 尚未实现。Review/Planner
 的 HTTP AbortSignal、全链路预算 ledger 和 MemoryAgent 模型合同仍待处理。ChatTurn 状态机与 owner-scoped repository 已完成，
-BackgroundJob + `chat.response.requested` Outbox 同事务可靠入队现已完成；但 Worker、Replay 和 `/api/chat` 切换仍未完成，因此 Chat 断连 durability 仍未建立。
+BackgroundJob + `chat.response.requested` Outbox 同事务可靠入队已完成；本分支新增 Outbox -> BullMQ -> Worker 的 deterministic
+durable baseline（assistant/Turn/BackgroundJob/终态 Outbox 同事务），但 Redis/SSE replay、`/api/chat` 切换和真实模型 Worker
+仍未完成，因此 Chat 断连 durability 仍未建立。当前已补齐 active-claim Outbox 重试的显式校验、chat response 队列单点注册，
+以及 generation timeout/Bull lease 的 schema 与 Compose 边界（至少 30 秒裕量）；缺失 active Bull 记录继续 fail-closed，
+不无 lease 重置任务。
 
-本原子任务验收见 `docs/acceptance/phase-6-chat-enqueue-outbox.md`；不得把可靠入队单独写成完整断线恢复或端到端“任务不丢失”。
+本原子任务验收见 `docs/acceptance/phase-6-chat-response-worker.md`；不得把可靠入队或 deterministic Worker 单独写成完整断线恢复、
+真实模型接入或端到端“任务不丢失”。
 
 本分支工作树中以下三个用户预先修改文件必须保持原样，不得暂存或提交：
 

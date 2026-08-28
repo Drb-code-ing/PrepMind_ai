@@ -1,5 +1,36 @@
 # PrepMind AI 开发日志
 
+> 2026-08-28 — Phase 6 Chat Response Worker durable baseline：
+>
+> 从已推送 `main=f26634f0` 新开普通 Git 分支 `drb/phase-6-chat-response-worker`，未使用 worktree，且保留三个用户预先修改的
+> `wrong-question-organizer` 文件不提交。将已落库的 `chat.response.requested` Outbox 事件接到固定 BullMQ job：新增严格
+> requested/completed/failed Zod payload、Outbox requested bridge、Bull add-race 恢复和 BackgroundJob link CAS；只有
+> `SERVER_ROLE=worker|both` 注册 `ChatResponseProcessor`。
+>
+> Worker 重新按 owner/routing facts 加载输入，以 Serializable 事务 claim Turn/BackgroundJob，支持有限 serialization retry、
+> AbortSignal/有界超时和 retryable/terminal failure 分类。成功在同一事务提交 assistant message、`ChatTurn=SUCCEEDED`、
+> `BackgroundJob=SUCCEEDED` 与 `chat.response.completed` Outbox；终态失败同样提交 `ChatTurn/BackgroundJob=FAILED` 与
+> `chat.response.failed` Outbox。重复消费、不同 Bull job、CAS 丢失、取消对账和 payload 额外字段均 fail-closed。
+>
+> 当前 generator 明确为 `deterministic-worker-v1`，只验证执行/持久化骨架，不代表真实模型；未读取根 `.env`、未调用 DeepSeek/Qwen，
+> 未改变 `/api/chat` 默认 mock/off。功能分支初始 focused `6 suites / 42 tests`，加固后最终为 `9 suites / 137 tests`；Server build、目标 ESLint/Prettier/diff check 通过。
+> Server 全量 Jest 仍只有既有 worker-readiness 退出码断言（期望 `2`、实际 `1`）和本地 `127.0.0.1:5433` 不可达 integration 失败；
+> 当前统计为 `234 passed / 2 failed / 3 skipped` suites（`2228 passed / 2 failed / 30 skipped` tests）。
+> Docker/Redis/MinIO 数据未清理。详细验收见 `docs/acceptance/phase-6-chat-response-worker.md`；Replay、`/api/chat` turn-backed 切换、
+> 全链路 budget ledger 与真实模型 Worker 仍是后续任务。
+
+> 2026-08-28 — Chat Response Worker 边界加固：
+>
+> 独立复审发现 Outbox dispatcher 可能在 Worker 已将 Turn/BackgroundJob claim 为 `ACTIVE` 后才重试请求事件；现在该路径
+> 会验证同 id Bull 记录，缺失时以可重试 handler failure fail-closed，避免无 lease 重置造成并发重复生成。抽取
+> `ChatResponseQueueModule` 作为 chat response 队列唯一注册点，消除 Outbox/ChatTurns 双注册。新增统一 worker 配置解析，
+> 并在 env schema/Compose 强制 `lockDuration >= generationTimeout + 30s`（默认 `180s/120s`）。
+>
+> 加固后 focused `9 suites / 137 tests`、Server build、目标 ESLint/Prettier/diff check 通过；全量 Server Jest 为
+> `234 passed / 2 failed / 3 skipped` suites（`2228 passed / 2 failed / 30 skipped` tests），仍只有既有 worker-readiness
+> 退出码断言和本地 PostgreSQL integration 两个环境/历史失败。未读取根
+> `.env`、未调用 Provider、未启动或清理 Docker/Redis/MinIO；合并 main 与合并后复验待本任务末节回填。
+
 > 2026-08-28 — Phase 6 Chat 可靠入队边界：
 >
 > 从已推送 `main=82b693e0` 新开普通 Git 分支 `drb/phase-6-chat-enqueue-outbox`，未使用 worktree，且保留三个用户预先修改的
