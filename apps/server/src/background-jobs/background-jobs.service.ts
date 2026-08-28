@@ -41,23 +41,35 @@ type BackgroundJobRecord = Prisma.BackgroundJobGetPayload<{
 
 type JsonRecord = Prisma.InputJsonObject;
 
+export type CreateQueuedBackgroundJobInput = {
+  userId: string;
+  queueName: string;
+  jobName: string;
+  resourceType: BackgroundJobResourceType;
+  resourceId: string;
+  idempotencyKey?: string | null;
+  dedupeKey?: string | null;
+  maxAttempts: number;
+  payloadHash?: string | null;
+  payloadPreview?: JsonRecord | null;
+};
+
 @Injectable()
 export class BackgroundJobsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createQueuedJob(input: {
-    userId: string;
-    queueName: string;
-    jobName: string;
-    resourceType: BackgroundJobResourceType;
-    resourceId: string;
-    idempotencyKey?: string | null;
-    dedupeKey?: string | null;
-    maxAttempts: number;
-    payloadHash?: string | null;
-    payloadPreview?: JsonRecord | null;
-  }): Promise<BackgroundJobResponse> {
-    const job = await this.prisma.backgroundJob.create({
+  async createQueuedJob(
+    input: CreateQueuedBackgroundJobInput,
+  ): Promise<BackgroundJobResponse> {
+    const job = await this.createQueuedJobInTransaction(this.prisma, input);
+    return toResponse(job);
+  }
+
+  async createQueuedJobInTransaction(
+    transaction: Prisma.TransactionClient | PrismaService,
+    input: CreateQueuedBackgroundJobInput,
+  ) {
+    return transaction.backgroundJob.create({
       data: {
         userId: input.userId,
         scope: 'ACCOUNT',
@@ -73,8 +85,6 @@ export class BackgroundJobsService {
         payloadPreview: input.payloadPreview ?? Prisma.JsonNull,
       },
     });
-
-    return toResponse(job);
   }
 
   async findActiveForResource(

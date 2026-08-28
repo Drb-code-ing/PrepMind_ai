@@ -1,7 +1,7 @@
 # Phase 6 Chat Durability and Budget Design
 
 更新时间：2026-08-19  
-状态：设计 checkpoint；ChatTurn 状态机与 owner-scoped repository 已实现，后续 BackgroundJob/Outbox、Worker、Replay 和产品切换仍未实现。
+状态：设计与可靠入队已实现；ChatTurn 状态机、BackgroundJob + requested Outbox 同事务已完成，Worker、Replay 和产品切换仍未实现。
 
 ## 1. 当前问题
 
@@ -52,7 +52,8 @@ authenticated request
 输入正文继续放在 owner-scoped `ChatMessage`/turn input 表中；队列 payload 只保存 `turnId`、版本、hash 和有限诊断。
 
 已落地的第一步还包括 owner + conversation 复合外键、固定错误枚举、生命周期 CHECK、CAS repository 和幂等/跨 owner 测试；
-实现与证据见 `docs/acceptance/phase-6-chat-turn-state-machine.md`。本节后续的 BackgroundJob、Outbox 和 Worker 仍属于后续步骤。
+实现与证据见 `docs/acceptance/phase-6-chat-turn-state-machine.md`。可靠入队实现与证据见
+`docs/acceptance/phase-6-chat-enqueue-outbox.md`；Worker 仍属于后续步骤。
 
 ### 3.2 Idempotency
 
@@ -91,7 +92,8 @@ ChatRunBudget {
 ## 6. 分阶段实施顺序
 
 1. ~~新增 ChatTurn schema/migration 与 owner-scoped repository，补唯一键、状态机和 concurrency tests。~~ 已完成；详见 ChatTurn 验收文档。
-2. 在同一事务新增 `BackgroundJob + chat.response.requested OutboxEvent`，补 crash-before-commit/duplicate enqueue tests。
+2. ~~在同一事务新增 `BackgroundJob + chat.response.requested OutboxEvent`，补 crash-before-commit/duplicate enqueue tests。~~ 已完成；见
+   `docs/acceptance/phase-6-chat-enqueue-outbox.md`。
 3. Worker 先实现 deterministic/mock 生成与 durable assistant commit，再接入真实模型 gate；不改变现有 `/api/chat` 默认 mock/off。
 4. 增加 Redis/SSE bounded delta stream 与 turn replay；浏览器断开后可通过 turn 查询最终结果。
 5. 将现有 `/api/chat` 切换到 turn-backed path，保留旧 sync 只读兼容窗口；迁移完成后禁止 delete/recreate snapshot 作为权威写入。
@@ -99,7 +101,7 @@ ChatRunBudget {
 
 ## 7. 本 checkpoint 的明确结论
 
-- 当前 ChatTurn schema/migration 已完成；本任务没有创建 Chat BackgroundJob、没有写 Outbox、没有触碰 Docker 数据。
-- “BackgroundJob + Outbox 同事务”是后续生产实现的硬要求；只写其中一个仍然存在任务丢失窗口。
-- 在 ChatTurn/Worker/replay 完成前，产品文档必须继续使用“流式功能可用、断连 durability 未建立”的表述。
+- 当前 ChatTurn schema/migration 与 `ChatTurn + BackgroundJob + chat.response.requested` 同事务可靠入队已完成；没有触碰 Docker 数据。
+- “BackgroundJob + Outbox 同事务”已成为实现合同，但尚未有 Worker、Replay 或 `/api/chat` turn-backed 产品路径。
+- 在 Worker/replay/产品切换完成前，产品文档必须继续使用“流式功能可用、断连 durability 未建立”的表述。
 

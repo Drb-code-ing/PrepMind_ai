@@ -47,55 +47,8 @@ export class ChatTurnsRepository {
 
     const runTransaction = () =>
       this.prisma.$transaction(
-        async (transaction) => {
-          const existing = await transaction.chatTurn.findUnique({
-            where: {
-              userId_clientRequestId: {
-                userId: input.userId,
-                clientRequestId: input.clientRequestId,
-              },
-            },
-          });
-          if (existing) {
-            assertSameRequest(existing, input);
-            return { kind: 'existing', turn: existing } as const;
-          }
-
-          const conversation = await transaction.conversation.findUnique({
-            where: {
-              id_userId: {
-                id: input.conversationId,
-                userId: input.userId,
-              },
-            },
-          });
-          if (!conversation) throw conversationNotFound();
-
-          const inputMessages = await transaction.chatMessage.findMany({
-            where: {
-              id: { in: input.inputMessageIds },
-              userId: input.userId,
-              conversationId: input.conversationId,
-            },
-            select: { id: true },
-          });
-          if (inputMessages.length !== input.inputMessageIds.length) {
-            throw inputMessagesNotOwned();
-          }
-
-          const turn = await transaction.chatTurn.create({
-            data: {
-              userId: input.userId,
-              conversationId: input.conversationId,
-              clientRequestId: input.clientRequestId,
-              status: 'QUEUED',
-              inputHash: input.inputHash,
-              inputMessageIds: input.inputMessageIds,
-              budgetPolicyVersion: input.budgetPolicyVersion,
-            },
-          });
-          return { kind: 'created', turn } as const;
-        },
+        (transaction) =>
+          this.createOrGetQueuedInTransaction(transaction, input),
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
 
@@ -117,6 +70,66 @@ export class ChatTurnsRepository {
     }
 
     throw new Error('Chat turn transaction retry loop exhausted');
+  }
+
+  /**
+   * Creates the turn using a caller-owned transaction. The enqueue workflow
+   * uses this variant so the turn, background job, and outbox event share one
+   * Serializable commit boundary instead of nesting transactions.
+   */
+  async createOrGetQueuedInTransaction(
+    transaction: Prisma.TransactionClient,
+    input: CreateChatTurnInput,
+  ): Promise<CreateChatTurnResult> {
+    validateCreateInput(input);
+
+    const existing = await transaction.chatTurn.findUnique({
+      where: {
+        userId_clientRequestId: {
+          userId: input.userId,
+          clientRequestId: input.clientRequestId,
+        },
+      },
+    });
+    if (existing) {
+      assertSameRequest(existing, input);
+      return { kind: 'existing', turn: existing } as const;
+    }
+
+    const conversation = await transaction.conversation.findUnique({
+      where: {
+        id_userId: {
+          id: input.conversationId,
+          userId: input.userId,
+        },
+      },
+    });
+    if (!conversation) throw conversationNotFound();
+
+    const inputMessages = await transaction.chatMessage.findMany({
+      where: {
+        id: { in: input.inputMessageIds },
+        userId: input.userId,
+        conversationId: input.conversationId,
+      },
+      select: { id: true },
+    });
+    if (inputMessages.length !== input.inputMessageIds.length) {
+      throw inputMessagesNotOwned();
+    }
+
+    const turn = await transaction.chatTurn.create({
+      data: {
+        userId: input.userId,
+        conversationId: input.conversationId,
+        clientRequestId: input.clientRequestId,
+        status: 'QUEUED',
+        inputHash: input.inputHash,
+        inputMessageIds: input.inputMessageIds,
+        budgetPolicyVersion: input.budgetPolicyVersion,
+      },
+    });
+    return { kind: 'created', turn } as const;
   }
 
   findByIdForOwner(userId: string, turnId: string) {

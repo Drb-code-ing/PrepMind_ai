@@ -1,5 +1,20 @@
 # PrepMind AI 开发日志
 
+> 2026-08-28 — Phase 6 Chat 可靠入队边界：
+>
+> 从已推送 `main=82b693e0` 新开普通 Git 分支 `drb/phase-6-chat-enqueue-outbox`，未使用 worktree，且保留三个用户预先修改的
+> `wrong-question-organizer` 文件不提交。新增 `ChatTurnEnqueueService`，在同一 `Serializable` 事务中按
+> `ChatTurn(QUEUED) -> BackgroundJob(QUEUED) -> OutboxEvent(chat.response.requested)` 顺序写入；Job/Outbox 任一失败整体回滚。
+> 新增 caller-owned repository/job transaction helpers、`CHAT_RESPONSE` resource type、固定幂等键和 bounded 四字段 outbox payload。
+> `chat.response.requested` 暂不注册执行 handler，防止在 Worker 合同尚未完成时误消费事件。重复请求返回既有三件事实，同 owner 冲突、跨 owner、孤立配对、
+> P2034/40001 重试均有回归覆盖。
+>
+> enqueue focused `8/8`，handler/repository/background-job 回归 `15/15` 与 `32/32` 通过，Server build、Prettier 和 diff check 通过。
+> 全量 Server Jest 另有两个环境/历史失败：worker readiness CLI 退出码断言（实际 `1`、期望 `2`）和本地 `127.0.0.1:5433` 不可达的
+> operator-audit integration；未将其归因或掩盖为本任务问题。全程未读取 `.env`、未调用 Provider、未启动或清理 Docker、未写业务数据。
+> 本任务只完成可靠入队，不包含 Worker、Replay、`/api/chat` 切换、真实模型或完整断线恢复。详见
+> `docs/acceptance/phase-6-chat-enqueue-outbox.md`。
+
 > 2026-08-25 — Phase 6 ChatTurn 状态机与 owner-scoped repository：
 >
 > 从 `main=af1e385a` 新开普通 Git 分支，未使用 worktree。新增 `ChatTurnStatus`、固定 `ChatTurnErrorCode`、ChatTurn 表和迁移，

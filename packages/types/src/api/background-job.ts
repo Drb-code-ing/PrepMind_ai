@@ -22,7 +22,7 @@ export const backgroundJobStatusSchema = z.enum([
   'STALE_SKIPPED',
 ]);
 
-export const backgroundJobResourceTypeSchema = z.enum(['KNOWLEDGE_DOCUMENT']);
+export const backgroundJobResourceTypeSchema = z.enum(['KNOWLEDGE_DOCUMENT', 'CHAT_RESPONSE']);
 
 export const backgroundJobResponseSchema = z.object({
   id: z.string(),

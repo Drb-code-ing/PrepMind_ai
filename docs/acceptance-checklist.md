@@ -9,8 +9,9 @@
 - [x] graph catalog 增加 `catalog_only` authority、typed edges、模型模式与领域写权限（focused `3/3`、typecheck）
 - [x] Chat durability/budget 设计 checkpoint（ChatTurn、BackgroundJob+Outbox 同事务、Worker/replay、run-level ledger）
 - [x] ChatTurn schema/migration、owner-scoped repository、状态机、幂等与 CAS 测试
+- [x] ChatTurn + BackgroundJob + `chat.response.requested` Outbox 同一 Serializable 事务可靠入队及回滚/幂等测试
 - [x] Review/Planner AbortSignal 与 candidate 外层 fail-safe（controller/service focused `13/13`，Server build）
-- [ ] Chat 断连 durability/丢失语义与测试
+- [ ] Chat Worker/Replay 断连 durability/丢失语义与测试（可靠入队已完成，但端到端恢复未完成）
 - [ ] 全链路 owner capability 与 budget ledger
 - [ ] Trace 完整性/对账策略
 - [ ] MemoryAgent 模型增强隐私、确认、预算、Trace 合同

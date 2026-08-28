@@ -20,10 +20,11 @@ Task 1 已完成：Review/Planner controller 传播 HTTP AbortSignal，service �
 Task 2 已完成：graph 明确为 `catalog_only`，补齐产品组合位置、typed edges、模型模式、领域写权限与 planned Orchestrator；
 focused `3/3`、Agent typecheck 通过。下一项是 Chat 断连 durability 与全链路预算合同，二者先设计后实现。
 
-Task 3 设计 checkpoint 已完成：`ChatTurn + BackgroundJob + Outbox` 同事务、Worker/replay、owner/幂等和 run-level budget 合同已记录；
-Task 4 已完成 ChatTurn schema/migration、owner-scoped repository、状态机、幂等与 CAS 测试；下一项是在同一事务写入
-`BackgroundJob + chat.response.requested OutboxEvent`，完成前不得宣称任务不丢失。证据见
-`docs/acceptance/phase-6-chat-turn-state-machine.md`。
+Task 3 设计 checkpoint 已完成：`ChatTurn + BackgroundJob + Outbox` 同事务、Worker/replay、owner/幂等和 run-level budget 合同已记录。
+Task 4 已完成 ChatTurn schema/migration、owner-scoped repository、状态机、幂等与 CAS 测试。Task 5 现已完成可靠入队：
+`ChatTurn(QUEUED) + BackgroundJob(QUEUED) + chat.response.requested OutboxEvent` 由同一 Serializable 事务创建，覆盖回滚、重复请求、
+跨 owner、孤立配对和 serialization retry；但 Worker、Replay、`/api/chat` 切换和真实模型仍未完成，不能宣称完整断线恢复或端到端不丢失。
+证据见 `docs/acceptance/phase-6-chat-enqueue-outbox.md`。
 
 矩阵和证据分级见 `docs/acceptance/phase-6-agent-runtime-audit.md`。本阶段仍遵循一任务一提交、推送 feature、`--no-ff` 合并 main、
 合并后在 main 复验；不清理 Docker，不触碰用户预先修改的三个 WrongQuestionOrganizer 文件。

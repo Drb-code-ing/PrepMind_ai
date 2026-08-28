@@ -56,4 +56,5 @@ WrongQuestionOrganizer 文件始终未暂存、未提交；Docker 数据未清�
 
 这一步只证明 ChatTurn 状态机和 owner repository 合同成立。产品仍只能宣称“流式功能可用”，不能宣称断线可恢复或任务不丢失。
 
-下一原子任务是在同一数据库事务中创建 `BackgroundJob(QUEUED)` 与 `chat.response.requested OutboxEvent`，并补 crash-before-commit、duplicate enqueue 和 dispatcher/worker claim 测试；不得把本任务的状态机通过误写成完整 durability。
+下一原子任务（已完成）已在同一数据库事务中创建 `BackgroundJob(QUEUED)` 与 `chat.response.requested OutboxEvent`，并补齐回滚、duplicate enqueue 与配对事实测试；详见
+`docs/acceptance/phase-6-chat-enqueue-outbox.md`。即使该任务完成，本状态机仍不能单独代表 Worker、Replay 或完整 Chat durability。
