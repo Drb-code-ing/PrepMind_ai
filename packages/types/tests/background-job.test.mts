@@ -54,3 +54,10 @@ const summary = backgroundJobSummaryResponseSchema.parse({
 
 assert.equal(summary.activeCount, 1);
 assert.equal(summary.latestJob, null);
+
+const chatResource = backgroundJobResponseSchema.parse({
+  ...parsed,
+  resourceType: 'CHAT_RESPONSE',
+  resourceId: 'turn_1',
+});
+assert.equal(chatResource.resourceType, 'CHAT_RESPONSE');

@@ -15,3 +15,9 @@
 ## Durable answer
 
 只有 assistant 消息和 ChatTurn 终态在同一事务中落库，才可作为回答的 durable authority。Trace、SSE 和浏览器 snapshot sync 都不能单独替代该 authority。
+
+## Reliable chat enqueue
+
+新的 Chat 请求必须由 `ChatTurnEnqueueService` 在同一个 `Serializable` 事务中创建 `ChatTurn(QUEUED)`、
+`BackgroundJob(QUEUED)` 与 `OutboxEvent(chat.response.requested)`。事务提交前不调用 Bull、Provider 或 Worker；任一写入失败全部回滚。
+重复请求返回已有三件事实，Outbox payload 只允许 turn/job id、输入 hash 和预算版本等 bounded projection。可靠入队不等于 Worker、Replay 或完整断线恢复。
