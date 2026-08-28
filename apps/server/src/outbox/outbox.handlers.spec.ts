@@ -2,6 +2,8 @@ import {
   createOutboxHandlers,
   OutboxHandlerError,
   handleKnowledgeDocumentProcessingRequested,
+  handleChatResponseCompleted,
+  handleChatResponseFailed,
   outboxHandlers,
   type OutboxEventLike,
 } from './outbox.handlers';
@@ -20,7 +22,18 @@ describe('outbox handlers', () => {
     expect(handlers).toEqual({
       'knowledge.document.processing.requested':
         handleKnowledgeDocumentProcessingRequested,
+      'chat.response.completed': handleChatResponseCompleted,
+      'chat.response.failed': handleChatResponseFailed,
       'operator.audit.export.requested': exportHandler,
+    });
+  });
+
+  it('adds the chat response handler only when the module provides it', () => {
+    const exportHandler = jest.fn().mockResolvedValue(undefined);
+    const chatHandler = jest.fn().mockResolvedValue(undefined);
+
+    expect(createOutboxHandlers(exportHandler, chatHandler)).toMatchObject({
+      'chat.response.requested': chatHandler,
     });
   });
 

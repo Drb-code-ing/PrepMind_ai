@@ -1,7 +1,8 @@
 # Phase 6 Chat Durability and Budget Design
 
-更新时间：2026-08-19  
-状态：设计与可靠入队已实现；ChatTurn 状态机、BackgroundJob + requested Outbox 同事务已完成，Worker、Replay 和产品切换仍未实现。
+更新时间：2026-08-28
+状态：设计、可靠入队与 deterministic Worker durable baseline 已实现；Redis/SSE replay、`/api/chat` 产品切换、全链路
+budget ledger 和真实模型 Worker 仍未实现。
 
 ## 1. 当前问题
 
@@ -24,18 +25,20 @@ authenticated request
        ChatTurn(QUEUED, ownerId, idempotencyKey, inputHash, conversationId)
        BackgroundJob(QUEUED, resourceType=CHAT_RESPONSE, resourceId=turnId)
        OutboxEvent(chat.response.requested, same transaction, idempotencyKey)
-  -> worker claims job/outbox
+  -> Outbox dispatcher claims event and bridges to BullMQ
+  -> worker claims owner-bound Turn/BackgroundJob
   -> worker loads owner-scoped input by turnId (never trusts payload owner)
   -> ChatRunBudget ledger reserves child scopes
   -> Router -> Tutor -> Retriever -> Verifier -> FinalResponse
-  -> append assistant message + ChatTurn terminal state in one transaction
+  -> append assistant message + ChatTurn/BackgroundJob terminal state in one transaction
   -> OutboxEvent(chat.response.completed|failed, same transaction)
   -> Redis stream / SSE publishes bounded deltas and terminal cursor
   -> browser reconnects by turnId and replays from durable cursor/result
 ```
 
-`BackgroundJob` 和 `OutboxEvent` 必须在同一个数据库事务中创建。BackgroundJob 负责任务状态、attempt、队列归属和用户可见进度；Outbox
-负责把“请求已入队”和“终态已落库”可靠交给 dispatcher。两者不能一个成功、另一个失败，也不能把 provider 原文或完整 prompt 放进 payload。
+`BackgroundJob` 和请求 `OutboxEvent` 必须在同一个数据库事务中创建。BackgroundJob 负责任务状态、attempt、队列归属和用户可见进度；Outbox
+负责把“请求已入队”和“终态已落库”可靠交给 dispatcher。当前 Worker 已把 assistant/Turn/Job/终态 Outbox 收束到一个完成事务，
+但 Redis/SSE 仍是后续层。两者不能一个成功、另一个失败，也不能把 provider 原文或完整 prompt 放进 payload。
 
 ## 3. 数据与幂等合同
 
@@ -53,12 +56,14 @@ authenticated request
 
 已落地的第一步还包括 owner + conversation 复合外键、固定错误枚举、生命周期 CHECK、CAS repository 和幂等/跨 owner 测试；
 实现与证据见 `docs/acceptance/phase-6-chat-turn-state-machine.md`。可靠入队实现与证据见
-`docs/acceptance/phase-6-chat-enqueue-outbox.md`；Worker 仍属于后续步骤。
+`docs/acceptance/phase-6-chat-enqueue-outbox.md`；Worker durable baseline 见
+`docs/acceptance/phase-6-chat-response-worker.md`。
 
 ### 3.2 Idempotency
 
 - `clientRequestId` 在同一用户下唯一；重复 enqueue 返回既有 turn/job，不再次调用模型。
-- worker 通过 `updateMany(where: status=QUEUED)` 抢占；lease 过期只能进入明确的 stale/retry 状态，不能并发生成两个 assistant。
+- worker 通过 `updateMany(where: status=QUEUED)` 抢占；当前基线没有伪造 active lease，Outbox 重试会验证同 id Bull 记录，
+  缺失时 fail-closed；真正的 lease 过期恢复仍需后续带 lease 的巡检/Replay 任务，不能并发生成两个 assistant。
 - 完成写入以 `turnId + responseMessageId` 唯一约束保护；重复 `chat.response.completed` 只做幂等确认。
 - Outbox 使用 `chat.response.requested:${turnId}` 与 `chat.response.completed:${turnId}` 两个唯一 key。
 
@@ -88,13 +93,16 @@ ChatRunBudget {
 - 模型只消费 server 生成的 bounded projection；BackgroundJob/Outbox payload 只放 opaque ids、hash、枚举和版本。
 - Trace 继续 best-effort，不作为回答 durable authority；`chat.response.completed` handler 负责 reconciliation，发现“已落库但 Trace 缺失”时只补 bounded 状态，不补 provider 原文。
 - `chat.response.failed` 必须有固定 error enum；客户端可通过 turn 查询终态，不能仅依据 SSE 是否断开判断成功。
+- Worker 默认 generation timeout/ Bull lock 为 `120s/180s`，env schema 要求 lock 至少比 timeout 长 30 秒；队列 provider 由
+  `ChatResponseQueueModule` 单点注册。
 
 ## 6. 分阶段实施顺序
 
 1. ~~新增 ChatTurn schema/migration 与 owner-scoped repository，补唯一键、状态机和 concurrency tests。~~ 已完成；详见 ChatTurn 验收文档。
 2. ~~在同一事务新增 `BackgroundJob + chat.response.requested OutboxEvent`，补 crash-before-commit/duplicate enqueue tests。~~ 已完成；见
    `docs/acceptance/phase-6-chat-enqueue-outbox.md`。
-3. Worker 先实现 deterministic/mock 生成与 durable assistant commit，再接入真实模型 gate；不改变现有 `/api/chat` 默认 mock/off。
+3. ~~Worker 先实现 deterministic/mock 生成与 durable assistant commit，再接入真实模型 gate；不改变现有 `/api/chat` 默认 mock/off。~~
+   已完成 deterministic durable baseline；真实模型 gate 仍后置。
 4. 增加 Redis/SSE bounded delta stream 与 turn replay；浏览器断开后可通过 turn 查询最终结果。
 5. 将现有 `/api/chat` 切换到 turn-backed path，保留旧 sync 只读兼容窗口；迁移完成后禁止 delete/recreate snapshot 作为权威写入。
 6. 进行 Docker、API、可见浏览器和真实模型 controlled smoke；每一步单独提交、推送、合并 main 后复验。
@@ -102,6 +110,7 @@ ChatRunBudget {
 ## 7. 本 checkpoint 的明确结论
 
 - 当前 ChatTurn schema/migration 与 `ChatTurn + BackgroundJob + chat.response.requested` 同事务可靠入队已完成；没有触碰 Docker 数据。
-- “BackgroundJob + Outbox 同事务”已成为实现合同，但尚未有 Worker、Replay 或 `/api/chat` turn-backed 产品路径。
-- 在 Worker/replay/产品切换完成前，产品文档必须继续使用“流式功能可用、断连 durability 未建立”的表述。
+- “BackgroundJob + Outbox 同事务”与 Worker durable terminal commit 已成为实现合同；尚未有 Redis/SSE Replay 或 `/api/chat` turn-backed 产品路径。
+- 当前 Worker 的生成器是 `deterministic-worker-v1`，只证明执行与持久化骨架，不证明真实模型或语义质量。
+- 在 Replay/产品切换完成前，产品文档必须继续使用“流式功能可用、断连 durability 未建立”的表述。
 

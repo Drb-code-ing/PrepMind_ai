@@ -1,6 +1,6 @@
 # PrepMind 统一验收与调试清单
 
-## 0M. Phase 6 Agent 运行时总审计（2026-08-19，进行中）
+## 0M. Phase 6 Agent 运行时总审计（2026-08-28，进行中）
 
 - [x] 建立 11 个 graph Agent + ConversationSummary 的职责/模式/权限/预算/Trace/证据矩阵
 - [x] 区分 implemented、mock/static、controlled-Live、product real-model smoke、production-used
@@ -10,13 +10,21 @@
 - [x] Chat durability/budget 设计 checkpoint（ChatTurn、BackgroundJob+Outbox 同事务、Worker/replay、run-level ledger）
 - [x] ChatTurn schema/migration、owner-scoped repository、状态机、幂等与 CAS 测试
 - [x] ChatTurn + BackgroundJob + `chat.response.requested` Outbox 同一 Serializable 事务可靠入队及回滚/幂等测试
+- [x] Outbox requested -> BullMQ bridge：固定 job id、add race 恢复、owner/routing facts 与 link CAS
+- [x] active claim 的 requested 重试先验证同 id Bull 记录，缺失时可重试 fail-closed
+- [x] ChatResponseQueueModule 单点注册 chat response Queue，避免重复 Queue provider
+- [x] worker generation timeout/Bull lease env schema、Compose 与 30 秒裕量校验
+- [x] ChatResponse Worker：role-gated processor、owner-scoped claim、有限 retry/Abort/timeout
+- [x] Worker 成功/失败终态：assistant message + ChatTurn + BackgroundJob + terminal Outbox 同事务提交
+- [x] Worker focused `9 suites / 137 tests`、Server build、目标 ESLint/Prettier/diff check
 - [x] Review/Planner AbortSignal 与 candidate 外层 fail-safe（controller/service focused `13/13`，Server build）
-- [ ] Chat Worker/Replay 断连 durability/丢失语义与测试（可靠入队已完成，但端到端恢复未完成）
+- [ ] Redis/SSE cursor 与 Chat replay 断连 durability（Worker durable baseline 已完成，但端到端恢复未完成）
+- [ ] `/api/chat` turn-backed 切换与旧 snapshot sync 兼容窗口
 - [ ] 全链路 owner capability 与 budget ledger
 - [ ] Trace 完整性/对账策略
 - [ ] MemoryAgent 模型增强隐私、确认、预算、Trace 合同
 - [ ] Router/Verifier/Tutor/Rewrite/Review/Planner/Knowledge agents 产品真实模型逐项验收
-- [ ] 合并 main、推送远程并在 merged-main 复验
+- [ ] 本阶段合并 main、推送远程并在 merged-main 复验
 
 权威矩阵：`docs/acceptance/phase-6-agent-runtime-audit.md`。未完成项不得因 mock/static 通过而勾选完成。
 

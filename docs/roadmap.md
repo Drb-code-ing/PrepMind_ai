@@ -1,9 +1,10 @@
 # PrepMind AI 学习与开发路线图
 
-## 当前原子阶段：Phase 6 Agent 运行时总审计（2026-08-19，进行中）
+## 当前原子阶段：Phase 6 Chat Response Worker durable baseline（2026-08-28，进行中）
 
-先完成全部 Agent 的职责、真实/混合/确定性模式、路由通信、权限、预算、并发、Trace 与失败降级审计，再进入分层记忆系统。
-当前 inventory checkpoint 已完成，运行时修复和产品逐项真实验收尚未完成；面试博客必须后置。
+本阶段在可靠入队之后补齐 `chat.response.requested -> BullMQ -> Worker -> durable terminal commit` 执行骨架。
+它只完成 deterministic Worker durable baseline，不代表真实模型接入、完整断线恢复或 `/api/chat` 已切换；全部 Agent
+真实验收和分层记忆系统仍按既定顺序推进，面试博客必须后置。
 
 已确认的高优先级缺口：
 
@@ -21,10 +22,14 @@ Task 2 已完成：graph 明确为 `catalog_only`，补齐产品组合位置、t
 focused `3/3`、Agent typecheck 通过。下一项是 Chat 断连 durability 与全链路预算合同，二者先设计后实现。
 
 Task 3 设计 checkpoint 已完成：`ChatTurn + BackgroundJob + Outbox` 同事务、Worker/replay、owner/幂等和 run-level budget 合同已记录。
-Task 4 已完成 ChatTurn schema/migration、owner-scoped repository、状态机、幂等与 CAS 测试。Task 5 现已完成可靠入队：
+Task 4 已完成 ChatTurn schema/migration、owner-scoped repository、状态机、幂等与 CAS 测试。Task 5 已完成可靠入队：
 `ChatTurn(QUEUED) + BackgroundJob(QUEUED) + chat.response.requested OutboxEvent` 由同一 Serializable 事务创建，覆盖回滚、重复请求、
-跨 owner、孤立配对和 serialization retry；但 Worker、Replay、`/api/chat` 切换和真实模型仍未完成，不能宣称完整断线恢复或端到端不丢失。
-证据见 `docs/acceptance/phase-6-chat-enqueue-outbox.md`。
+跨 owner、孤立配对和 serialization retry；证据见 `docs/acceptance/phase-6-chat-enqueue-outbox.md`。
+Task 6（本阶段）已补 Outbox requested bridge、BullMQ processor、owner-scoped claim、有限 retry/Abort，以及
+assistant/Turn/BackgroundJob/terminal Outbox 同事务提交；随后完成 active-claim fail-closed、chat queue 单点注册和
+generation/lease 配置交叉校验。focused `9 suites / 137 tests`，Server build 与静态门通过。
+当前仍不能宣称完整断线恢复、端到端产品不丢失或真实模型 Worker；证据见
+`docs/acceptance/phase-6-chat-response-worker.md`。
 
 矩阵和证据分级见 `docs/acceptance/phase-6-agent-runtime-audit.md`。本阶段仍遵循一任务一提交、推送 feature、`--no-ff` 合并 main、
 合并后在 main 复验；不清理 Docker，不触碰用户预先修改的三个 WrongQuestionOrganizer 文件。

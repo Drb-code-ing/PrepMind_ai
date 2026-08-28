@@ -9,7 +9,9 @@ import { DatabaseModule } from '../database/database.module';
 import { JobsModule } from '../jobs/jobs.module';
 import { OperatorAuditModule } from '../operator-audit/operator-audit.module';
 import { OPERATOR_AUDIT_EXPORT_QUEUE } from '../operator-audit-exports/operator-audit-export.constants';
+import { ChatResponseQueueModule } from '../chat-turns/chat-response-queue.module';
 import { OperatorAuditExportRequestedHandler } from './operator-audit-export-requested.handler';
+import { ChatResponseRequestedHandler } from './chat-response-requested.handler';
 import { OutboxDispatcherRunnerService } from './outbox-dispatcher-runner.service';
 import { OutboxDispatcherService } from './outbox.dispatcher';
 import { createOutboxHandlers, OUTBOX_HANDLERS } from './outbox.handlers';
@@ -28,6 +30,7 @@ import { OutboxService } from './outbox.service';
     DatabaseModule,
     JobsModule,
     OperatorAuditModule,
+    ChatResponseQueueModule,
     BullModule.registerQueue({ name: OPERATOR_AUDIT_EXPORT_QUEUE }),
   ],
   controllers: [OutboxOpsController],
@@ -38,6 +41,7 @@ import { OutboxService } from './outbox.service';
     OutboxOpsService,
     OutboxOpsEnabledGuard,
     OperatorAuditExportRequestedHandler,
+    ChatResponseRequestedHandler,
     {
       provide: OutboxDispatcherRunnerService,
       inject: [OutboxDispatcherService, ConfigService],
@@ -48,9 +52,14 @@ import { OutboxService } from './outbox.service';
     },
     {
       provide: OUTBOX_HANDLERS,
-      inject: [OperatorAuditExportRequestedHandler],
-      useFactory: (handler: OperatorAuditExportRequestedHandler) =>
-        createOutboxHandlers(handler.handle),
+      inject: [
+        OperatorAuditExportRequestedHandler,
+        ChatResponseRequestedHandler,
+      ],
+      useFactory: (
+        handler: OperatorAuditExportRequestedHandler,
+        chatHandler: ChatResponseRequestedHandler,
+      ) => createOutboxHandlers(handler.handle, chatHandler.handle),
     },
   ],
   exports: [

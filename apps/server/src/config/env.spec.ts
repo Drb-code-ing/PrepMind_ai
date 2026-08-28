@@ -74,7 +74,20 @@ describe('parseEnv', () => {
       KNOWLEDGE_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 4500,
       WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED: false,
       WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS: 5000,
+      CHAT_RESPONSE_WORKER_CONCURRENCY: 2,
+      CHAT_RESPONSE_WORKER_LOCK_DURATION_MS: 180000,
+      CHAT_RESPONSE_GENERATION_TIMEOUT_MS: 120000,
     });
+  });
+
+  it('keeps the chat response BullMQ lease longer than generation', () => {
+    expect(() =>
+      parseEnv({
+        ...requiredEnv,
+        CHAT_RESPONSE_GENERATION_TIMEOUT_MS: 120000,
+        CHAT_RESPONSE_WORKER_LOCK_DURATION_MS: 149999,
+      }),
+    ).toThrow();
   });
 
   it('validates Knowledge Agent gates and bounded model timeouts', () => {

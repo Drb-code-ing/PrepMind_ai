@@ -139,6 +139,24 @@ const envSchema = z
       .default(8000),
     SERVER_ROLE: z.enum(['api', 'worker', 'both']).default('both'),
     BULLMQ_PREFIX: z.string().min(1).default('prepmind'),
+    CHAT_RESPONSE_WORKER_CONCURRENCY: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(8)
+      .default(2),
+    CHAT_RESPONSE_WORKER_LOCK_DURATION_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(900_000)
+      .default(180_000),
+    CHAT_RESPONSE_GENERATION_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(600_000)
+      .default(120_000),
     JWT_SECRET: z.string().min(16),
     JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
     REFRESH_TOKEN_DAYS: z.coerce.number().int().positive().default(30),
@@ -696,6 +714,18 @@ const envSchema = z
         code: 'custom',
         path: ['OPERATOR_AUDIT_EXPORT_QUERY_TIMEOUT_MS'],
         message: 'query timeout must be shorter than stale repair threshold',
+      });
+    }
+
+    if (
+      env.CHAT_RESPONSE_WORKER_LOCK_DURATION_MS <
+      env.CHAT_RESPONSE_GENERATION_TIMEOUT_MS + 30_000
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['CHAT_RESPONSE_WORKER_LOCK_DURATION_MS'],
+        message:
+          'chat response BullMQ lock must exceed generation timeout by at least 30 seconds',
       });
     }
 
