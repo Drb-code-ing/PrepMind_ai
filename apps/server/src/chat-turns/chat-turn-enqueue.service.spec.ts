@@ -11,10 +11,7 @@ import {
   CHAT_RESPONSE_REQUESTED_EVENT,
   CHAT_RESPONSE_RESOURCE_TYPE,
 } from './chat-turn.constants';
-import {
-  ChatTurnEnqueueService,
-  type ChatTurnEnqueueResult,
-} from './chat-turn-enqueue.service';
+import { ChatTurnEnqueueService } from './chat-turn-enqueue.service';
 import {
   ChatTurnsRepository,
   type CreateChatTurnInput,
@@ -188,7 +185,6 @@ describe('ChatTurnEnqueueService', () => {
   });
 });
 
-type Harness = ReturnType<typeof createHarness>;
 type TransactionCallback = (transaction: never) => Promise<unknown>;
 
 function createInput(
