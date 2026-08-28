@@ -24,7 +24,7 @@
 - [ ] Trace 完整性/对账策略
 - [ ] MemoryAgent 模型增强隐私、确认、预算、Trace 合同
 - [ ] Router/Verifier/Tutor/Rewrite/Review/Planner/Knowledge agents 产品真实模型逐项验收
-- [ ] 本阶段合并 main、推送远程并在 merged-main 复验
+- [x] 本阶段合并 main、推送远程并在 merged-main 复验（feature=`04ef0f6f`、merge=`d034d3be`、closeout=`c3876b2c`）
 
 权威矩阵：`docs/acceptance/phase-6-agent-runtime-audit.md`。未完成项不得因 mock/static 通过而勾选完成。
 
