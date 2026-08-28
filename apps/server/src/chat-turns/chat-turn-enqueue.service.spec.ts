@@ -185,7 +185,39 @@ describe('ChatTurnEnqueueService', () => {
   });
 });
 
-type TransactionCallback = (transaction: never) => Promise<unknown>;
+type TransactionCallback = (transaction: TransactionMock) => Promise<unknown>;
+
+type TransactionMock = {
+  chatTurn: {
+    findUnique: jest.Mock;
+    create: jest.Mock;
+  };
+  conversation: { findUnique: jest.Mock };
+  chatMessage: { findMany: jest.Mock };
+  backgroundJob: { create: jest.Mock; findFirst: jest.Mock };
+  outboxEvent: { create: jest.Mock; findUnique: jest.Mock };
+};
+
+type ChatTurnFindArgs = {
+  where: {
+    userId_clientRequestId?: {
+      userId: string;
+      clientRequestId: string;
+    };
+  };
+};
+
+type CreateArgs = { data: Record<string, unknown> };
+type ResourceFindArgs = {
+  where: {
+    userId: string;
+    scope: string;
+    resourceType: string;
+    resourceId: string;
+    idempotencyKey: string;
+  };
+};
+type OutboxFindArgs = { where: { idempotencyKey: string } };
 
 function createInput(
   overrides: Partial<CreateChatTurnInput> = {},
@@ -209,9 +241,9 @@ function createHarness() {
   } = { turns: [], jobs: [], outbox: [] };
   const events: string[] = [];
 
-  const transaction = {
+  const transaction: TransactionMock = {
     chatTurn: {
-      findUnique: jest.fn(({ where }: any) =>
+      findUnique: jest.fn(({ where }: ChatTurnFindArgs) =>
         Promise.resolve(
           state.turns.find(
             (turn) =>
@@ -221,7 +253,7 @@ function createHarness() {
           ) ?? null,
         ),
       ),
-      create: jest.fn(({ data }: any) => {
+      create: jest.fn(({ data }: CreateArgs) => {
         events.push('turn');
         const turn = makeTurn(data);
         state.turns.push(turn);
@@ -232,18 +264,18 @@ function createHarness() {
       findUnique: jest.fn(() => Promise.resolve({ id: CONVERSATION_ID })),
     },
     chatMessage: {
-      findMany: jest.fn(({ where }: any) =>
+      findMany: jest.fn(({ where }: { where: { id: { in: string[] } } }) =>
         Promise.resolve(where.id.in.map((id: string) => ({ id }))),
       ),
     },
     backgroundJob: {
-      create: jest.fn(({ data }: any) => {
+      create: jest.fn(({ data }: CreateArgs) => {
         events.push('job');
         const job = makeJob(data);
         state.jobs.push(job);
         return Promise.resolve(job);
       }),
-      findFirst: jest.fn(({ where }: any) =>
+      findFirst: jest.fn(({ where }: ResourceFindArgs) =>
         Promise.resolve(
           state.jobs.find(
             (job) =>
@@ -257,13 +289,13 @@ function createHarness() {
       ),
     },
     outboxEvent: {
-      create: jest.fn(({ data }: any) => {
+      create: jest.fn(({ data }: CreateArgs) => {
         events.push('outbox');
         const event = makeOutbox(data);
         state.outbox.push(event);
         return Promise.resolve(event);
       }),
-      findUnique: jest.fn(({ where }: any) =>
+      findUnique: jest.fn(({ where }: OutboxFindArgs) =>
         Promise.resolve(
           state.outbox.find(
             (event) => event.idempotencyKey === where.idempotencyKey,
@@ -274,7 +306,7 @@ function createHarness() {
   };
 
   const prisma = {
-    $transaction: jest.fn(async (callback: any) => {
+    $transaction: jest.fn(async (callback: TransactionCallback) => {
       const turnCount = state.turns.length;
       const jobCount = state.jobs.length;
       const outboxCount = state.outbox.length;
