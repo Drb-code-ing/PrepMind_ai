@@ -10,7 +10,7 @@ ChatTurn/BackgroundJob/Outbox 到 BullMQ 的 deterministic Worker durable baseli
 
 ## 当前基线
 
-- 本次文档任务开始前：`main == origin/main == 5aecf276`。
+- 文档入口分层整理已合并并推送；开始新任务前用 `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
 - 默认运行模式：`AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`，所有组件模型 gate 关闭。
 - 业务事实权威：PostgreSQL；Redis/BullMQ 负责缓存和队列；MinIO 负责对象存储；Dexie 负责本地恢复/离线补偿。
 - Docker 数据必须保留。验收只允许清理本次创建的合成数据和隔离浏览器状态。

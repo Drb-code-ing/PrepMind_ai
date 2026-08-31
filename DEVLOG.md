@@ -11,7 +11,9 @@
 > `docs/acceptance-checklist.md`、`docs/data-flow.md` 增加当前入口提示。
 >
 > 本次只改文档，没有读取 `.env`、调用 Provider、启动/清理 Docker 或修改用户预先修改的三个 WrongQuestionOrganizer 文件。
-> 验收需检查 Markdown 链接/标题/代码块、敏感值扫描、`git diff --check`，并在合并 main 后再次复验。
+> Markdown 链接/标题/代码块、敏感值扫描和 `git diff --check` 已通过；新版文档的 Prettier 检查也已通过。功能提交
+> `6fc0238c` 已推送，并以 `--no-ff` 合并、推送为 `main=57b09f9d`；合并后链接、代码块、diff check 与
+> `main == origin/main` parity 再次通过。工作区仅保留三个用户预先修改且未暂存的 WrongQuestionOrganizer 文件。
 
 > 2026-08-28 — Phase 6 Chat Response Worker durable baseline：
 >
