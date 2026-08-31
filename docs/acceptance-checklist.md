@@ -1,6 +1,10 @@
 # PrepMind 统一验收与调试清单
 
-## 0M. Phase 6 Agent 运行时总审计（2026-08-28，进行中）
+> 当前项目快照请先看 [`docs/project-status.md`](project-status.md)，Agent 矩阵请看
+> [`docs/acceptance/phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)。本清单保留历史阶段的详细操作，
+> 标题带“历史/封存”的段落不可作为新的授权或重跑指令。
+
+## 0M. Phase 6 Agent 运行时总审计（2026-08-31，进行中）
 
 - [x] 建立 11 个 graph Agent + ConversationSummary 的职责/模式/权限/预算/Trace/证据矩阵
 - [x] 区分 implemented、mock/static、controlled-Live、product real-model smoke、production-used

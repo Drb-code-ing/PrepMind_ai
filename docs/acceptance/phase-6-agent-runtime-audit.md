@@ -1,8 +1,13 @@
 # Phase 6 Agent Runtime Audit
 
-更新时间：2026-08-25
+更新时间：2026-08-31
 范围：Phase 6 全部 Agent、模型 gate、通信边界、权限、预算、Trace、降级和现有证据。  
 结论级别：本文件是审计基线，不代表所有 Agent 已完成真实模型验收。
+
+本次同步补录 2026-08-28 Chat Response Worker 原子任务的收口事实：`chat.response.requested` 已可经 Outbox 幂等桥接到
+BullMQ，Worker 可在 owner-scoped claim 后以同一事务提交 assistant、ChatTurn、BackgroundJob 和终态 Outbox。当前生成器仍明确
+是 `deterministic-worker-v1`；Redis/SSE replay、turn-backed `/api/chat`、全链路 ledger 和真实模型 Worker 仍未完成。详细边界见
+`docs/acceptance/phase-6-chat-response-worker.md`。
 
 ## 1. 结论摘要
 
