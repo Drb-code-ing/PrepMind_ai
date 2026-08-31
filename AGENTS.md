@@ -21,7 +21,7 @@
 
 ## 2. 当前项目状态（2026-08-31）
 
-- 本次文档刷新前的基线为 `main == origin/main == 5aecf276`。完成后以新的合并提交为准，不要复制这个旧 SHA。
+- 2026-08-31 文档分层整理已合并并推送；开始新任务前始终用 `git rev-parse main` 与 `git rev-parse origin/main` 核对，不要复制历史 SHA。
 - Phase 6 Agent 运行时总审计仍是当前主线。最新原子任务已完成 ChatTurn/BackgroundJob/Outbox 到 BullMQ 的
   deterministic Worker durable baseline；它不是真实模型 Worker、Redis/SSE replay 或 `/api/chat` turn-backed durability。
 - `packages/agent/src/graph/index.ts` 是受治理的 catalog descriptor，不是执行器；产品 Chat 编排仍在 Web/API composition。

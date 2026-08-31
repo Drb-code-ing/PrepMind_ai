@@ -11,7 +11,7 @@ baseline。下一步不是继续堆一次性 Live 脚本，而是补齐执行契
 
 当前基线（2026-08-31）：
 
-- 本次文档整理前 `main == origin/main == 5aecf276`。
+- 文档入口分层整理已合并并推送；开始新任务前用 `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
 - 默认 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、各组件 gate=false。
 - `packages/agent/src/graph/index.ts` 是 `catalog_only` 治理目录，不是执行器；产品 Chat 编排在 Web/API composition。
 - Tool-Using Orchestrator 尚未实现；MemoryAgent 仍是确定性候选策略。
