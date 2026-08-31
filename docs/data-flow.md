@@ -1,5 +1,9 @@
 # PrepMind AI 数据流
 
+> 本文保留完整的数据流和历史演进。当前状态先看 [`docs/project-status.md`](project-status.md)，Agent 权限/预算矩阵看
+> [`docs/acceptance/phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)；历史 controlled-Live 段落只读，
+> 不构成新的运行授权。
+
 ## 当前 SR5 run-bound revalidation flow（zero-provider，2026-08-12）
 
 ```text

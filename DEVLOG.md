@@ -1,5 +1,18 @@
 # PrepMind AI 开发日志
 
+> 2026-08-31 - 文档入口分层整理：
+>
+> 将 `AGENTS.md` 从重复的阶段回执改为启动必读规则，集中说明证据等级、Git 分支/合并流程、Docker 与凭据安全、工具选择、
+> Agent 权限边界和文档同步要求。新增 `docs/project-status.md` 作为项目级短快照，避免把历史日志误读为当前进度。
+>
+> 将 GitHub 用 `README.md` 重写为项目介绍、能力/架构、快速启动、模型 gate、验证命令和路线入口；将 `docs/dev-start.md` 与
+> `docs/roadmap.md` 改为当前可执行的短版，原有长篇历史分别保留在 `docs/archive/dev-start-history.md` 和
+> `docs/archive/roadmap-history.md`。`CLAUDE.md` 改为兼容指针，`phase-6-agent-runtime-audit.md`、
+> `docs/acceptance-checklist.md`、`docs/data-flow.md` 增加当前入口提示。
+>
+> 本次只改文档，没有读取 `.env`、调用 Provider、启动/清理 Docker 或修改用户预先修改的三个 WrongQuestionOrganizer 文件。
+> 验收需检查 Markdown 链接/标题/代码块、敏感值扫描、`git diff --check`，并在合并 main 后再次复验。
+
 > 2026-08-28 — Phase 6 Chat Response Worker durable baseline：
 >
 > 从已推送 `main=f26634f0` 新开普通 Git 分支 `drb/phase-6-chat-response-worker`，未使用 worktree，且保留三个用户预先修改的
