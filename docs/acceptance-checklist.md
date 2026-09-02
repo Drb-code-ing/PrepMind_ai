@@ -4,7 +4,7 @@
 > [`docs/acceptance/phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)。本清单保留历史阶段的详细操作，
 > 标题带“历史/封存”的段落不可作为新的授权或重跑指令。
 
-## 0M. Phase 6 Agent 运行时总审计（2026-08-31，进行中）
+## 0M. Phase 6 Agent 运行时总审计（2026-09-02，进行中）
 
 - [x] 建立 11 个 graph Agent + ConversationSummary 的职责/模式/权限/预算/Trace/证据矩阵
 - [x] 区分 implemented、mock/static、controlled-Live、product real-model smoke、production-used
@@ -21,8 +21,13 @@
 - [x] ChatResponse Worker：role-gated processor、owner-scoped claim、有限 retry/Abort/timeout
 - [x] Worker 成功/失败终态：assistant message + ChatTurn + BackgroundJob + terminal Outbox 同事务提交
 - [x] Worker focused `9 suites / 137 tests`、Server build、目标 ESLint/Prettier/diff check
+- [x] `chat-turn-stream-v1` strict event/cursor/status contract 与 `@repo/types` 回归
+- [x] owner-hashed Redis Stream atomic append：sequence、event hash/id 幂等、terminal fence、count/bytes trim、TTL
+- [x] owner-bound `GET /chat-turns/:turnId` 状态查询和 `GET /chat-turns/:turnId/events` bounded replay
+- [x] Worker started/delta/terminal 发布顺序与 Redis 故障隔离回归
+- [x] Chat Stream focused `10 suites / 49 tests`、types `43 tests`、Swagger `8 tests`、Server build/ESLint/Prettier
 - [x] Review/Planner AbortSignal 与 candidate 外层 fail-safe（controller/service focused `13/13`，Server build）
-- [ ] Redis/SSE cursor 与 Chat replay 断连 durability（Worker durable baseline 已完成，但端到端恢复未完成）
+- [ ] `/api/chat` 消费 Stream/SSE 的端到端断连恢复（当前仅有独立 replay API）
 - [ ] `/api/chat` turn-backed 切换与旧 snapshot sync 兼容窗口
 - [ ] 全链路 owner capability 与 budget ledger
 - [ ] Trace 完整性/对账策略

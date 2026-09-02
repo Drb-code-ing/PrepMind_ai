@@ -4,6 +4,29 @@
 > [`docs/acceptance/phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)；历史 controlled-Live 段落只读，
 > 不构成新的运行授权。
 
+## 当前 Chat Stream bounded replay flow（2026-09-02）
+
+本 checkpoint 已实现传输层，但尚未把现有 `/api/chat` 切换为 turn-backed 入口：
+
+```text
+ChatResponseWorker owner claim
+  -> response_started
+  -> bounded text_delta events
+  -> PostgreSQL transaction:
+       assistant + ChatTurn + BackgroundJob + terminal Outbox
+  -> response_completed|response_failed
+  -> Redis Stream (bounded count/bytes + TTL)
+  -> GET /chat-turns/:turnId/events?cursor=<stream-id>
+       ├─ available: replay after cursor
+       ├─ expired/unavailable: GET /chat-turns/:turnId
+       └─ terminal: PostgreSQL status/response remains authoritative
+```
+
+Stream key 只保存 `sha256(userId + NUL + turnId)`，事件正文通过 `chat-turn-stream-v1` strict schema 限长；Lua append 同时保证
+sequence、event id/hash 幂等、终态封锁、trim 与 TTL。Redis/BullMQ 是 bounded transport，不替代 PostgreSQL，也不进入 Outbox。Worker
+当前 generator 仍是 `deterministic-worker-v1`，因此这条流只形成 `implemented`/`mock-static validated` 证据。实现与回归见
+[`docs/acceptance/phase-6-chat-stream-replay.md`](acceptance/phase-6-chat-stream-replay.md)。
+
 ## 当前 SR5 run-bound revalidation flow（zero-provider，2026-08-12）
 
 ```text

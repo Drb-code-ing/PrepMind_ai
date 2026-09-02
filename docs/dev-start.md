@@ -165,6 +165,17 @@ projector -> FinalResponse stream。模型只产生 bounded candidate；owner、
 Chat response worker 当前是 `deterministic-worker-v1`，用于验证 claim、幂等、重试和 durable terminal commit，不要把它说成真实模型。
 详见 [`phase-6-chat-response-worker.md`](acceptance/phase-6-chat-response-worker.md)。
 
+Chat Stream 传输层已提供两个只读、JWT 保护的恢复入口：
+
+```text
+GET /chat-turns/:turnId
+GET /chat-turns/:turnId/events?cursor=<redis-stream-id>&limit=100
+```
+
+事件回放是 bounded Redis Stream（默认 `256` 条、`512 KiB`、`24 h` TTL）。`transport=unavailable` 或 `cursorState=expired` 时，
+客户端必须读取第一个状态接口；PostgreSQL 的 turn/assistant response 才是权威。当前 `/api/chat` 尚未调用这两个入口，浏览器也未
+切换到 turn-backed/SSE。实现和 focused 证据见 [`phase-6-chat-stream-replay.md`](acceptance/phase-6-chat-stream-replay.md)。
+
 ## 7. 常用验证
 
 代码与 package：
@@ -193,6 +204,13 @@ bun --filter @repo/server smoke:rag-eval
 `readiness:worker` 是部署前机器检查，退出码 `0=ready`、`1=degraded/not_ready`、`2=异常或超时`；它不会启动完整 App 或打印
 连接串、payload、prompt、chunk、key、token。`smoke:rag-eval` 要求 queue 模式，检查 `BackgroundJob=SUCCEEDED`、hybrid mode、
 `keywordScore`/`vectorScore` 和无重复 `chunkId`。
+
+Chat Stream focused 回归：
+
+```powershell
+bun --filter @repo/server test -- --runInBand chat-turns
+bun --filter @repo/server test -- --runInBand config/swagger.spec.ts
+```
 
 Agent focused eval、controlled-Live 和产品验收只能运行对应 acceptance 文档明确的入口；历史一次性授权不可复用。
 

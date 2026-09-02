@@ -1,6 +1,6 @@
 # PrepMind AI 当前状态
 
-更新时间：2026-08-31
+更新时间：2026-09-02
 用途：给开发者和协作 Agent 提供一个短、可核对的项目快照。阶段细节和原始证据仍以 `docs/acceptance/` 为准。
 
 ## 一句话结论
@@ -10,7 +10,8 @@ ChatTurn/BackgroundJob/Outbox 到 BullMQ 的 deterministic Worker durable baseli
 
 ## 当前基线
 
-- 文档入口分层整理已合并并推送；开始新任务前用 `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
+- 文档入口分层整理已合并并推送；2026-09-02 已在普通分支补齐 Chat Stream contract、Redis bounded replay API 和
+  deterministic Worker 发布链路。开始新任务前用 `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
 - 默认运行模式：`AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`，所有组件模型 gate 关闭。
 - 业务事实权威：PostgreSQL；Redis/BullMQ 负责缓存和队列；MinIO 负责对象存储；Dexie 负责本地恢复/离线补偿。
 - Docker 数据必须保留。验收只允许清理本次创建的合成数据和隔离浏览器状态。
@@ -26,7 +27,7 @@ ChatTurn/BackgroundJob/Outbox 到 BullMQ 的 deterministic Worker durable baseli
 | Review / Planner            | 只读建议与受限 candidate 已实现                                          | 共享 ledger、持续运行证据和独立产品 Live 仍待补齐                                                                   |
 | Knowledge Dedup / Organizer | owner-scoped shortlist、受限 candidate 与 deterministic fallback 已实现  | 需要最新矩阵确认真实产品 smoke 状态                                                                                 |
 | Retriever / FinalResponse   | `/api/chat` 主回答链有真实模型 smoke；历史质量门失败证据不可重跑         | 不能据此证明上游每个 Agent 或 SLA                                                                                   |
-| Chat response worker        | Outbox -> BullMQ -> claim -> durable terminal commit 已完成              | 当前 generator 是 `deterministic-worker-v1`；Replay、turn-backed `/api/chat`、全链路 ledger、真实模型 Worker 未完成 |
+| Chat response worker        | Outbox -> BullMQ -> claim -> durable terminal commit；Stream contract、Redis bounded replay 和状态查询已实现 | 当前 generator 是 `deterministic-worker-v1`；`/api/chat` 尚未 turn-backed，浏览器未接入 replay；全链路 ledger、真实模型 Worker 未完成 |
 | MemoryAgent                 | PostgreSQL 候选/确认/停用/删除流程已实现                                 | 当前无模型 gate、自动注入或完整分层记忆实现                                                                         |
 | Tool-Using Orchestrator     | 未实现                                                                   | 仅在治理 catalog/规划中出现                                                                                         |
 
@@ -43,13 +44,15 @@ ChatTurn/BackgroundJob/Outbox 到 BullMQ 的 deterministic Worker durable baseli
 ## 下一步顺序
 
 1. 完成 Phase 6 Agent 审计：逐项确认通信、owner/权限、并发、预算 ledger、取消、Trace 和真实模型产品 smoke。
-2. 补齐 Chat Redis/SSE cursor、断线 replay、turn-backed `/api/chat` 和真实模型 Worker。
-3. 在全部 Agent 架构完成后，设计并实现分层记忆：瞬时上下文、短期会话缓存、长期持久化记忆；再按用户要求编写两篇独立面试博客。
-4. 之后进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系和 Phase 10 生产部署。
+2. 将 `/api/chat` 切换到已建立的 turn-backed + Redis/SSE replay 合同，补全断线恢复、全链路 ledger、Trace 对账和 lease recovery。
+3. 为 Chat Worker 接入独立真实模型 gate、usage/cost 记录和产品 controlled smoke；继续保持默认 mock/off。
+4. 在全部 Agent 架构完成后，设计并实现分层记忆：瞬时上下文、短期会话缓存、长期持久化记忆；再按用户要求编写两篇独立面试博客。
+5. 之后进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系和 Phase 10 生产部署。
 
 ## 权威入口
 
 - Agent 矩阵与缺口：[`phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)
+- Chat Stream 合同与回放：[`phase-6-chat-stream-replay.md`](acceptance/phase-6-chat-stream-replay.md)
 - 本地启动与运维：[`dev-start.md`](dev-start.md)
 - 当前路线：[`roadmap.md`](roadmap.md)
 - 数据流：[`data-flow.md`](data-flow.md)

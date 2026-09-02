@@ -77,7 +77,34 @@ describe('parseEnv', () => {
       CHAT_RESPONSE_WORKER_CONCURRENCY: 2,
       CHAT_RESPONSE_WORKER_LOCK_DURATION_MS: 180000,
       CHAT_RESPONSE_GENERATION_TIMEOUT_MS: 120000,
+      CHAT_STREAM_MAX_EVENTS: 256,
+      CHAT_STREAM_MAX_BYTES: 524288,
+      CHAT_STREAM_TTL_SECONDS: 86400,
     });
+  });
+
+  it('validates bounded chat stream retention settings', () => {
+    expect(
+      parseEnv({
+        ...requiredEnv,
+        CHAT_STREAM_MAX_EVENTS: '64',
+        CHAT_STREAM_MAX_BYTES: '32768',
+        CHAT_STREAM_TTL_SECONDS: '3600',
+      }),
+    ).toMatchObject({
+      CHAT_STREAM_MAX_EVENTS: 64,
+      CHAT_STREAM_MAX_BYTES: 32768,
+      CHAT_STREAM_TTL_SECONDS: 3600,
+    });
+    expect(() =>
+      parseEnv({ ...requiredEnv, CHAT_STREAM_MAX_EVENTS: 0 }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({ ...requiredEnv, CHAT_STREAM_MAX_BYTES: 8192 }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({ ...requiredEnv, CHAT_STREAM_TTL_SECONDS: 59 }),
+    ).toThrow();
   });
 
   it('keeps the chat response BullMQ lease longer than generation', () => {

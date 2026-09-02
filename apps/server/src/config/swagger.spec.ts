@@ -7,6 +7,7 @@ import { AgentTracesController } from '../agent-traces/agent-traces.controller';
 import { AuthController } from '../auth/auth.controller';
 import { BackgroundJobsController } from '../background-jobs/background-jobs.controller';
 import { ChatMessagesController } from '../chat-messages/chat-messages.controller';
+import { ChatTurnsController } from '../chat-turns/chat-turns.controller';
 import { KnowledgeAgentController } from '../knowledge-agent/knowledge-agent.controller';
 import { KnowledgeDocumentsController } from '../knowledge-documents/knowledge-documents.controller';
 import { KnowledgeSearchController } from '../knowledge-documents/knowledge-search.controller';
@@ -61,6 +62,7 @@ const coreApiControllers = [
   AuthController,
   UsersController,
   ChatMessagesController,
+  ChatTurnsController,
   OcrRecordsController,
   WrongQuestionsController,
   WrongQuestionOrganizerController,
@@ -172,6 +174,7 @@ describe('swagger config', () => {
           'Auth',
           'Users',
           'Chat Messages',
+          'Chat Turns',
           'OCR Records',
           'Wrong Questions',
           'Wrong Question Organizer',
@@ -300,6 +303,8 @@ describe('swagger config', () => {
         ['get', '/background-jobs'],
         ['get', '/background-jobs/summary'],
         ['get', '/background-jobs/{id}'],
+        ['get', '/chat-turns/{turnId}'],
+        ['get', '/chat-turns/{turnId}/events'],
         ['get', '/worker-observability/summary'],
       ] as const;
 

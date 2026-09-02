@@ -1,5 +1,25 @@
 # PrepMind AI 开发日志
 
+> 2026-09-02 — Phase 6 Chat Stream contract 与 bounded Redis replay：
+>
+> 从已推送 `main=fd133325` 新开普通 Git 分支 `drb/phase-6-chat-stream-replay`，未使用 worktree；保留用户预修改和既有 dirty 文件，
+> 未读取根 `.env`、未调用 DeepSeek/Qwen、未清理 Docker/PostgreSQL/Redis/MinIO。新增 `chat-turn-stream-v1` strict Zod 合同，定义
+> `response_started`、`text_delta`、`citations`、`response_completed`、`response_failed`、cursor、状态恢复和固定错误码。
+>
+> `ChatStreamStore` 复用既有 BullMQ Redis client，用 owner+turn SHA-256 key 和 Lua 原子脚本完成 sequence、event id/hash 幂等、
+> terminal fence、事件数/字节数 trim 与 TTL；Redis 故障、坏 entry 和过期 cursor 均返回 bounded disposition，不影响 PostgreSQL
+> durable 状态。新增 owner-bound `GET /chat-turns/:turnId` 与 `GET /chat-turns/:turnId/events`，状态接口校验 response owner、conversation
+> 和 assistant role。Worker 在 claim 后发布 started/delta，durable success/failure transaction 后发布唯一 terminal event；terminal 重投
+> 不再调用 generator。
+>
+> 当前 generator 仍是 `deterministic-worker-v1`，`/api/chat` 尚未 turn-backed，浏览器未接入 SSE/replay；因此证据等级仅为
+> `implemented` + `mock/static validated`，不代表真实模型、产品断线恢复或生产 SLA。默认 stream bound 为 `256 events / 512 KiB /
+> 24h`，配置由 `CHAT_STREAM_MAX_EVENTS/MAX_BYTES/TTL_SECONDS` 约束。
+>
+> 验证：Chat Stream expanded `5 suites / 110 tests`、chat-turns `10 suites / 49 tests`、`@repo/types` `43 tests`、Swagger `8 tests`、
+> Server build、目标 ESLint、Prettier 和本机 Redis 唯一 key smoke 均通过；Redis smoke 已精确删除测试 key。Docker 当前 pipe 不可连接，
+> 未进行 Docker/API/可见浏览器验收。功能分支提交、推送、main 合并及 merged-main 复验待本任务收口。
+
 > 2026-08-31 - 文档入口分层整理：
 >
 > 将 `AGENTS.md` 从重复的阶段回执改为启动必读规则，集中说明证据等级、Git 分支/合并流程、Docker 与凭据安全、工具选择、

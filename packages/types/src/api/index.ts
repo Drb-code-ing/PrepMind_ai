@@ -47,3 +47,4 @@ export * from './agent-trace';
 export * from './agent-tool';
 export * from './operator-audit';
 export * from './operator-audit-export';
+export * from './chat-stream';
