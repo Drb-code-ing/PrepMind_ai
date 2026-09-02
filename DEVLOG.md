@@ -13,12 +13,15 @@
 > 不再调用 generator。
 >
 > 当前 generator 仍是 `deterministic-worker-v1`，`/api/chat` 尚未 turn-backed，浏览器未接入 SSE/replay；因此证据等级仅为
-> `implemented` + `mock/static validated`，不代表真实模型、产品断线恢复或生产 SLA。默认 stream bound 为 `256 events / 512 KiB /
-> 24h`，配置由 `CHAT_STREAM_MAX_EVENTS/MAX_BYTES/TTL_SECONDS` 约束。
+> `implemented` + `mock/static validated`，不代表真实模型、产品断线恢复或生产 SLA。默认 stream bound 为
+> `256 events / 512 KiB / 24h`，配置由 `CHAT_STREAM_MAX_EVENTS/MAX_BYTES/TTL_SECONDS` 约束。
 >
 > 验证：Chat Stream expanded `5 suites / 110 tests`、chat-turns `10 suites / 49 tests`、`@repo/types` `43 tests`、Swagger `8 tests`、
-> Server build、目标 ESLint、Prettier 和本机 Redis 唯一 key smoke 均通过；Redis smoke 已精确删除测试 key。Docker 当前 pipe 不可连接，
-> 未进行 Docker/API/可见浏览器验收。功能分支提交、推送、main 合并及 merged-main 复验待本任务收口。
+> Server build、目标 ESLint、CRLF-aware Prettier 和本机 Redis 唯一 key smoke 均通过；Redis smoke 已精确删除测试 key。功能提交
+> `fc6f5fb8` 已推送，并以 `--no-ff` 合并、推送为 `main=87d26a7e`。merged-main 再次通过 chat-turns `49/49`、Swagger
+> `8/8`、Types `43/43`、typecheck、Server build、目标 ESLint、CRLF-aware Prettier、`git diff --check` 和远程 parity。
+> 功能实现时 Docker pipe 不可连接；收口时 daemon 已恢复但项目 Compose 服务仍停止，因此没有进行 Docker/API/可见浏览器验收，
+> 没有读取 `.env`、调用 Provider 或写业务数据。用户既有六个 dirty 文件均保持未暂存、未提交。
 
 > 2026-08-31 - 文档入口分层整理：
 >
