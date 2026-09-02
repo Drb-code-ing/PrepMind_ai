@@ -93,8 +93,8 @@ Swagger config: 8 tests passed
 ```
 
 本机 Redis smoke 使用唯一测试 key 验证 sequence `0,1,2`、有序 replay、terminal 后追加拒绝，并已精确删除测试 key；没有执行
-`FLUSHDB`/`FLUSHALL`。Docker Desktop 当前不可连接（`dockerDesktopLinuxEngine` pipe 不存在），所以本任务没有进行 Docker/API/可见
-浏览器验收，也没有触碰 PostgreSQL、MinIO 或用户数据。
+`FLUSHDB`/`FLUSHALL`。功能实现时 Docker Desktop pipe 不可连接；合并收口时 daemon 已恢复，但项目 Compose 服务仍处于停止状态，
+所以本任务没有进行 Docker/API/可见浏览器验收，也没有触碰 PostgreSQL、MinIO 或用户数据。
 
 ## 5. 明确未完成项
 
@@ -109,12 +109,20 @@ Swagger config: 8 tests passed
 
 ```text
 feature branch: drb/phase-6-chat-stream-replay
-feature commit: pending
-feature remote: pending
-main merge: pending
-main == origin/main: pending
-merged-main revalidation: pending
+feature commit: fc6f5fb865f2908fc4ad7efb8c490477b1c59131
+feature remote: pushed (`origin/drb/phase-6-chat-stream-replay`)
+main merge: 87d26a7e38b0491272f81fe0075fbef4dabc1316 (`--no-ff`)
+main == origin/main: confirmed (`87d26a7e38b0491272f81fe0075fbef4dabc1316`)
+merged-main revalidation: passed on 2026-09-02
 ```
 
-收口必须遵循：显式路径提交 -> 推送功能分支 -> `git merge --no-ff` 到最新 `main` -> 推送 `main` -> 在 merged-main 重跑必要回归。
+merged-main 复验记录（2026-09-02）：
+
+- `bun --filter @repo/server test -- --runInBand chat-turns`：10 suites / 49 tests passed。
+- `bun --filter @repo/server test -- --runInBand src/config/swagger.spec.ts`：8 tests passed。
+- `bun --filter @repo/types test`：43 tests passed；`bun --filter @repo/types typecheck` passed。
+- `bun --filter @repo/server build`、目标 ESLint、CRLF-aware Prettier 和 `git diff --check` passed。
+- Docker daemon 可用；未启动或清理 Compose 服务、未读取 `.env`、未调用 Provider，也未写入业务数据。
+
+收口遵循：显式路径提交 -> 推送功能分支 -> `git merge --no-ff` 到最新 `main` -> 推送 `main` -> 在 merged-main 重跑必要回归。
 用户预修改的三个 `wrong-question-organizer` 文件及其他既有 dirty 文件不得进入本任务提交。
