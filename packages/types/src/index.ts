@@ -13,3 +13,4 @@ export * from './api/chat-message';
 export * from './api/review-preference';
 export * from './api/review-task';
 export * from './api/upload';
+export * from './api/chat-stream';

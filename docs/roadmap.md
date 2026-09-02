@@ -7,9 +7,10 @@
 ## 当前焦点
 
 **Phase 6 Agent 运行时总审计**。最新原子任务已完成 ChatTurn/BackgroundJob/Outbox 到 BullMQ 的 deterministic Worker durable
-baseline。下一步不是继续堆一次性 Live 脚本，而是补齐执行契约、全链路预算、断线恢复和各 Agent 的真实模型产品证据。
+baseline，并补齐 `chat-turn-stream-v1`、Redis bounded replay 和 owner-bound 状态查询。下一步不是继续堆一次性 Live 脚本，而是
+补齐 turn-backed 产品切换、全链路预算、断线恢复和各 Agent 的真实模型产品证据。
 
-当前基线（2026-08-31）：
+当前基线（2026-09-02）：
 
 - 文档入口分层整理已合并并推送；开始新任务前用 `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
 - 默认 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、各组件 gate=false。
@@ -29,7 +30,7 @@ baseline。下一步不是继续堆一次性 Live 脚本，而是补齐执行契
 | Phase 6.9.5-6.9.6 | Review/Planner、Knowledge agents                                                        | 有受限 candidate 和历史验收；当前审计仍需确认持续/产品证据                 |
 | Phase 6.9.7       | Tutor / WrongQuestionOrganizer schema recovery 与产品回放                               | 历史 lineage 已封存，主线不再拼接旧证据                                    |
 | Phase 6.9.8       | Retriever / FinalResponse、transport/schema recovery                                    | 部分工程收口；Task 9C/R5 质量门失败历史不可重跑，产品 turn-backed 仍待补齐 |
-| Phase 7           | Worker、Outbox、Readiness、Admin、Audit 与导出                                          | 核心子阶段已完成；Chat response worker 当前为 deterministic baseline       |
+| Phase 7           | Worker、Outbox、Readiness、Admin、Audit 与导出                                          | 核心子阶段已完成；Chat response worker/Stream 为 deterministic baseline，产品切换待完成 |
 | Phase 6.10        | 分层记忆（瞬时/短期/长期）                                                              | 待全部 Agent 架构和合同稳定后开始                                          |
 | Phase 8           | 性能优化与 PWA                                                                          | 计划中                                                                     |
 | Phase 9           | MCP Tool 体系                                                                           | 计划中                                                                     |
@@ -56,11 +57,12 @@ ChatTurn + BackgroundJob + chat.response.requested Outbox
   -> BullMQ bridge
   -> owner-scoped Worker claim
   -> assistant + Turn + Job + terminal Outbox 同事务提交
+  -> bounded Redis Stream events / owner-bound replay API
 ```
 
 仍需独立任务完成：
 
-1. Redis/SSE bounded stream、cursor 和断线 replay；
+1. 将 bounded replay API 接入 SSE/browser，并处理 cursor 过期与状态恢复；
 2. `/api/chat` turn-backed 路径与旧 snapshot sync 兼容窗口；
 3. 全链路 ChatRunBudget ledger、Trace 对账和跨节点上限；
 4. 真实模型 Worker 的独立 gate、usage/cost 和产品 smoke。

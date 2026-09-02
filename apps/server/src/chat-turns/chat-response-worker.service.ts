@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import {
   Prisma,
   type BackgroundJob,
@@ -26,6 +26,7 @@ import {
 } from './chat-response.job';
 import { resolveChatResponseGenerationTimeout } from './chat-response-worker.config';
 import { PrismaService } from '../database/prisma.service';
+import { ChatStreamStore } from './chat-stream.store';
 
 export const CHAT_RESPONSE_GENERATOR = Symbol('CHAT_RESPONSE_GENERATOR');
 
@@ -95,7 +96,11 @@ type ClaimResult =
       kind: 'active';
       claim: ActiveClaim;
     }
-  | { kind: 'terminal' };
+  | {
+      kind: 'terminal';
+      turn: ChatTurn;
+      backgroundJob: BackgroundJob;
+    };
 
 type FailureDecision = 'retry' | 'complete';
 
@@ -109,6 +114,7 @@ export class ChatResponseWorkerService {
     private readonly prisma: PrismaService,
     @Inject(CHAT_RESPONSE_GENERATOR)
     private readonly generator: ChatResponseGenerator,
+    @Optional() private readonly streams?: ChatStreamStore,
   ) {}
 
   async process(job: Job<unknown>): Promise<void> {
@@ -121,13 +127,25 @@ export class ChatResponseWorkerService {
     }
     const bullJobId = String(job.id);
     const claim = await this.claim(payload, bullJobId, attemptNumber(job));
-    if (claim.kind === 'terminal') return;
+    if (claim.kind === 'terminal') {
+      await this.publishDurableTerminal(claim.turn, claim.backgroundJob);
+      return;
+    }
 
+    await this.publishStarted(claim.claim.turn);
+    let generatedTextObserved = false;
     try {
       const messages = await this.loadInputMessages(claim.claim.turn);
       const generated = await this.generate(claim.claim.turn, messages);
       validateGeneratedResult(generated);
+      generatedTextObserved = generated.content.length > 0;
+      await this.publishTextDelta(claim.claim.turn, generated.content);
       await this.commitSuccess(payload, claim.claim, generated, bullJobId);
+      await this.publishCompleted(
+        claim.claim.turn,
+        generated,
+        chatResponseMessageId(claim.claim.turn.id),
+      );
     } catch (error) {
       const decision = await this.handleFailure(
         payload,
@@ -137,7 +155,107 @@ export class ChatResponseWorkerService {
         bullJobId,
       );
       if (decision === 'retry') throw error;
+      await this.publishFailed(
+        claim.claim.turn,
+        classifyFailure(error).code,
+        classifyFailure(error).code === 'GENERATION_ABORTED'
+          ? 'aborted'
+          : generatedTextObserved
+            ? 'after_first_token'
+            : 'before_first_token',
+      );
       job.discard();
+    }
+  }
+
+  private async publishStarted(turn: ChatTurn) {
+    await this.appendStreamEvent(turn, {
+      eventId: eventIdFor(turn.id, 'response_started'),
+      type: 'response_started',
+      mode: 'mock',
+      generator: 'deterministic-worker-v1',
+    });
+  }
+
+  private async publishTextDelta(turn: ChatTurn, content: string) {
+    const codePoints = Array.from(content);
+    for (let offset = 0, index = 0; offset < codePoints.length; ) {
+      const text = codePoints.slice(offset, offset + 4_000).join('');
+      offset += 4_000;
+      await this.appendStreamEvent(turn, {
+        eventId: eventIdFor(
+          turn.id,
+          `text_delta:${index}:${contentHash(text)}`,
+        ),
+        type: 'text_delta',
+        text,
+      });
+      index += 1;
+    }
+  }
+
+  private async publishCompleted(
+    turn: ChatTurn,
+    generated: ChatResponseGeneratorResult,
+    responseMessageId: string,
+  ) {
+    await this.appendStreamEvent(turn, {
+      eventId: eventIdFor(turn.id, 'response_completed'),
+      type: 'response_completed',
+      responseMessageId,
+      finishReason: 'stop',
+      generator: generated.generator,
+    });
+  }
+
+  private async publishFailed(
+    turn: ChatTurn,
+    errorCode: ChatTurnErrorCode,
+    phase: 'before_first_token' | 'after_first_token' | 'aborted',
+  ) {
+    await this.appendStreamEvent(turn, {
+      eventId: eventIdFor(turn.id, 'response_failed'),
+      type: 'response_failed',
+      errorCode,
+      phase,
+    });
+  }
+
+  private async publishDurableTerminal(
+    turn: ChatTurn,
+    backgroundJob: BackgroundJob,
+  ) {
+    await this.publishStarted(turn);
+    if (turn.status === 'SUCCEEDED' && turn.responseMessageId) {
+      await this.publishCompleted(
+        turn,
+        {
+          content: '',
+          generator: durableGenerator(backgroundJob.resultSummary),
+        },
+        turn.responseMessageId,
+      );
+      return;
+    }
+    await this.publishFailed(
+      turn,
+      turn.errorCode ?? 'INTERNAL_FAILURE',
+      turn.errorCode === 'GENERATION_ABORTED'
+        ? 'aborted'
+        : 'before_first_token',
+    );
+  }
+
+  private async appendStreamEvent(
+    turn: ChatTurn,
+    event: Parameters<ChatStreamStore['append']>[2],
+  ) {
+    if (!this.streams) return;
+    try {
+      await this.streams.append(turn.userId, turn.id, event);
+    } catch {
+      // Redis is a bounded replay transport; it must never turn a durable
+      // PostgreSQL success/failure transition into a worker retry.
     }
   }
 
@@ -163,7 +281,11 @@ export class ChatResponseWorkerService {
           linkedTurn,
           linkedBackgroundJob,
         );
-        return { kind: 'terminal' } as const;
+        return {
+          kind: 'terminal',
+          turn: linkedTurn,
+          backgroundJob: linkedBackgroundJob,
+        } as const;
       }
 
       if (isTerminalJob(linkedBackgroundJob.status)) {
@@ -970,4 +1092,23 @@ function chatResponseMessageId(turnId: string) {
 
 function contentHash(value: string) {
   return `sha256:${createHash('sha256').update(value).digest('hex')}`;
+}
+
+function eventIdFor(turnId: string, suffix: string) {
+  return `evt_${createHash('sha256')
+    .update(`${turnId}\u0000${suffix}`)
+    .digest('hex')}`;
+}
+
+function durableGenerator(value: unknown) {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof (value as { generator?: unknown }).generator === 'string'
+  ) {
+    const generator = (value as { generator: string }).generator.trim();
+    if (generator.length > 0 && generator.length <= 80) return generator;
+  }
+  return 'deterministic-worker-v1';
 }

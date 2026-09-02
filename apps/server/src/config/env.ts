@@ -157,6 +157,24 @@ const envSchema = z
       .min(1_000)
       .max(600_000)
       .default(120_000),
+    CHAT_STREAM_MAX_EVENTS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(1024)
+      .default(256),
+    CHAT_STREAM_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .min(16_384)
+      .max(4_194_304)
+      .default(524_288),
+    CHAT_STREAM_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(60)
+      .max(604_800)
+      .default(86_400),
     JWT_SECRET: z.string().min(16),
     JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
     REFRESH_TOKEN_DAYS: z.coerce.number().int().positive().default(30),

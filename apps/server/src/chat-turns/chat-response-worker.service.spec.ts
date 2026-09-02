@@ -16,6 +16,7 @@ import {
   type ChatResponseGenerator,
   type ChatResponseGeneratorResult,
 } from './chat-response-worker.service';
+import type { ChatStreamStore } from './chat-stream.store';
 
 describe('ChatResponseWorkerService', () => {
   const payload = {
@@ -42,6 +43,39 @@ describe('ChatResponseWorkerService', () => {
       }),
     });
     expect(harness.generator.generate).toHaveBeenCalledTimes(1);
+  });
+
+  it('publishes ordered non-terminal events and only then publishes the terminal event', async () => {
+    const stream = createStreamMock();
+    const harness = createHarness(undefined, stream);
+
+    await harness.service.process(createJob());
+
+    expect(stream.append).toHaveBeenCalledTimes(3);
+    expect(stream.append.mock.calls.map((call) => call[2]?.type)).toEqual([
+      'response_started',
+      'text_delta',
+      'response_completed',
+    ]);
+    expect(stream.append.mock.invocationCallOrder[2]).toBeGreaterThan(
+      harness.transaction.outboxEvent.upsert.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
+  it('publishes a failed terminal event after the durable failure transaction', async () => {
+    const error = new ChatResponseWorkerError('OUTPUT_INVALID', false, 'bad');
+    const stream = createStreamMock();
+    const harness = createHarness(error, stream);
+
+    await harness.service.process(createJob(2));
+
+    expect(stream.append.mock.calls.map((call) => call[2]?.type)).toEqual([
+      'response_started',
+      'response_failed',
+    ]);
+    expect(stream.append.mock.invocationCallOrder[1]).toBeGreaterThan(
+      harness.transaction.outboxEvent.upsert.mock.invocationCallOrder[0] ?? 0,
+    );
   });
 
   it('does not call the generator again after a terminal success', async () => {
@@ -214,7 +248,10 @@ describe('ChatResponseWorkerService', () => {
     });
   });
 
-  function createHarness(generatorError?: Error) {
+  function createHarness(
+    generatorError?: Error,
+    stream?: ReturnType<typeof createStreamMock>,
+  ) {
     const state = {
       turn: makeTurn(),
       backgroundJob: makeBackgroundJob(),
@@ -284,7 +321,11 @@ describe('ChatResponseWorkerService', () => {
       ),
       chatMessage: db.chatMessage,
     };
-    const service = new ChatResponseWorkerService(prisma as never, generator);
+    const service = new ChatResponseWorkerService(
+      prisma as never,
+      generator,
+      stream as never,
+    );
     return {
       service,
       generator,
@@ -292,6 +333,17 @@ describe('ChatResponseWorkerService', () => {
       prisma,
       transaction: db,
       job: createJob(),
+    };
+  }
+
+  function createStreamMock() {
+    return {
+      append: jest
+        .fn<
+          ReturnType<ChatStreamStore['append']>,
+          Parameters<ChatStreamStore['append']>
+        >()
+        .mockResolvedValue({ disposition: 'appended', cursor: '1-0' }),
     };
   }
 

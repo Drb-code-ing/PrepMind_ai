@@ -31,7 +31,8 @@
     "./api/memory-agent": "./src/api/memory-agent.ts",
     "./api/knowledge": "./src/api/knowledge.ts",
     "./api/knowledge-agent": "./src/api/knowledge-agent.ts",
-    "./api/upload": "./src/api/upload.ts"
+    "./api/upload": "./src/api/upload.ts",
+    "./api/chat-stream": "./src/api/chat-stream.ts"
   },
   "scripts": {
     "lint": "eslint src/",

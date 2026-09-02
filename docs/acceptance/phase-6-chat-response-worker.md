@@ -23,7 +23,8 @@ Outbox(chat.response.requested)
 ```
 
 它的直接价值是：队列投递与数据库事实可重试、重复消费不会重复回答、进程在模型执行前后崩溃时仍有明确的
-状态对账入口，并为后续 Redis/SSE cursor、断线 replay 和 `/api/chat` turn-backed 改造提供 durable 基线。
+状态对账入口，并为后续 Redis/SSE cursor、断线 replay 和 `/api/chat` turn-backed 改造提供 durable 基线。Redis Stream contract、
+bounded replay 和 Worker 事件发布已在后续 [`phase-6-chat-stream-replay.md`](phase-6-chat-stream-replay.md) 独立任务实现。
 
 ## 2. 实现范围
 
@@ -121,7 +122,7 @@ Docker、重置数据库或修改用户数据。
 
 本任务完成的是 Worker durable baseline，不是完整产品断线恢复。以下仍是后续独立原子任务：
 
-1. Redis/SSE bounded delta stream、cursor 和断线 replay；
+1. 将已实现的 Redis/SSE bounded delta stream、cursor 和断线 replay 接入 `/api/chat` 与浏览器；
 2. `/api/chat` 切换到 turn-backed path，并保留旧 snapshot sync 的只读兼容窗口；
 3. 全链路 ChatRunBudget ledger 与跨节点 reservation/Trace 对账；
 4. Worker 使用真实模型的独立 gate、provider usage/cost 和产品 controlled smoke；

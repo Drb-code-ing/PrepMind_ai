@@ -19,11 +19,12 @@
 
 4. 不把旧的回执、Mock 结果或历史分支推断成当前状态；以最新 acceptance 文档和可复现命令为准。
 
-## 2. 当前项目状态（2026-08-31）
+## 2. 当前项目状态（2026-09-02）
 
 - 2026-08-31 文档分层整理已合并并推送；开始新任务前始终用 `git rev-parse main` 与 `git rev-parse origin/main` 核对，不要复制历史 SHA。
-- Phase 6 Agent 运行时总审计仍是当前主线。最新原子任务已完成 ChatTurn/BackgroundJob/Outbox 到 BullMQ 的
-  deterministic Worker durable baseline；它不是真实模型 Worker、Redis/SSE replay 或 `/api/chat` turn-backed durability。
+- Phase 6 Agent 运行时总审计仍是当前主线。最新原子任务已完成 ChatTurn/BackgroundJob/Outbox 到 BullMQ 的 deterministic Worker
+  durable baseline，并实现 `chat-turn-stream-v1`、Redis bounded replay 和 owner-bound 状态查询；它不是真实模型 Worker，也未切换
+  `/api/chat` turn-backed/SSE 产品路径。
 - `packages/agent/src/graph/index.ts` 是受治理的 catalog descriptor，不是执行器；产品 Chat 编排仍在 Web/API composition。
 - Tool-Using Orchestrator 尚未实现。Review/Planner、Knowledge agents、Router/Verifier、Tutor、Retriever/FinalResponse
   的真实模型产品证据必须按矩阵逐项确认，不能用一条 Chat smoke 代替。

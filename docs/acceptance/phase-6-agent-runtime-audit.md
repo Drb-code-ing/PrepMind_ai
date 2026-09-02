@@ -1,13 +1,14 @@
 # Phase 6 Agent Runtime Audit
 
-更新时间：2026-08-31
+更新时间：2026-09-02
 范围：Phase 6 全部 Agent、模型 gate、通信边界、权限、预算、Trace、降级和现有证据。  
 结论级别：本文件是审计基线，不代表所有 Agent 已完成真实模型验收。
 
-本次同步补录 2026-08-28 Chat Response Worker 原子任务的收口事实：`chat.response.requested` 已可经 Outbox 幂等桥接到
-BullMQ，Worker 可在 owner-scoped claim 后以同一事务提交 assistant、ChatTurn、BackgroundJob 和终态 Outbox。当前生成器仍明确
-是 `deterministic-worker-v1`；Redis/SSE replay、turn-backed `/api/chat`、全链路 ledger 和真实模型 Worker 仍未完成。详细边界见
-`docs/acceptance/phase-6-chat-response-worker.md`。
+本次同步补录 2026-09-02 Chat Stream 原子任务的收口事实：`chat.response.requested` 已经 Outbox 幂等桥接到 BullMQ，Worker 可在
+owner-scoped claim 后以同一事务提交 assistant、ChatTurn、BackgroundJob 和终态 Outbox；随后以 `chat-turn-stream-v1` 合同发布
+有界 Redis Stream 事件，并提供 owner-bound turn 状态/回放接口。当前生成器仍明确是 `deterministic-worker-v1`；浏览器及现有
+`/api/chat` 尚未切换到 turn-backed/SSE，完整 ledger 和真实模型 Worker 仍未完成。详细边界见
+`docs/acceptance/phase-6-chat-response-worker.md` 与 `docs/acceptance/phase-6-chat-stream-replay.md`。
 
 ## 1. 结论摘要
 
@@ -17,15 +18,15 @@ BullMQ，Worker 可在 owner-scoped claim 后以同一事务提交 assistant、C
 - 模型只能增强候选或生成受限 guidance；身份、owner、权限、业务事实、写操作和最终安全边界由确定性代码掌握。
 - 目前有产品真实模型 smoke 的是 FinalResponse 主链（`/api/chat` 返回 `200 / mode=live / trace=true`）；这不等于 Router、Tutor、Retriever rewrite、Verifier、Review/Planner 或 Knowledge agents 都已逐项真实成功。
 - 默认环境保持 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、各组件 gate=false。打开 gate 需要独立的组件 key、预算和产品验收，不应把默认关闭误解为未实现。
-- ChatTurn 第一原子实现、第二步可靠入队与第三步 deterministic Worker durable baseline 已完成：请求 Outbox 幂等桥接到 BullMQ，Worker
-  在 owner-scoped claim 后将 assistant/Turn/BackgroundJob/终态 Outbox 同事务提交；这仍不等于真实模型 Worker、Replay 或 `/api/chat`
-  turn-backed durability 已完成。证据见 `docs/acceptance/phase-6-chat-response-worker.md`。
+- ChatTurn、可靠入队、deterministic Worker durable baseline 和 Chat Stream bounded replay API 已完成：请求 Outbox 幂等桥接到
+  BullMQ，Worker 在 owner-scoped claim 后将 assistant/Turn/BackgroundJob/终态 Outbox 同事务提交，再发布可幂等回放的 Redis 事件；
+  这仍不等于真实模型 Worker、浏览器 SSE 或 `/api/chat` turn-backed durability。证据见两份 Chat acceptance 文档。
 
 ## 2. Agent 总矩阵
 
-Chat 入队与后台执行的当前实现状态：`ChatTurnEnqueueService` 完成同事务 Turn/Job/Outbox，Chat Response Worker 完成
-requested bridge、claim、deterministic generation 和 terminal commit；active claim recovery、单点 Queue 注册与 timeout/lease
-交叉校验也已补齐。Replay、产品切换、真实模型和生产使用证据仍按下表推进。
+Chat 入队与后台执行的当前实现状态：`ChatTurnEnqueueService` 完成同事务 Turn/Job/Outbox，Chat Response Worker 完成 requested
+bridge、claim、deterministic generation、terminal commit 和 bounded stream publication；`ChatTurnsController` 提供 owner-bound
+status/replay 查询。active claim recovery、产品切换、真实模型和生产使用证据仍按下表推进。
 
 | Agent | 职责与入口 | 模式与模型 | gate /预算 /超时 | 权限与通信边界 | Trace /证据 | 当前缺口 |
 |---|---|---|---|---|---|---|
@@ -65,8 +66,8 @@ HTTP request
 1. `packages/agent/src/graph/index.ts` 已升级为受治理 catalog：明确 `executionAuthority=catalog_only`、产品组合层权威、typed communication edges、模型模式、领域写权限和 planned Orchestrator；它仍不执行 Agent，也不伪造 owner capability、budget ledger 或 terminal policy。
 2. `packages/agent/src/runtime.ts` 的通用运行时与产品 `/api/chat` 不是同一执行契约，不能用它证明产品链路已经串联。
 3. 行为文档中的 Tool-Using Orchestrator 尚未实现，不能列入“已完成 Agent”。
-4. Chat Trace 是旁路 best-effort，写入超时或失败不会阻断回答；Worker 已建立 assistant/Turn/Job/terminal Outbox durable
-   baseline，但 Redis/SSE cursor、断线 replay 与 `/api/chat` turn-backed 产品路径仍未接入。
+4. Chat Trace 是旁路 best-effort，写入超时或失败不会阻断回答；Worker 与 Redis bounded stream 已建立 durable baseline 的传输层，
+   但浏览器 SSE、断线后的产品回放编排与 `/api/chat` turn-backed 产品路径仍未接入。
 5. Review/Planner 的 HTTP AbortSignal 与 candidate 外层 fallback 已完成；但共享预算 ledger 和真实模型产品验收仍未建立。
 6. Router/Verifier/Tutor/FinalResponse 各自持有局部预算，全链路没有统一 ledger，需补跨节点上限和越界测试。
 
@@ -86,8 +87,10 @@ HTTP request
 
 1. ~~先修复并测试 Review/Planner 的 AbortSignal 与 candidate 外层 fail-safe。~~ 已完成：controller 将 HTTP `aborted` 映射为请求级 AbortSignal，service 传入两个 candidate；两个 candidate runner 额外有 deterministic 外层 fallback。`review-agent.controller.spec.ts` + `review-agent.service.spec.ts` 为 `13/13`，Server build 通过。
 2. ~~定义 graph descriptor 与产品组合层的关系。~~ 已完成：catalog 明确不是执行器，补 typed edges、model mode、domain write permission、产品组合位置和 planned Orchestrator；graph focused `3/3`、Agent typecheck 通过。
-3. ~~为 Chat 增加全链路预算/断连 durability 的明确合同和测试。~~ 设计 checkpoint、可靠入队与 deterministic Worker durable baseline 已完成：明确 ChatTurn、BackgroundJob+Outbox 同事务、worker/replay、owner/幂等和 run-level budget；Replay、产品切换与全链路 ledger 仍未完成，详见 `docs/acceptance/phase-6-chat-durability-budget-design.md` 与 `docs/acceptance/phase-6-chat-response-worker.md`。
-   ChatTurn schema/migration 与 owner-scoped repository focused `10/10`、schema `9/9`，可靠入队 focused `8/8`，Worker focused `9 suites / 137 tests`；Server build 通过。Worker 当前仍是 deterministic，不代表真实模型。
+3. ~~为 Chat 增加全链路预算/断连 durability 的明确合同和测试。~~ 设计 checkpoint、可靠入队、deterministic Worker durable baseline
+   与 Chat Stream bounded replay API 已完成；浏览器/`/api/chat` 产品切换、全链路 ledger 与真实模型 Worker 仍未完成，详见两份 Chat
+   acceptance 文档。当前新增回归为 Chat Stream 5 suites/110 tests、chat-turns 10 suites/49 tests、types 43 tests；Worker 当前仍是
+   deterministic，不代表真实模型。
 4. 为 MemoryAgent 定义真实模型增强的隐私、候选确认、预算和 Trace 合同；完成 Agent 架构后再进入分层记忆实现。
 5. 做独立 Review/Planner、Knowledge agents、Router/Verifier/Tutor/Rewrite 的产品验收，保持浏览器窗口可见并保留证据。
 6. 所有代码/文档任务逐项提交、推送、`--no-ff` 合并 main，再在 merged-main 复验；全部 Agent 架构与真实验收完成后，才写两篇面试博客。

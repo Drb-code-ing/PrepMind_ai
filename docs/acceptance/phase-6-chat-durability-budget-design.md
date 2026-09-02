@@ -1,8 +1,9 @@
 # Phase 6 Chat Durability and Budget Design
 
-更新时间：2026-08-28
-状态：设计、可靠入队与 deterministic Worker durable baseline 已实现；Redis/SSE replay、`/api/chat` 产品切换、全链路
-budget ledger 和真实模型 Worker 仍未实现。
+更新时间：2026-09-02
+状态：设计、可靠入队、deterministic Worker durable baseline 与 Chat Stream/Redis bounded replay API 已实现；`/api/chat`
+产品切换、全链路 budget ledger 和真实模型 Worker 仍未实现。实现证据见
+[`phase-6-chat-stream-replay.md`](phase-6-chat-stream-replay.md)。
 
 ## 1. 当前问题
 
@@ -33,12 +34,13 @@ authenticated request
   -> append assistant message + ChatTurn/BackgroundJob terminal state in one transaction
   -> OutboxEvent(chat.response.completed|failed, same transaction)
   -> Redis stream / SSE publishes bounded deltas and terminal cursor
-  -> browser reconnects by turnId and replays from durable cursor/result
+  -> browser reconnects by turnId and replays from bounded cursor; expired/unavailable transport falls back to turn status/result
 ```
 
 `BackgroundJob` 和请求 `OutboxEvent` 必须在同一个数据库事务中创建。BackgroundJob 负责任务状态、attempt、队列归属和用户可见进度；Outbox
-负责把“请求已入队”和“终态已落库”可靠交给 dispatcher。当前 Worker 已把 assistant/Turn/Job/终态 Outbox 收束到一个完成事务，
-但 Redis/SSE 仍是后续层。两者不能一个成功、另一个失败，也不能把 provider 原文或完整 prompt 放进 payload。
+负责把“请求已入队”和“终态已落库”可靠交给 dispatcher。当前 Worker 已把 assistant/Turn/Job/终态 Outbox 收束到一个完成事务；本
+checkpoint 已增加独立 Redis Stream transport，但它仍不是 durable authority。两者不能一个成功、另一个失败，也不能把 provider 原文或
+完整 prompt 放进 payload。
 
 ## 3. 数据与幂等合同
 
@@ -103,14 +105,16 @@ ChatRunBudget {
    `docs/acceptance/phase-6-chat-enqueue-outbox.md`。
 3. ~~Worker 先实现 deterministic/mock 生成与 durable assistant commit，再接入真实模型 gate；不改变现有 `/api/chat` 默认 mock/off。~~
    已完成 deterministic durable baseline；真实模型 gate 仍后置。
-4. 增加 Redis/SSE bounded delta stream 与 turn replay；浏览器断开后可通过 turn 查询最终结果。
+4. ~~增加 Redis/SSE bounded delta stream 与 turn replay；浏览器断开后可通过 turn 查询最终结果。~~ 已完成 Chat Stream contract、Redis
+   store、owner-scoped query/controller 和 Worker 发布；当前浏览器及 `/api/chat` 尚未接入，详见 Chat Stream acceptance。
 5. 将现有 `/api/chat` 切换到 turn-backed path，保留旧 sync 只读兼容窗口；迁移完成后禁止 delete/recreate snapshot 作为权威写入。
 6. 进行 Docker、API、可见浏览器和真实模型 controlled smoke；每一步单独提交、推送、合并 main 后复验。
 
 ## 7. 本 checkpoint 的明确结论
 
 - 当前 ChatTurn schema/migration 与 `ChatTurn + BackgroundJob + chat.response.requested` 同事务可靠入队已完成；没有触碰 Docker 数据。
-- “BackgroundJob + Outbox 同事务”与 Worker durable terminal commit 已成为实现合同；尚未有 Redis/SSE Replay 或 `/api/chat` turn-backed 产品路径。
+- “BackgroundJob + Outbox 同事务”与 Worker durable terminal commit 已成为实现合同；Redis bounded replay API 已实现，但仍没有
+  `/api/chat` turn-backed 产品路径或浏览器 SSE 接入。
 - 当前 Worker 的生成器是 `deterministic-worker-v1`，只证明执行与持久化骨架，不证明真实模型或语义质量。
-- 在 Replay/产品切换完成前，产品文档必须继续使用“流式功能可用、断连 durability 未建立”的表述。
+- 在产品切换完成前，产品文档必须继续使用“Stream API 已有 bounded replay、现有流式入口断连 durability 未建立”的表述。
 
