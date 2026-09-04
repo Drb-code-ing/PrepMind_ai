@@ -1,7 +1,7 @@
 # Phase 6 ChatTurn Web Enqueue Adapter
 
 更新时间：2026-09-04
-状态：ticket 02 已在功能分支实现并通过完整 Web 静态/单元验证；推送、合并与 merged-main 复验待收口。
+状态：ticket 02 已完成；功能分支已推送、`--no-ff` 合并并推送 `main`，merged-main 复验通过。
 
 ## 1. 目的
 
@@ -87,7 +87,7 @@ git diff --check: passed
 ```
 
 两个独立只读 review 先后发现 fetch/response body 两个阶段的 abort 分类边界，以及 retry classifier 的排除边界；现已统一映射
-`REQUEST_ABORTED` 并补齐不可重试回归。修复后的两路独立复审均无 blocker/P1/P2；merged-main 结果在 Git 收口后回填。
+`REQUEST_ABORTED` 并补齐不可重试回归。修复后的两路独立复审均无 blocker/P1/P2；merged-main 再次通过同一组回归。
 
 ## 6. 证据等级与安全记录
 
@@ -102,11 +102,15 @@ controlled-Live 或 product real-model evidence。未查看或输出任何 crede
 ```text
 base main: ef74c4acd46ed64f42d366b39702478251f33b9d
 feature branch: drb/chat-turn-web-enqueue-adapter
-feature commit: pending
-feature remote: pending
-main merge: pending
-main == origin/main: pending
-merged-main verification: pending
+feature commit: 27ee08dfdec34860a763da5b05a631357116c043
+feature remote: origin/drb/chat-turn-web-enqueue-adapter (pushed)
+main merge: 623a7dfa31e82a90685b1fd21cb3b28289dbc759
+main == origin/main: yes after merge push
+merged-main focused API client + ChatTurn adapter: 9/9 passed
+merged-main Web full test: 499/499 passed
+merged-main Web full ESLint: passed
+merged-main Web production build + Next TypeScript: passed
+merged-main targeted Prettier / Markdown links / git diff --check: passed
 ```
 
 用户预先修改的 ReviewAgent、WrongQuestionOrganizer 和 `docs/agents/triage-labels.md` 不属于本 ticket，保持未暂存、未提交。

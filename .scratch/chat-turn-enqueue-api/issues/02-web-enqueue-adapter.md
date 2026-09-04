@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Authenticated ChatTurn enqueue endpoint.
 
-**Status:** branch-verified; push/merge/main verification pending
+**Status:** completed; feature branch pushed, merged into `main`, and verified again on merged `main`
 
 - [x] Add a typed Web API adapter and strict safe-response validation, including HTTP `202` enforcement.
 - [x] Derive a stable client request id and input hash without sending message content in the enqueue request.

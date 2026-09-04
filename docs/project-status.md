@@ -11,8 +11,8 @@ deterministic Worker durable baseline 上补齐 Chat Stream contract、Redis bou
 
 ## 当前基线
 
-- ticket 01 已补齐认证 `POST /chat-turns` durable admission seam；ticket 02 已在普通功能分支实现 Web canonical request builder、
-  严格 `202` adapter、snapshot compatibility decision 与 abort/offline 分类，Git 收口见对应 acceptance。开始新任务前仍用
+- ticket 01 已补齐认证 `POST /chat-turns` durable admission seam；ticket 02 已实现 Web canonical request builder、严格 `202`
+  adapter、snapshot compatibility decision 与 abort/offline 分类，并已推送、合并、复验。开始新任务前仍用
   `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
 - 默认运行模式：`AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`，所有组件模型 gate 关闭。
 - 业务事实权威：PostgreSQL；Redis/BullMQ 负责缓存和队列；MinIO 负责对象存储；Dexie 负责本地恢复/离线补偿。
@@ -47,7 +47,7 @@ deterministic Worker durable baseline 上补齐 Chat Stream contract、Redis bou
 ## 下一步顺序
 
 1. 完成 Phase 6 Agent 审计：逐项确认通信、owner/权限、并发、预算 ledger、取消、Trace 和真实模型产品 smoke。
-2. 收口 Web enqueue adapter（ticket 02）的 Git/merged-main 证据，再推进 `/api/chat` turn-backed bridge（ticket 03）。
+2. 从最新已推送 `main` 开始 `/api/chat` turn-backed bridge（ticket 03），接通持久化消息、durable enqueue 与 turn id hand-off。
 3. 将浏览器接到既有 turn status + Redis/SSE replay 合同（ticket 04），处理 cursor 过期和 PostgreSQL 权威恢复；兼容期保留旧
    snapshot sync。
 4. 为 Chat Worker 接入独立真实模型 gate、usage/cost 记录和产品 controlled smoke；继续保持默认 mock/off。

@@ -13,7 +13,9 @@
 > 只有 network、`408/425/429` 和 `5xx` 可在同 owner/session 下复用稳定 request，4xx/schema/owner/conflict/local errors 均 terminal。
 >
 > 功能分支 focused API client + adapter `9/9`、Web full tests `499/499`、完整 Web ESLint、Next production build/TypeScript、
-> targeted Prettier 和 `git diff --check` 通过；修复后的两路独立只读复审均无 blocker/P1/P2。merged-main 回执待 Git 收口后回填。
+> targeted Prettier 和 `git diff --check` 通过；修复后的两路独立只读复审均无 blocker/P1/P2。功能提交
+> `27ee08df` 已推送，随后以 `--no-ff` 合并为 `main=623a7dfa` 并推送。merged-main 再次通过 focused `9/9`、Web full
+> `499/499`、完整 Web ESLint、Next production build/TypeScript、targeted Prettier、Markdown links 与 commit diff check。
 > 证据等级为 `implemented` + `mock/static validated`。
 > 本 ticket 没有改 `/api/chat`、`ChatRuntimeProvider`、BullMQ/Worker/Redis replay 或现有 `/chat-messages/sync`；没有调用 Provider，
 > 没有启动/清理 Docker/API/browser 或写业务数据。用户既有 ReviewAgent、WrongQuestionOrganizer 和 triage-labels dirty 文件未暂存、
