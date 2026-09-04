@@ -44,6 +44,52 @@ test('normalizes user and assistant messages while preserving a valid access tok
   }
 });
 
+test('keeps bounded message identity facts separate from normalized model context', () => {
+  const result = parseChatApiRequestBody({
+    messages: [
+      {
+        id: 'msg_1',
+        role: 'user',
+        content: ' Question with intentional spacing ',
+        createdAt: '2026-09-04T00:00:00.000Z',
+      },
+    ],
+    conversationId: 'conv_1',
+  });
+
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.deepEqual(result.data.messages, [
+      { role: 'user', content: 'Question with intentional spacing' },
+    ]);
+    assert.deepEqual(result.data.turnInputMessages, [
+      {
+        id: 'msg_1',
+        role: 'user',
+        content: ' Question with intentional spacing ',
+        createdAt: '2026-09-04T00:00:00.000Z',
+      },
+    ]);
+  }
+});
+
+test('marks missing or malformed message identity unavailable without weakening legacy chat', () => {
+  for (const rawMessage of [
+    { role: 'user', content: 'hello' },
+    { id: 'message/unsafe', role: 'user', content: 'hello' },
+    {
+      id: 'msg_1',
+      role: 'user',
+      content: 'hello',
+      createdAt: 'not-a-date',
+    },
+  ]) {
+    const result = parseChatApiRequestBody({ messages: [rawMessage] });
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.data.turnInputMessages[0]?.id, null);
+  }
+});
+
 test('rejects client-supplied identity fields instead of silently stripping them', () => {
   for (const field of ['userId', 'ownerId', 'principal']) {
     const result = parseChatApiRequestBody({

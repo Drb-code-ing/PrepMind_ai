@@ -121,6 +121,7 @@ merged-main git diff --check: passed
 ## 8. 后续
 
 Web enqueue adapter（ticket 02）已在独立普通分支实现、推送、合并并完成 merged-main 复验，详见
-[`phase-6-chat-turn-web-enqueue-adapter.md`](phase-6-chat-turn-web-enqueue-adapter.md)。下一张 ticket 才按依赖推进 `/api/chat`
-bridge；之后是浏览器 replay、ChatRunBudget/Trace ledger 和真实模型 Worker gate。每张 ticket 仍从最新已推送 `main` 开普通分支，
+[`phase-6-chat-turn-web-enqueue-adapter.md`](phase-6-chat-turn-web-enqueue-adapter.md)。ticket 03 也已完成 `/api/chat` gated
+admission/handoff，详见 [`phase-6-chat-turn-api-bridge.md`](phase-6-chat-turn-api-bridge.md)。之后是浏览器 replay、
+ChatRunBudget/Trace ledger 和真实模型 Worker gate。每张 ticket 仍从最新已推送 `main` 开普通分支，
 并在合并 `main` 后再次复验。

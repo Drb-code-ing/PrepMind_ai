@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import type {
   ClearChatMessagesQuery,
   ListChatMessagesQuery,
+  PrepareChatMessageItem,
+  PrepareChatMessagesRequest,
   SyncChatMessagesRequest,
 } from '@repo/types/api/chat-message';
 
@@ -12,6 +14,8 @@ import {
   type ConversationStateCache,
 } from '../conversation-context/conversation-state-cache.service';
 import { PrismaService } from '../database/prisma.service';
+
+const MAX_PREPARE_TRANSACTION_ATTEMPTS = 5;
 
 @Injectable()
 export class ChatMessagesService {
@@ -87,6 +91,153 @@ export class ChatMessagesService {
       messages: messages.map((message) => this.toResponse(message)),
       state: await this.findState(userId, conversation.id),
     };
+  }
+
+  async prepareForTurn(userId: string, input: PrepareChatMessagesRequest) {
+    const runTransaction = () =>
+      this.prisma.$transaction(
+        async (transaction) => {
+          const conversation = await this.findConversation(
+            userId,
+            input.conversationId,
+            transaction,
+          );
+          if (!conversation) throw this.conversationNotFound();
+
+          const requestedMessages = [...input.messages].sort(
+            (left, right) => left.order - right.order,
+          );
+          const firstRequestedOrder = requestedMessages[0]?.order;
+          const lastRequestedOrder = requestedMessages.at(-1)?.order;
+          if (
+            firstRequestedOrder === undefined ||
+            lastRequestedOrder === undefined
+          ) {
+            throw this.prepareMessageConflict();
+          }
+          const latestPersistedMessage =
+            await transaction.chatMessage.findFirst({
+              where: { userId, conversationId: conversation.id },
+              orderBy: { order: 'desc' },
+              select: { order: true },
+            });
+          if (
+            latestPersistedMessage !== null &&
+            latestPersistedMessage.order > lastRequestedOrder
+          ) {
+            throw this.prepareMessageConflict();
+          }
+          const predecessorOrder =
+            firstRequestedOrder > 0 ? firstRequestedOrder - 1 : null;
+          const requestedOrders = requestedMessages.map(
+            (message) => message.order,
+          );
+          if (predecessorOrder !== null) requestedOrders.push(predecessorOrder);
+          const existingMessages = await transaction.chatMessage.findMany({
+            where: {
+              userId,
+              conversationId: conversation.id,
+              OR: [
+                { id: { in: requestedMessages.map((message) => message.id) } },
+                {
+                  order: {
+                    in: requestedOrders,
+                  },
+                },
+              ],
+            },
+          });
+          const existingById = new Map(
+            existingMessages.map((message) => [message.id, message]),
+          );
+          const existingByOrder = new Map(
+            existingMessages.map((message) => [message.order, message]),
+          );
+          if (
+            predecessorOrder !== null &&
+            !existingByOrder.has(predecessorOrder)
+          ) {
+            throw this.prepareMessageConflict();
+          }
+          const missingMessages = requestedMessages.filter((message) => {
+            const byId = existingById.get(message.id);
+            const byOrder = existingByOrder.get(message.order);
+            if (byId && byOrder && byId.id !== byOrder.id) {
+              throw this.prepareMessageConflict();
+            }
+            if (byId) {
+              if (!this.matchesPreparedMessage(byId, message)) {
+                throw this.prepareMessageConflict();
+              }
+              return false;
+            }
+            if (byOrder) throw this.prepareMessageConflict();
+            return true;
+          });
+
+          if (missingMessages.length > 0) {
+            await transaction.chatMessage.createMany({
+              data: missingMessages.map((message) => ({
+                id: message.id,
+                userId,
+                conversationId: conversation.id,
+                role: message.role,
+                content: message.content,
+                order: message.order,
+                createdAt: message.createdAt
+                  ? new Date(message.createdAt)
+                  : undefined,
+              })),
+              skipDuplicates: true,
+            });
+          }
+
+          const persistedMessages = await transaction.chatMessage.findMany({
+            where: {
+              userId,
+              conversationId: conversation.id,
+              id: { in: requestedMessages.map((message) => message.id) },
+            },
+            orderBy: { order: 'asc' },
+          });
+          if (
+            persistedMessages.length !== requestedMessages.length ||
+            persistedMessages.some(
+              (message, index) =>
+                !this.matchesPreparedMessage(message, requestedMessages[index]),
+            )
+          ) {
+            throw this.prepareMessageConflict();
+          }
+
+          return { conversation, messages: persistedMessages };
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+
+    for (
+      let attempt = 1;
+      attempt <= MAX_PREPARE_TRANSACTION_ATTEMPTS;
+      attempt += 1
+    ) {
+      try {
+        const result = await runTransaction();
+        return {
+          conversationId: result.conversation.id,
+          messages: result.messages.map((message) => this.toResponse(message)),
+        };
+      } catch (error) {
+        if (this.isPrepareUniqueConflict(error)) {
+          throw this.prepareMessageConflict();
+        }
+        if (!this.isRetryablePrepareConflict(error)) throw error;
+        if (attempt === MAX_PREPARE_TRANSACTION_ATTEMPTS) {
+          throw this.prepareMessageConflict();
+        }
+      }
+    }
+
+    throw this.prepareMessageConflict();
   }
 
   async clear(
@@ -174,6 +325,46 @@ export class ChatMessagesService {
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  private matchesPreparedMessage(
+    existing: ChatMessageRecord,
+    requested: PrepareChatMessageItem,
+  ) {
+    return (
+      existing.id === requested.id &&
+      existing.role === requested.role &&
+      existing.content === requested.content &&
+      existing.order === requested.order &&
+      (requested.createdAt === undefined ||
+        existing.createdAt.getTime() ===
+          new Date(requested.createdAt).getTime())
+    );
+  }
+
+  private isRetryablePrepareConflict(error: unknown) {
+    const code = this.readErrorCode(error);
+    return code === 'P2034' || code === '40001';
+  }
+
+  private isPrepareUniqueConflict(error: unknown) {
+    return this.readErrorCode(error) === 'P2002';
+  }
+
+  private readErrorCode(error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError)
+      return error.code;
+    if (typeof error !== 'object' || error === null) return undefined;
+    const value = error as { code?: unknown };
+    return typeof value.code === 'string' ? value.code : undefined;
+  }
+
+  private prepareMessageConflict() {
+    return new AppError(
+      'CHAT_PREPARE_MESSAGE_CONFLICT',
+      '聊天消息快照与已持久化事实冲突',
+      HttpStatus.CONFLICT,
+    );
   }
 
   private toResponse(message: ChatMessageRecord) {

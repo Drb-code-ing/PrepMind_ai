@@ -7,18 +7,18 @@
 ## 当前焦点
 
 **Phase 6 Agent 运行时总审计**。最新原子任务已完成 ChatTurn/BackgroundJob/Outbox 到 BullMQ 的 deterministic Worker durable
-baseline，并补齐 `chat-turn-stream-v1`、Redis bounded replay、owner-bound 状态查询、认证 enqueue API 和 Web enqueue
-adapter。下一步不是继续堆一次性 Live 脚本，而是接通 turn-backed 产品路径、断线恢复、全链路预算和各 Agent 的真实模型证据。
+baseline、bounded replay、认证 enqueue API、Web adapter，以及 `/api/chat` 的 gated prepare/enqueue/`202` handoff。下一步不是
+继续堆一次性 Live 脚本，而是接浏览器 status/SSE replay、断线恢复、全链路预算和各 Agent 的真实模型证据。
 
-当前基线（2026-09-04）：
+当前基线（2026-09-05）：
 
 - 文档入口分层整理已合并并推送；开始新任务前用 `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
 - 默认 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、各组件 gate=false。
 - `packages/agent/src/graph/index.ts` 是 `catalog_only` 治理目录，不是执行器；产品 Chat 编排在 Web/API composition。
 - Tool-Using Orchestrator 尚未实现；MemoryAgent 仍是确定性候选策略。
 - 历史 controlled-Live 只读且不可重跑；语义质量、产品可用性、billing 和 SLA 分开记录。
-- 认证 `POST /chat-turns` 已提供 durable admission；ticket 02 Web adapter 已能从 owner-bound 持久化消息生成稳定 request/hash，
-  严格校验安全 `202`，并保留明确 snapshot fallback。`/api/chat` 尚未消费该 seam。
+- 认证 `POST /chat-turns` 已提供 durable admission；ticket 02 Web adapter 生成稳定 request/hash；ticket 03 已让 `/api/chat` 在
+  gate-on 且 conversation ready 时 prepare、enqueue 并返回 `202` handoff。浏览器尚未消费 status/events。
 
 ## 阶段总览
 
@@ -69,7 +69,9 @@ ChatTurn + BackgroundJob + chat.response.requested Outbox
 2. ~~完成 Web enqueue adapter（ticket 02）。~~ 已实现 typed adapter、稳定 canonical identity、strict `202`、owner/abort/offline
    边界与 snapshot compatibility decision；详见
    [`phase-6-chat-turn-web-enqueue-adapter.md`](acceptance/phase-6-chat-turn-web-enqueue-adapter.md)；
-3. `/api/chat` turn-backed 路径、owner/session 生命周期与旧 snapshot sync 兼容窗口（ticket 03）；
+3. ~~`/api/chat` turn-backed admission/handoff、owner/session 生命周期与旧 snapshot sync 兼容窗口（ticket 03）。~~ 已完成
+   gated prepare/enqueue、临时 handoff 隔离、重叠提交阻止与 Mock Docker/可见浏览器验收；详见
+   [`phase-6-chat-turn-api-bridge.md`](acceptance/phase-6-chat-turn-api-bridge.md)；
 4. 将 bounded replay API 接入 SSE/browser，并处理 cursor 过期与 PostgreSQL 状态恢复（ticket 04）；
 5. 全链路 ChatRunBudget ledger、Trace 对账和跨节点上限（ticket 05）；
 6. 真实模型 Worker 的独立 gate、usage/cost 和产品 smoke（ticket 06）。

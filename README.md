@@ -16,17 +16,17 @@ PrepMind AI 是一个移动端优先的智能备考助手，把拍照识题、AI
 
 ## 当前状态
 
-更新时间：2026-09-02。完整矩阵见 [`docs/project-status.md`](docs/project-status.md) 和
+更新时间：2026-09-05。完整矩阵见 [`docs/project-status.md`](docs/project-status.md) 和
 [`Phase 6 Agent 运行时审计`](docs/acceptance/phase-6-agent-runtime-audit.md)。
 
-| 范围                    | 当前结论                                                                                                               |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Phase 0-5               | 产品基础、鉴权、OCR、错题/复习、RAG 和主要页面已实现，并有对应阶段验收                                                 |
-| Phase 6 Agent           | 合同和多个受限 candidate 已实现；总审计仍在进行，不能把所有 Agent 说成真实模型已完成                                   |
+| 范围                    | 当前结论                                                                                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0-5               | 产品基础、鉴权、OCR、错题/复习、RAG 和主要页面已实现，并有对应阶段验收                                                                          |
+| Phase 6 Agent           | 合同和多个受限 candidate 已实现；总审计仍在进行，不能把所有 Agent 说成真实模型已完成                                                            |
 | Phase 7 工程化          | BackgroundJob、Outbox、Worker、Readiness、Admin/Audit 等核心子阶段已完成；Chat Stream bounded replay 已实现，Worker 仍是 deterministic baseline |
-| `/api/chat`             | 主回答链存在真实模型 smoke；日常默认恢复为 Mock/off，单条 smoke 不覆盖每个上游 Agent                                   |
-| 分层记忆                | MemoryAgent 当前生成确定性候选；瞬时/短期/长期统一实现尚未开始                                                         |
-| Tool-Using Orchestrator | 尚未实现，不能列入已完成能力                                                                                           |
+| `/api/chat`             | 默认关闭的 bridge 已接 durable prepare/enqueue/`202` handoff；浏览器 SSE/replay 和真实模型 Worker 仍待完成                                      |
+| 分层记忆                | MemoryAgent 当前生成确定性候选；瞬时/短期/长期统一实现尚未开始                                                                                  |
+| Tool-Using Orchestrator | 尚未实现，不能列入已完成能力                                                                                                                    |
 
 状态术语严格区分：
 
@@ -49,8 +49,8 @@ PrepMind AI 是一个移动端优先的智能备考助手，把拍照识题、AI
   与 WrongQuestionOrganizer 的 typed contract、candidate 和本地 authority；详见审计矩阵。
 - **异步与运维**：知识库队列、Chat response durable baseline、Outbox Ops、Worker readiness/observability、Operator Audit 和
   受 gate 保护的证据包导出。
-- **Chat 恢复合同**：`chat-turn-stream-v1`、owner-bound turn 状态查询和 Redis bounded cursor replay 已实现；现有 `/api/chat` 尚未
-  切换为 turn-backed/SSE。
+- **Chat 恢复合同**：`chat-turn-stream-v1`、owner-bound status 和 Redis bounded replay 已实现；`/api/chat` 可在 gate 后返回 durable
+  turn handoff，浏览器自动 SSE/replay 与断线恢复仍待接入。
 
 ## 架构概览
 
@@ -206,6 +206,7 @@ RAG queue、Worker readiness、Agent focused eval 和真实模型 smoke 的专�
 - [`docs/project-status.md`](docs/project-status.md)：当前项目快照和下一步
 - [`docs/acceptance/phase-6-agent-runtime-audit.md`](docs/acceptance/phase-6-agent-runtime-audit.md)：Agent 总矩阵、通信、权限、预算和缺口
 - [`docs/acceptance/phase-6-chat-stream-replay.md`](docs/acceptance/phase-6-chat-stream-replay.md)：Chat Stream 合同、Redis replay 和 Worker 发布证据
+- [`docs/acceptance/phase-6-chat-turn-api-bridge.md`](docs/acceptance/phase-6-chat-turn-api-bridge.md)：`/api/chat` durable admission 与 handoff 验收
 - [`docs/dev-start.md`](docs/dev-start.md)：本地启动与运维
 - [`docs/roadmap.md`](docs/roadmap.md)：当前路线
 - [`docs/data-flow.md`](docs/data-flow.md)：业务和 Agent 数据流
@@ -217,7 +218,7 @@ RAG queue、Worker readiness、Agent focused eval 和真实模型 smoke 的专�
 ## 后续路线
 
 1. 完成 Phase 6 Agent 审计：统一通信、owner/权限、并发、预算 ledger、取消、Trace 和真实模型产品 smoke。
-2. 补齐 Chat Redis/SSE cursor、断线 replay、turn-backed `/api/chat` 和真实模型 Worker。
+2. 将现有 turn status/Redis replay 接入浏览器 SSE 与断线恢复，再补全链路 ledger 和真实模型 Worker。
 3. 完成全部 Agent 架构后实现分层记忆，再分别编写《多 Agent 架构》和《记忆系统》面试学习博客。
 4. 进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系和 Phase 10 生产部署。
 

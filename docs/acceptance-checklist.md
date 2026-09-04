@@ -4,7 +4,7 @@
 > [`docs/acceptance/phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)。本清单保留历史阶段的详细操作，
 > 标题带“历史/封存”的段落不可作为新的授权或重跑指令。
 
-## 0M. Phase 6 Agent 运行时总审计（2026-09-04，进行中）
+## 0M. Phase 6 Agent 运行时总审计（2026-09-05，进行中）
 
 - [x] 建立 11 个 graph Agent + ConversationSummary 的职责/模式/权限/预算/Trace/证据矩阵
 - [x] 区分 implemented、mock/static、controlled-Live、product real-model smoke、production-used
@@ -33,8 +33,10 @@
 - [x] ticket 01 已推送并以 `--no-ff` 合并 `main=582f2aef`；merged-main focused/static 回归与远程 parity 通过
 - [x] Web enqueue adapter：owner-bound canonical hash/request id、bounded body、strict safe `202` response（ticket 02）
 - [x] ticket 02 显式 snapshot-sync compatibility decision；abort 不重试，network/408/425/429/5xx 才可复用稳定 request
+- [x] ticket 03：authenticated `/api/chat` 在 gate-on 且 conversation ready 时执行 append-only prepare、durable enqueue 和 `202` handoff
+- [x] ticket 03：首轮/disabled legacy 兼容、无效窗口/admission fail-closed、临时 handoff 不持久化、pending turn 阻止重叠发送
+- [x] ticket 03 Mock Docker/可见浏览器：Turn/Job/Outbox terminal success、Redis initial replay、刷新后 PostgreSQL 回答恢复
 - [ ] `/api/chat` 消费 Stream/SSE 的端到端断连恢复（当前仅有独立 replay API）
-- [ ] `/api/chat` turn-backed 切换与旧 snapshot sync 兼容窗口
 - [ ] 全链路 owner capability 与 budget ledger
 - [ ] Trace 完整性/对账策略
 - [ ] MemoryAgent 模型增强隐私、确认、预算、Trace 合同
@@ -43,7 +45,8 @@
 
 权威矩阵：`docs/acceptance/phase-6-agent-runtime-audit.md`。入队 ticket 的详细证据：
 `docs/acceptance/phase-6-chat-turn-enqueue-api.md` 与
-`docs/acceptance/phase-6-chat-turn-web-enqueue-adapter.md`。未完成项不得因 mock/static 通过而勾选完成。
+`docs/acceptance/phase-6-chat-turn-web-enqueue-adapter.md` 与
+`docs/acceptance/phase-6-chat-turn-api-bridge.md`。未完成项不得因 mock/static 通过而勾选完成。
 
 这份文档是日常开发、阶段收尾、面试复盘前的统一入口。它不替代
 `docs/dev-start.md`、`docs/ai-behavior-acceptance.md` 和各阶段设计文档，而是回答一个更直接的问题：

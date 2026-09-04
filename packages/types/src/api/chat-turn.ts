@@ -67,5 +67,16 @@ export const chatTurnEnqueueResponseSchema = z
   })
   .strict();
 
+export const chatTurnHandoffAnnotationSchema = z
+  .object({
+    type: z.literal('prepmind-chat-turn-handoff-v1'),
+    turnId: boundedIdSchema,
+    conversationId: boundedIdSchema,
+    status: chatTurnStatusSchema,
+    backgroundJobId: boundedIdSchema,
+  })
+  .strict();
+
 export type ChatTurnEnqueueRequest = z.infer<typeof chatTurnEnqueueRequestSchema>;
 export type ChatTurnEnqueueResponse = z.infer<typeof chatTurnEnqueueResponseSchema>;
+export type ChatTurnHandoffAnnotation = z.infer<typeof chatTurnHandoffAnnotationSchema>;

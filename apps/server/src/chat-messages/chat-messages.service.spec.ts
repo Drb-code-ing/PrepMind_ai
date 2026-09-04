@@ -29,6 +29,7 @@ describe('ChatMessagesService', () => {
     },
     chatMessage: {
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       deleteMany: jest.fn(),
       createMany: jest.fn(),
     },
@@ -45,11 +46,16 @@ describe('ChatMessagesService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     prisma.conversationState.findFirst.mockResolvedValue(null);
+    prisma.chatMessage.findFirst.mockResolvedValue(null);
     cache.delete.mockResolvedValue(undefined);
   });
 
   function createService() {
     return new ChatMessagesService(prisma as unknown as PrismaService, cache);
+  }
+
+  function runTransaction<T>(callback: (transaction: typeof prisma) => T) {
+    return callback(prisma);
   }
 
   it('lists messages scoped to the current user conversation', async () => {
@@ -301,6 +307,262 @@ describe('ChatMessagesService', () => {
         messages: [],
       }),
     ).rejects.toMatchObject({ code: 'CHAT_CONVERSATION_NOT_FOUND' });
+  });
+
+  it('prepares a user-tail snapshot by appending only missing owner-bound messages', async () => {
+    const assistant = {
+      ...message,
+      role: 'ASSISTANT' as const,
+      content: 'Earlier answer',
+    };
+    const userTail = {
+      ...message,
+      id: 'msg_2',
+      role: 'USER' as const,
+      content: 'Follow-up question',
+      order: 1,
+      createdAt: new Date('2026-06-11T00:00:01.000Z'),
+    };
+    prisma.conversation.findFirst.mockResolvedValue(conversation);
+    prisma.chatMessage.findMany
+      .mockResolvedValueOnce([assistant])
+      .mockResolvedValueOnce([assistant, userTail]);
+    prisma.$transaction.mockImplementation(runTransaction);
+
+    const result = await createService().prepareForTurn('user_1', {
+      conversationId: 'conv_1',
+      messages: [
+        {
+          id: 'msg_1',
+          role: 'ASSISTANT',
+          content: 'Earlier answer',
+          order: 0,
+          createdAt: '2026-06-11T00:00:00.000Z',
+        },
+        {
+          id: 'msg_2',
+          role: 'USER',
+          content: 'Follow-up question',
+          order: 1,
+          createdAt: '2026-06-11T00:00:01.000Z',
+        },
+      ],
+    });
+
+    expect(prisma.chatMessage.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.chatMessage.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          id: 'msg_2',
+          userId: 'user_1',
+          conversationId: 'conv_1',
+          role: 'USER',
+          content: 'Follow-up question',
+          order: 1,
+          createdAt: new Date('2026-06-11T00:00:01.000Z'),
+        },
+      ],
+      skipDuplicates: true,
+    });
+    expect(result).toMatchObject({
+      conversationId: 'conv_1',
+      messages: [
+        { id: 'msg_1', role: 'ASSISTANT', order: 0 },
+        { id: 'msg_2', role: 'USER', order: 1 },
+      ],
+    });
+  });
+
+  it('reuses an identical prepared snapshot without rewriting messages', async () => {
+    prisma.conversation.findFirst.mockResolvedValue(conversation);
+    prisma.chatMessage.findMany
+      .mockResolvedValueOnce([message])
+      .mockResolvedValueOnce([message]);
+    prisma.$transaction.mockImplementation(runTransaction);
+
+    await expect(
+      createService().prepareForTurn('user_1', {
+        conversationId: 'conv_1',
+        messages: [
+          {
+            id: 'msg_1',
+            role: 'USER',
+            content: 'hi',
+            order: 0,
+            createdAt: '2026-06-11T00:00:00.000Z',
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({
+      conversationId: 'conv_1',
+      messages: [{ id: 'msg_1', content: 'hi' }],
+    });
+    expect(prisma.chatMessage.createMany).not.toHaveBeenCalled();
+    expect(prisma.chatMessage.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('accepts a bounded non-zero window only after its durable predecessor', async () => {
+    const predecessor = { ...message, id: 'msg_499', order: 499 };
+    const userTail = { ...message, id: 'msg_500', order: 500 };
+    prisma.conversation.findFirst.mockResolvedValue(conversation);
+    prisma.chatMessage.findFirst.mockResolvedValue(predecessor);
+    prisma.chatMessage.findMany
+      .mockResolvedValueOnce([predecessor])
+      .mockResolvedValueOnce([userTail]);
+    prisma.$transaction.mockImplementation(runTransaction);
+
+    await expect(
+      createService().prepareForTurn('user_1', {
+        conversationId: 'conv_1',
+        messages: [{ id: 'msg_500', role: 'USER', content: 'hi', order: 500 }],
+      }),
+    ).resolves.toMatchObject({ messages: [{ id: 'msg_500', order: 500 }] });
+    expect(prisma.chatMessage.createMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a non-zero window that would create a durable order gap', async () => {
+    prisma.conversation.findFirst.mockResolvedValue(conversation);
+    prisma.chatMessage.findFirst.mockResolvedValue({ order: 100 });
+    prisma.chatMessage.findMany.mockResolvedValue([]);
+    prisma.$transaction.mockImplementation(runTransaction);
+
+    await expect(
+      createService().prepareForTurn('user_1', {
+        conversationId: 'conv_1',
+        messages: [{ id: 'msg_500', role: 'USER', content: 'hi', order: 500 }],
+      }),
+    ).rejects.toMatchObject({ code: 'CHAT_PREPARE_MESSAGE_CONFLICT' });
+    expect(prisma.chatMessage.createMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects a stale user tail when a newer durable message already exists', async () => {
+    prisma.conversation.findFirst.mockResolvedValue(conversation);
+    prisma.chatMessage.findFirst.mockResolvedValue({ order: 2 });
+    prisma.$transaction.mockImplementation(runTransaction);
+
+    await expect(
+      createService().prepareForTurn('user_1', {
+        conversationId: 'conv_1',
+        messages: [{ id: 'msg_1', role: 'USER', content: 'hi', order: 1 }],
+      }),
+    ).rejects.toMatchObject({ code: 'CHAT_PREPARE_MESSAGE_CONFLICT' });
+    expect(prisma.chatMessage.findMany).not.toHaveBeenCalled();
+    expect(prisma.chatMessage.createMany).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when a prepared message id or order conflicts with durable facts', async () => {
+    prisma.conversation.findFirst.mockResolvedValue(conversation);
+    prisma.chatMessage.findMany.mockResolvedValueOnce([
+      { ...message, content: 'different durable content' },
+    ]);
+    prisma.$transaction.mockImplementation(runTransaction);
+
+    await expect(
+      createService().prepareForTurn('user_1', {
+        conversationId: 'conv_1',
+        messages: [
+          {
+            id: 'msg_1',
+            role: 'USER',
+            content: 'hi',
+            order: 0,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: 'CHAT_PREPARE_MESSAGE_CONFLICT',
+      statusCode: 409,
+    });
+    expect(prisma.chatMessage.createMany).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when turn preparation targets another owner conversation', async () => {
+    prisma.conversation.findFirst.mockResolvedValue(null);
+    prisma.$transaction.mockImplementation(runTransaction);
+
+    await expect(
+      createService().prepareForTurn('user_2', {
+        conversationId: 'conv_1',
+        messages: [
+          {
+            id: 'msg_1',
+            role: 'USER',
+            content: 'hi',
+            order: 0,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'CHAT_CONVERSATION_NOT_FOUND' });
+    expect(prisma.conversation.findFirst).toHaveBeenCalledWith({
+      where: { id: 'conv_1', userId: 'user_2' },
+      orderBy: undefined,
+    });
+    expect(prisma.chatMessage.createMany).not.toHaveBeenCalled();
+  });
+
+  it('retries a serializable prepare conflict before returning the canonical snapshot', async () => {
+    prisma.conversation.findFirst.mockResolvedValue(conversation);
+    prisma.chatMessage.findMany
+      .mockResolvedValueOnce([message])
+      .mockResolvedValueOnce([message]);
+    prisma.$transaction
+      .mockRejectedValueOnce({ code: '40001' })
+      .mockImplementationOnce(runTransaction);
+
+    await expect(
+      createService().prepareForTurn('user_1', {
+        conversationId: 'conv_1',
+        messages: [
+          {
+            id: 'msg_1',
+            role: 'USER',
+            content: 'hi',
+            order: 0,
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({ messages: [{ id: 'msg_1' }] });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries Prisma P2034 serialization conflicts', async () => {
+    prisma.conversation.findFirst.mockResolvedValue(conversation);
+    prisma.chatMessage.findMany
+      .mockResolvedValueOnce([message])
+      .mockResolvedValueOnce([message]);
+    prisma.$transaction
+      .mockRejectedValueOnce({ code: 'P2034' })
+      .mockImplementationOnce(runTransaction);
+
+    await expect(
+      createService().prepareForTurn('user_1', {
+        conversationId: 'conv_1',
+        messages: [{ id: 'msg_1', role: 'USER', content: 'hi', order: 0 }],
+      }),
+    ).resolves.toMatchObject({ messages: [{ id: 'msg_1' }] });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+  });
+
+  it('maps a deterministic unique conflict without retrying the same transaction', async () => {
+    prisma.$transaction.mockRejectedValueOnce({ code: 'P2002' });
+
+    await expect(
+      createService().prepareForTurn('user_1', {
+        conversationId: 'conv_1',
+        messages: [
+          {
+            id: 'msg_1',
+            role: 'USER',
+            content: 'hi',
+            order: 0,
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: 'CHAT_PREPARE_MESSAGE_CONFLICT',
+      statusCode: 409,
+    });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
 
   it('clears the owned conversation', async () => {

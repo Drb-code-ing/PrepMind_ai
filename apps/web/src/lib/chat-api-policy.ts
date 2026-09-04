@@ -1,7 +1,16 @@
 import type { ActiveStudyContext, ChatContextMessage } from './chat-context.ts';
+import { CHAT_TURN_ID_PATTERN } from '@repo/types/api/chat-turn';
+
+type ChatTurnInputMessage = {
+  id: string | null;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt?: string;
+};
 
 type ParsedChatApiRequestBody = {
   messages: ChatContextMessage[];
+  turnInputMessages: ChatTurnInputMessage[];
   conversationId: string | null;
   activeContext: ActiveStudyContext | null;
   accessToken: string | null;
@@ -16,6 +25,7 @@ type PolicyError = {
 
 const FORBIDDEN_IDENTITY_FIELDS = ['userId', 'ownerId', 'principal'] as const;
 const MAX_ACCESS_TOKEN_LENGTH = 8_192;
+const chatTurnSafeIdPattern = new RegExp(CHAT_TURN_ID_PATTERN);
 
 export function parseChatApiRequestBody(
   body: unknown,
@@ -49,6 +59,7 @@ export function parseChatApiRequestBody(
   }
 
   const messages: ChatContextMessage[] = [];
+  const turnInputMessages: ChatTurnInputMessage[] = [];
   const conversationId = normalizeConversationId(record.conversationId);
   const accessToken = normalizeAccessToken(record.accessToken);
 
@@ -85,17 +96,37 @@ export function parseChatApiRequestBody(
       role: message.role,
       content: message.content.trim(),
     });
+    turnInputMessages.push(normalizeChatTurnInputMessage(message, message.role, message.content));
   }
 
   return {
     ok: true,
     data: {
       messages,
+      turnInputMessages,
       conversationId: conversationId.value,
       activeContext: normalizeActiveStudyContext(record.activeContext),
       accessToken: accessToken.value,
     },
   };
+}
+
+function normalizeChatTurnInputMessage(
+  message: Record<string, unknown>,
+  role: ChatTurnInputMessage['role'],
+  content: string,
+): ChatTurnInputMessage {
+  const rawId = message.id;
+  const id = typeof rawId === 'string' ? rawId.trim() : '';
+  if (!chatTurnSafeIdPattern.test(id)) return { id: null, role, content };
+
+  const rawCreatedAt = message.createdAt;
+  if (rawCreatedAt === undefined) return { id, role, content };
+  if (typeof rawCreatedAt !== 'string') return { id: null, role, content };
+  const timestamp = Date.parse(rawCreatedAt);
+  if (!Number.isFinite(timestamp)) return { id: null, role, content };
+
+  return { id, role, content, createdAt: new Date(timestamp).toISOString() };
 }
 
 function normalizeConversationId(value: unknown): { ok: true; value: string | null } | PolicyError {

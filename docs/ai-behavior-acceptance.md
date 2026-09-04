@@ -2,15 +2,16 @@
 
 本文记录 PrepMind AI 的 Chat / RAG / Agent 行为验收边界，避免把 mock 链路测试误当成真实模型体验验收。
 
-## 2026-08-19 Phase 6 Agent 总审计状态
+## 2026-09-05 Phase 6 Agent 总审计状态
 
-当前产品 `/api/chat` 已有合并后的真实 DeepSeek 主回答 smoke，但该证据只证明一次产品入口成功，不证明 Router、Tutor、Retriever
-rewrite、KnowledgeVerifier、Review/Planner 或 Knowledge agents 均真实成功。`packages/agent/src/graph/index.ts` 仍是
-descriptor-only catalog；Tool-Using Orchestrator 仍未实现。Review/Planner AbortSignal、Chat 断连 durability、全链路预算
-和 MemoryAgent 模型合同属于当前待办，不得从旧阶段段落推断为已完成。
+当前产品 `/api/chat` 的同步主回答链已有历史 DeepSeek smoke；默认关闭的 ChatTurn bridge 也已完成 Mock 产品验收，在 gate-on 且
+conversation ready 时只做 durable prepare/enqueue 和 `202` handoff。两者都不能证明 Router、Tutor、Retriever rewrite、
+KnowledgeVerifier、Review/Planner 或 Knowledge agents 已逐项真实成功。`packages/agent/src/graph/index.ts` 仍是 descriptor-only
+catalog；Tool-Using Orchestrator 仍未实现。Review/Planner AbortSignal 已补齐；浏览器 status/SSE replay 与断线恢复、全链路预算和
+MemoryAgent 模型合同仍是待办，不得从旧阶段段落推断为已完成。
 
-全部 Agent 的职责、权限、通信、证据等级和缺口以 `docs/acceptance/phase-6-agent-runtime-audit.md` 为准；本文下方的 SR5/SR6
-段落保留为历史验收记录。
+全部 Agent 的职责、权限、通信、证据等级和缺口以 `docs/acceptance/phase-6-agent-runtime-audit.md` 为准；ChatTurn bridge 证据见
+`docs/acceptance/phase-6-chat-turn-api-bridge.md`。本文下方的 SR5/SR6 段落保留为历史验收记录。
 
 ## Phase 6.9.8 SR5 run-bound recovery（当前，zero-provider，2026-08-12）
 
@@ -64,7 +65,7 @@ historical tag  phase-6-9-8-retriever-final-response-schema-recovery-sr5-approve
 parity、proxy preflight，之后才可 late-bind 根 `.env` 的三个 SR5 credential。help/validate/recover 不读取
 credential；任何 credential、prompt 或 Provider 原文都不得进入 report/journal/artifact。完整质量门 pass 才能产生
 `schema_recovery_sr5_branch_semantic_gate`；失败只形成 durable diagnostic，且无论结果都不自动解锁 `/api/chat`、Docker/API/
- browser、Trace、产品数据或 `main`。当前 SR5 contract/source/Live focused `26/26`（102 assertions），Agent full
+browser、Trace、产品数据或 `main`。当前 SR5 contract/source/Live focused `26/26`（102 assertions），Agent full
 `1527/1527`（25213 expect()，196 files），typecheck/lint 与源文件 Prettier/diff check 通过；独立 preflight 为
 `loopback_proxy_ready` 且 `providerCalls=0`。详见
 `docs/acceptance/phase-6-9-8-retriever-final-response-schema-recovery-sr5-live-implementation-zero-provider.md`；故障与修复证据见
@@ -266,7 +267,7 @@ citation-recall diagnostic，不改变 G1/G2 或 S2 gate。
 质量门仍固定为：Recall@5 `>=0.90`、nDCG@5 `>=0.85`、eligible subset uplift `>=0.08`、critical recall `=1`、intent
 preservation `>=0.95`、grounded rubric `>=0.90`、citation precision `=1`、required citation recall `>=0.90`、critical
 notice recall `=1`，unsafe rewrite/false tool success/false citation/safety failure 全为 `0`。六条语义 lane 只记录
- median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。该段的分支文档 parity、推送、`main` 合并与合并后二次
+median/max，P95/SLA 固定为 `null`（`insufficient_sample_size_6`）。该段的分支文档 parity、推送、`main` 合并与合并后二次
 回归是已完成的历史动作；当前 Agent full 为 `1437/1437`，controlled-Live 状态以本文顶部和新的验收记录为准。
 完整设计、计划与验收见：
 
@@ -1907,6 +1908,7 @@ Phase 7.12 只把已有 worker readiness CLI 接入本地 Docker Compose `worker
 - healthcheck 只能作为容器级 readiness 信号，不得消费 BullMQ、不 dispatch outbox、不 requeue、不修改业务数据。
 - 验收重点是 compose 配置合法、worker service healthcheck 存在、命令指向构建产物、timeout / retries / start period 合理。
 - 本阶段的 compose config、单元测试、build、eslint 和 `git diff --check` 足以覆盖；只有后续把该信号接入真实生产编排平台或前端 UI 时，才需要新增对应部署或 UI 验收。
+
 ## SR5 next-lineage model boundary
 
 This checkpoint evaluates no model behavior: `providerDispatchAllowed=false`, provider calls and credential reads are zero. Any future DeepSeek/Qwen claim requires a fresh source-bound tag, data-boundary acceptance, exact authorization, and separate controlled-Live evidence.
@@ -1918,6 +1920,7 @@ D1 only defines future acceptance vocabulary and records confirmation hashes in 
 D2 evaluates no model behavior. It proves only that immutable source, bounded authorization vocabulary, and zero-call proxy readiness can be composed without exposing a runner or Provider dispatch capability.
 
 D3 evaluates no model behavior and grants no Git authority. It only proves that a future verifier's dynamic source/tag receipt can be structurally checked and matched to exact authorization fields without hard-coding post-merge identities into the signed source tree.
+
 # Phase 6.9.8 SR5 D4 runtime runner/durability boundary
 
 D4 carries no model-quality authority. Its synthetic runner proves only one-shot v4 source consumption, fixed `8/12` accounting,
@@ -1925,6 +1928,7 @@ zero dispatch, durable journal/report/artifact publication, and strict tamper re
 `providerDispatchAllowed=false`, `qualityAuthority=none`, Provider/credential/formal evidence/business writes=`0` are mandatory.
 The final Git verifier, v4 tag, fresh DeepSeek/Qwen data-boundary acceptance, exact authorization, and controlled-Live are separate
 future gates. A D4 pass must never be displayed or documented as Agent quality or product availability.
+
 ## Phase 6.9.8 SR5 D5 final Git verifier
 
 - D5 is a read-only Git/source verifier, not an Agent model invocation or product entrypoint.

@@ -117,5 +117,6 @@ merged-main targeted Prettier / Markdown links / git diff --check: passed
 
 ## 8. 后续
 
-ticket 03 才会把产品提交动作连接为 `snapshot persistence -> durable enqueue -> turn id hand-off`，增加功能 gate，并确保 owner/session
-切换、离线恢复和重复提交只复用同一 request。之后 ticket 04 将现有 owner-bound status/replay API 接入浏览器 SSE/recovery。
+ticket 03 已把产品提交动作连接为 `append-only prepare -> durable enqueue -> turn id handoff`，增加默认关闭的功能 gate，并完成
+Mock Docker/可见浏览器验收，详见 [`phase-6-chat-turn-api-bridge.md`](phase-6-chat-turn-api-bridge.md)。ticket 04 将现有
+owner-bound status/replay API 接入浏览器 SSE/recovery。
