@@ -32,7 +32,8 @@
     "./api/knowledge": "./src/api/knowledge.ts",
     "./api/knowledge-agent": "./src/api/knowledge-agent.ts",
     "./api/upload": "./src/api/upload.ts",
-    "./api/chat-stream": "./src/api/chat-stream.ts"
+    "./api/chat-stream": "./src/api/chat-stream.ts",
+    "./api/chat-turn": "./src/api/chat-turn.ts"
   },
   "scripts": {
     "lint": "eslint src/",

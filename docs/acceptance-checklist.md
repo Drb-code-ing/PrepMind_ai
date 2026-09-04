@@ -4,7 +4,7 @@
 > [`docs/acceptance/phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)。本清单保留历史阶段的详细操作，
 > 标题带“历史/封存”的段落不可作为新的授权或重跑指令。
 
-## 0M. Phase 6 Agent 运行时总审计（2026-09-02，进行中）
+## 0M. Phase 6 Agent 运行时总审计（2026-09-04，进行中）
 
 - [x] 建立 11 个 graph Agent + ConversationSummary 的职责/模式/权限/预算/Trace/证据矩阵
 - [x] 区分 implemented、mock/static、controlled-Live、product real-model smoke、production-used
@@ -27,6 +27,10 @@
 - [x] Worker started/delta/terminal 发布顺序与 Redis 故障隔离回归
 - [x] Chat Stream focused `10 suites / 49 tests`、types `43 tests`、Swagger `8 tests`、Server build/ESLint/Prettier
 - [x] Review/Planner AbortSignal 与 candidate 外层 fail-safe（controller/service focused `13/13`，Server build）
+- [x] ChatTurn enqueue ticket 01：strict shared request/response schema、JWT owner binding、`202 Accepted` 安全投影
+- [x] `POST /chat-turns` 只复用 `ChatTurnEnqueueService` 的 Turn/BackgroundJob/Outbox 同事务，不直接调用 Provider/队列
+- [x] ChatTurn enqueue controller + Swagger focused `13/13`、ChatTurn focused `52/52`、types `44/44`、Server build/目标 ESLint/Prettier
+- [ ] Web enqueue adapter 消费 `POST /chat-turns`（ticket 02）
 - [ ] `/api/chat` 消费 Stream/SSE 的端到端断连恢复（当前仅有独立 replay API）
 - [ ] `/api/chat` turn-backed 切换与旧 snapshot sync 兼容窗口
 - [ ] 全链路 owner capability 与 budget ledger
@@ -35,7 +39,8 @@
 - [ ] Router/Verifier/Tutor/Rewrite/Review/Planner/Knowledge agents 产品真实模型逐项验收
 - [x] 本阶段合并 main、推送远程并在 merged-main 复验（feature=`04ef0f6f`、merge=`d034d3be`、closeout=`c3876b2c`）
 
-权威矩阵：`docs/acceptance/phase-6-agent-runtime-audit.md`。未完成项不得因 mock/static 通过而勾选完成。
+权威矩阵：`docs/acceptance/phase-6-agent-runtime-audit.md`。入队 ticket 的详细证据：
+`docs/acceptance/phase-6-chat-turn-enqueue-api.md`。未完成项不得因 mock/static 通过而勾选完成。
 
 这份文档是日常开发、阶段收尾、面试复盘前的统一入口。它不替代
 `docs/dev-start.md`、`docs/ai-behavior-acceptance.md` 和各阶段设计文档，而是回答一个更直接的问题：

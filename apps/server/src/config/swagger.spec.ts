@@ -305,6 +305,7 @@ describe('swagger config', () => {
         ['get', '/background-jobs/{id}'],
         ['get', '/chat-turns/{turnId}'],
         ['get', '/chat-turns/{turnId}/events'],
+        ['post', '/chat-turns'],
         ['get', '/worker-observability/summary'],
       ] as const;
 
@@ -345,6 +346,7 @@ describe('swagger config', () => {
         ['post', '/knowledge/search'],
         ['post', '/review-tasks/{taskId}/rating'],
         ['post', '/agent-traces'],
+        ['post', '/chat-turns'],
       ] as const;
       const multipartBodyOperations = [
         ['post', '/knowledge/documents'],
@@ -359,6 +361,24 @@ describe('swagger config', () => {
         expect(requestBodyText).toContain('application/json');
         expect(requestBodyText).toContain('example');
       }
+
+      const enqueueOperation = getSwaggerOperation(
+        document,
+        '/chat-turns',
+        'post',
+      );
+      const enqueueRequestBodyText = JSON.stringify(
+        enqueueOperation?.requestBody,
+      );
+      const enqueueResponseText = JSON.stringify(
+        enqueueOperation?.responses?.['202'],
+      );
+      expect(enqueueRequestBodyText).toContain('^[A-Za-z0-9._:-]{1,128}$');
+      expect(enqueueResponseText).toContain('backgroundJob');
+      expect(enqueueResponseText).toContain('kind');
+      expect(enqueueResponseText).toContain('success');
+      expect(enqueueResponseText).toContain('requestId');
+      expect(enqueueResponseText).not.toContain('outboxEvent');
 
       for (const [method, path] of multipartBodyOperations) {
         const operation = getSwaggerOperation(document, path, method);
