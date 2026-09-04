@@ -1,7 +1,8 @@
 # Phase 6 ChatTurn API Bridge
 
 更新时间：2026-09-05
-状态：ticket 03 实现与功能分支 Mock/Docker/可见浏览器验收通过；精确 Git SHA 以本任务回执和仓库历史为准。
+状态：ticket 03 已实现并合并；功能提交 `5832b379`，合并提交 `dfdd35ad`，`main == origin/main`；
+Mock/Docker/可见浏览器验收及 merged-main 最小复验通过。
 
 ## 1. 目的
 
@@ -113,6 +114,19 @@ PREPMIND_CHAT_TURN_BUDGET_POLICY_VERSION=chat-budget-v1
 
 本轮合成账号及其级联 Conversation、ChatMessage、ChatTurn、BackgroundJob、Outbox 和 refresh token 在验收后精确删除，
 并验证账号与关联记录残留为 0。可见浏览器窗口按约定保留，不读取或清理其 cookie/storage。
+
+### 5.3 Git 收口与 merged-main 复验
+
+- 从已推送 `main=9aa0acde` 创建普通分支 `drb/chat-turn-api-bridge`，未使用 worktree；
+- 功能提交 `5832b379c2b4091dd5202f11937e9eff8aa62ca8` 已推送到
+  `origin/drb/chat-turn-api-bridge`；
+- 通过 `git merge --no-ff drb/chat-turn-api-bridge` 合并，合并提交为
+  `dfdd35adb69be5ceeb5ea6c3fe39c71c0b855762`，随后推送，`main == origin/main`；
+- 合并未改变功能提交内容。merged-main 上再次确认 `server`、`worker` healthy，Server `/health=200`、Web
+  `/login=200`；可见浏览器打开登录页并识别页面标题 `PrepMind AI - 智能备考助手`。完整回归采用本节 5.1 中同一功能
+  提交的结果，没有重复执行已经通过的全量套件；
+- merged-main 默认仍为 Mock/live-off、全部 Agent gate=false、bridge=false。用户既有 ReviewAgent、
+  WrongQuestionOrganizer 与 `docs/agents/triage-labels.md` 修改保持未暂存、未进入功能或合并提交。
 
 ## 6. 证据等级与安全记录
 
