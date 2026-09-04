@@ -1,5 +1,21 @@
 # PrepMind AI 开发日志
 
+> 2026-09-04 — ChatTurn Enqueue API ticket 01：
+>
+> 在 `drb/chat-turn-enqueue-api` 上完成认证 `POST /chat-turns`。新增 `@repo/types` strict Zod 请求/响应合同（bounded
+> id、唯一 message ids、SHA-256 input hash、状态/时间约束），controller 从 JWT 取得 owner，只委托既有
+> `ChatTurnEnqueueService`，以 `202 Accepted` 返回不含正文、prompt、hash、Outbox payload 或凭据的安全 turn/job projection。
+> `(userId, clientRequestId)` 的幂等、冲突和跨 owner 行为继续由既有 durable service 掌握；没有新增事务、队列或 Provider 调用。
+>
+> 验证：ChatTurn `10 suites / 52 tests`、controller + Swagger `13/13`、`@repo/types` `44 tests`、types typecheck、Server build、
+> 目标 ESLint/Prettier 和 `git diff --check` 通过。Server 全量 Jest 为 `237 passed / 2 failed / 3 skipped` suites；两个失败是既有
+> readiness CLI 退出码断言和本地 `127.0.0.1:5433` integration 环境问题，另有 `@repo/types lint` 的既有 package-local eslint
+> 可执行文件缺失。同步更新 ticket、project-status、Agent audit、data-flow、acceptance-checklist 和本 acceptance 文档。
+> 本轮未读取 `.env`、未调用 DeepSeek/Qwen/其他 Provider、未启动或清理 Docker/PostgreSQL/Redis/MinIO，证据等级为
+> `implemented` + `mock/static validated`；Web adapter、`/api/chat` bridge、真实模型 Worker 和浏览器验收仍未完成。
+>
+> 分支收口：`drb/chat-turn-enqueue-api`；功能提交、远程推送、`main` 合并和 merged-main 复验在本任务收口后回填。
+
 > 2026-09-02 — Phase 6 Chat Stream contract 与 bounded Redis replay：
 >
 > 从已推送 `main=fd133325` 新开普通 Git 分支 `drb/phase-6-chat-stream-replay`，未使用 worktree；保留用户预修改和既有 dirty 文件，

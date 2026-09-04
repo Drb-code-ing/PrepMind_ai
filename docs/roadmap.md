@@ -10,13 +10,14 @@
 baseline，并补齐 `chat-turn-stream-v1`、Redis bounded replay 和 owner-bound 状态查询。下一步不是继续堆一次性 Live 脚本，而是
 补齐 turn-backed 产品切换、全链路预算、断线恢复和各 Agent 的真实模型产品证据。
 
-当前基线（2026-09-02）：
+当前基线（2026-09-04）：
 
 - 文档入口分层整理已合并并推送；开始新任务前用 `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
 - 默认 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、各组件 gate=false。
 - `packages/agent/src/graph/index.ts` 是 `catalog_only` 治理目录，不是执行器；产品 Chat 编排在 Web/API composition。
 - Tool-Using Orchestrator 尚未实现；MemoryAgent 仍是确定性候选策略。
 - 历史 controlled-Live 只读且不可重跑；语义质量、产品可用性、billing 和 SLA 分开记录。
+- 认证 `POST /chat-turns` 已提供 durable admission 和安全 `202` 投影；Web 与 `/api/chat` 尚未消费该 seam。
 
 ## 阶段总览
 
@@ -62,8 +63,9 @@ ChatTurn + BackgroundJob + chat.response.requested Outbox
 
 仍需独立任务完成：
 
-1. 先完成 [`ChatTurn Enqueue API spec`](../.scratch/chat-turn-enqueue-api/spec.md) 的 ticket 01，提供认证 HTTP 入队 seam；
-2. 将 bounded replay API 接入 SSE/browser，并处理 cursor 过期与状态恢复（ticket 04）；
+1. ~~完成 [`ChatTurn Enqueue API spec`](../.scratch/chat-turn-enqueue-api/spec.md) 的 ticket 01。~~ 已提供认证 HTTP 入队 seam，
+   详见 [`phase-6-chat-turn-enqueue-api.md`](acceptance/phase-6-chat-turn-enqueue-api.md)；
+2. 完成 Web enqueue adapter（ticket 02），再将 bounded replay API 接入 SSE/browser，并处理 cursor 过期与状态恢复（ticket 04）；
 3. `/api/chat` turn-backed 路径与旧 snapshot sync 兼容窗口（ticket 03）；
 4. 全链路 ChatRunBudget ledger、Trace 对账和跨节点上限（ticket 05）；
 5. 真实模型 Worker 的独立 gate、usage/cost 和产品 smoke（ticket 06）。

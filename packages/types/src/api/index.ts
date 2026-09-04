@@ -48,3 +48,4 @@ export * from './agent-tool';
 export * from './operator-audit';
 export * from './operator-audit-export';
 export * from './chat-stream';
+export * from './chat-turn';

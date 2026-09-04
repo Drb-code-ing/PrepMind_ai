@@ -4,12 +4,35 @@
 > [`docs/acceptance/phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)；历史 controlled-Live 段落只读，
 > 不构成新的运行授权。
 
+## 当前 ChatTurn enqueue admission（2026-09-04）
+
+认证客户端先提交已经持久化的消息事实；HTTP 层只做 schema/owner 校验和委托，不在请求内调用模型或直接操作队列：
+
+```text
+POST /chat-turns (JWT)
+  -> strict shared request schema
+  -> owner from AuthenticatedUser (body userId is rejected)
+  -> ChatTurnEnqueueService
+       Serializable transaction:
+         ChatTurn(QUEUED)
+         BackgroundJob(QUEUED)
+         chat.response.requested Outbox
+  -> 202 safe turn/job projection
+  -> later Outbox -> BullMQ -> Worker
+```
+
+`(userId, clientRequestId)` 保证同 owner 重试幂等；conversation/message owner、input hash 和预算版本在 durable boundary
+内校验。响应不携带正文、prompt、hash、Outbox payload、凭据或 Provider 原文。该 admission 目前属于
+`implemented` + `mock/static validated`，尚未被 Web、`/api/chat` 或浏览器 replay 消费。
+
 ## 当前 Chat Stream bounded replay flow（2026-09-02）
 
 本 checkpoint 已实现传输层，但尚未把现有 `/api/chat` 切换为 turn-backed 入口：
 
 ```text
-ChatResponseWorker owner claim
+POST /chat-turns admission
+  -> Outbox requested bridge
+  -> ChatResponseWorker owner claim
   -> response_started
   -> bounded text_delta events
   -> PostgreSQL transaction:

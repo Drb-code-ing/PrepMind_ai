@@ -1,6 +1,6 @@
 # Phase 6 Agent Runtime Audit
 
-更新时间：2026-09-02
+更新时间：2026-09-04
 范围：Phase 6 全部 Agent、模型 gate、通信边界、权限、预算、Trace、降级和现有证据。  
 结论级别：本文件是审计基线，不代表所有 Agent 已完成真实模型验收。
 
@@ -9,6 +9,11 @@ owner-scoped claim 后以同一事务提交 assistant、ChatTurn、BackgroundJob
 有界 Redis Stream 事件，并提供 owner-bound turn 状态/回放接口。当前生成器仍明确是 `deterministic-worker-v1`；浏览器及现有
 `/api/chat` 尚未切换到 turn-backed/SSE，完整 ledger 和真实模型 Worker 仍未完成。详细边界见
 `docs/acceptance/phase-6-chat-response-worker.md` 与 `docs/acceptance/phase-6-chat-stream-replay.md`。
+
+2026-09-04 的 ticket 01 又在同一 durable 写边界之上补齐认证 `POST /chat-turns`：请求由 strict shared Zod contract
+约束，owner 只来自 JWT，controller 仅委托 `ChatTurnEnqueueService`，并以 `202` 返回不含正文、hash、Outbox payload 或凭据的
+安全投影。该 seam 只证明入队 admission，尚未把 Web 或 `/api/chat` 切换到 turn-backed/SSE，也没有调用 Provider。
+功能分支和合并后的 Git 回执见 `docs/acceptance/phase-6-chat-turn-enqueue-api.md`。
 
 ## 1. 结论摘要
 
@@ -35,6 +40,7 @@ status/replay 查询。active claim recovery、产品切换、真实模型和生
 | RetrieverAgent                    | owner-scoped 关键词+向量 hybrid search，返回 bounded evidence                                                     | 检索本体确定性；query rewrite 可选 DeepSeek `deepseek-v4-pro`               | `RETRIEVER_QUERY_REWRITE_MODEL_ENABLED` + 全局 live；4s，`1200/160`，cap `0.005 CNY`                  | canonical auth、owner、run/request/deadline 绑定；不得跨 owner 或写业务                    | query hash、命中数、延迟、rewrite disposition；失败可 `failed_no_rag`；历史 SR5 不是 quality authority                 | 没有单独 product-live rewrite 成功证据；budget 未跨节点聚合                                      |
 | KnowledgeVerifierAgent            | 审查 Retriever evidence 的可信度                                                                                  | 先确定性 `verifyKnowledgeChunks`；模型只能收紧结论                          | `KNOWLEDGE_VERIFIER_MODEL_ENABLED` + 全局 live；共享 `2 / 2400 / 800`；4s                             | 只读 chunks；不得放宽安全边界或写知识库；输出 `trusted/suspicious/conflict/insufficient`   | conservative fallback；observation 进 Trace；无专属 product-live 证据                                                  | 与 Router 共用 bundle，缺少显式跨节点 capability/预算记录                                        |
 | FinalResponseAgent                | 消费本地 projection、citation、bounded turns/guidance 并流式回答                                                  | 产品真实流式节点；DeepSeek `deepseek-v4-pro` non-thinking，mock/live 双路径 | `FINAL_RESPONSE_AGENT_MODEL_ENABLED` + 全局 live；20s，`2500/1200`，cap `0.015 CNY`                   | 只读 context-bound request；不得直接写业务或引入未授权 citation；必须产生唯一 terminal     | Trace finalize best-effort；已具备合并后 `/api/chat` live smoke                                                        | 现有 smoke 未逐项证明上游每个 Agent 成功；全链路预算/断连持久化仍待补强                          |
+| ChatTurnEnqueue API              | 认证 `POST /chat-turns`，把已持久化消息事实交给 durable enqueue boundary                                         | 非模型 admission；不调用 Provider/BullMQ/Redis/Worker 同步执行           | 复用 `ChatTurnEnqueueService` 的 bounded/idempotent 事务；HTTP `202`                     | JWT owner；body 不接受 `userId`；只返回 turn/job metadata，不返回正文或 Outbox payload      | controller/schema/Swagger focused `13/13`；证据为 implemented + mock/static validated                         | Web adapter、`/api/chat` bridge、SSE/replay 产品切换、全链路 ledger 与真实 Worker 仍未完成                    |
 | WrongQuestionOrganizerAgent       | 组织单题/批量错题，并通过 command executor 执行受控写操作                                                         | 确定性 organizer 为权威；可选 DeepSeek candidate                            | 一次调用，`3500/800`，5s，cap `0.016 CNY`；worker 强制关闭                                            | JWT + owner snapshot/freshness/admission；模型不得直接写，必须经过 trace/admission/command | AgentTrace best-effort；用户预修改文件不在本轮审计范围                                                                 | 需要独立产品真实模型 smoke；不能触碰当前 3 个用户 dirty 文件                                     |
 | ReviewAgent                       | `GET /review-agent/suggestions`，生成复习分析/建议                                                                | 确定性 tasks/preferences/cards/logs 为权威；可选 Review candidate           | Review/Planner 共享 `2 / 1950 / 440`；默认 4.5s                                                       | JWT；只读业务快照；candidate 不得写业务                                                    | AgentTrace best-effort；AbortSignal 与外层 deterministic fallback 已有 focused `13/13`；无本轮产品 live endpoint smoke | 仍需独立真实模型产品验收、共享 ledger 与持续运行证据                                             |
 | PlannerAgent                      | 同一 suggestions endpoint 的学习计划生成                                                                          | 确定性 `planStudy` 为权威；可选 Planner candidate                           | 与 Review 共享 `2 / 1950 / 440`；默认 4.5s                                                            | JWT；只读快照；输出计划候选，不得改任务数据                                                | AgentTrace best-effort；AbortSignal 与外层 fallback 已修复；无本轮产品 live endpoint smoke                             | 仍需独立真实模型产品验收、并发预算与持续运行证据                                                 |
@@ -70,6 +76,7 @@ HTTP request
    但浏览器 SSE、断线后的产品回放编排与 `/api/chat` turn-backed 产品路径仍未接入。
 5. Review/Planner 的 HTTP AbortSignal 与 candidate 外层 fallback 已完成；但共享预算 ledger 和真实模型产品验收仍未建立。
 6. Router/Verifier/Tutor/FinalResponse 各自持有局部预算，全链路没有统一 ledger，需补跨节点上限和越界测试。
+7. `POST /chat-turns` 已提供认证 durable admission，但 Web 尚未消费它；因此不能把“可入队”误读为“产品回答已由 Worker 执行”。
 
 ## 4. 证据分级
 
@@ -87,10 +94,15 @@ HTTP request
 
 1. ~~先修复并测试 Review/Planner 的 AbortSignal 与 candidate 外层 fail-safe。~~ 已完成：controller 将 HTTP `aborted` 映射为请求级 AbortSignal，service 传入两个 candidate；两个 candidate runner 额外有 deterministic 外层 fallback。`review-agent.controller.spec.ts` + `review-agent.service.spec.ts` 为 `13/13`，Server build 通过。
 2. ~~定义 graph descriptor 与产品组合层的关系。~~ 已完成：catalog 明确不是执行器，补 typed edges、model mode、domain write permission、产品组合位置和 planned Orchestrator；graph focused `3/3`、Agent typecheck 通过。
-3. 继续完成 Chat 全链路预算与断线 durability。设计 checkpoint、可靠入队、deterministic Worker durable baseline 与 Chat Stream
+3. ~~补齐认证 ChatTurn enqueue HTTP seam。~~ 已完成：`POST /chat-turns` 以 strict shared contract 校验 bounded facts，从 JWT
+   取得 owner，复用 `ChatTurnEnqueueService` 的 Turn/BackgroundJob/Outbox 同事务，并返回 `202` 安全投影。Controller + Swagger
+   `13/13`、ChatTurn `52/52`、types `44/44`、Server build、目标 ESLint/Prettier 通过；全量 Server Jest 的两个失败仍是既有
+   readiness/integration 环境问题。详见 `docs/acceptance/phase-6-chat-turn-enqueue-api.md`。
+4. 继续完成 Chat 全链路预算与断线 durability。设计 checkpoint、可靠入队、deterministic Worker durable baseline 与 Chat Stream
    bounded replay API 已完成；浏览器/`/api/chat` 产品切换、全链路 ledger 与真实模型 Worker 仍未完成，详见两份 Chat acceptance
-   文档。当前新增回归为 Chat Stream 5 suites/110 tests、chat-turns 10 suites/49 tests、types 43 tests；Worker 当前仍是
+   文档。当前新增回归为 Chat Stream 5 suites/110 tests、chat-turns 10 suites/52 tests、enqueue controller + Swagger 13/13、
+   types 44 tests；Worker 当前仍是
    deterministic，不代表真实模型。
-4. 为 MemoryAgent 定义真实模型增强的隐私、候选确认、预算和 Trace 合同；完成 Agent 架构后再进入分层记忆实现。
-5. 做独立 Review/Planner、Knowledge agents、Router/Verifier/Tutor/Rewrite 的产品验收，保持浏览器窗口可见并保留证据。
-6. 所有代码/文档任务逐项提交、推送、`--no-ff` 合并 main，再在 merged-main 复验；全部 Agent 架构与真实验收完成后，才写两篇面试博客。
+5. 为 MemoryAgent 定义真实模型增强的隐私、候选确认、预算和 Trace 合同；完成 Agent 架构后再进入分层记忆实现。
+6. 做独立 Review/Planner、Knowledge agents、Router/Verifier/Tutor/Rewrite 的产品验收，保持浏览器窗口可见并保留证据。
+7. 所有代码/文档任务逐项提交、推送、`--no-ff` 合并 main，再在 merged-main 复验；全部 Agent 架构与真实验收完成后，才写两篇面试博客。
