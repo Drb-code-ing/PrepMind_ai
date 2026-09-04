@@ -4,12 +4,18 @@
 > [`docs/acceptance/phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)；历史 controlled-Live 段落只读，
 > 不构成新的运行授权。
 
-## 当前 ChatTurn enqueue admission（2026-09-04）
+## 当前 ChatTurn Web adapter 与 enqueue admission（2026-09-04）
 
-认证客户端先提交已经持久化的消息事实；HTTP 层只做 schema/owner 校验和委托，不在请求内调用模型或直接操作队列：
+Web adapter 已能从认证 owner 的已持久化消息生成稳定、bounded admission request；当前产品 `/api/chat` 尚未调用这条 seam：
 
 ```text
-POST /chat-turns (JWT)
+authenticated owner + persisted StoredMessage[]
+  -> prepareChatTurnSubmission
+       ├─ missing conversation / not persisted: explicit snapshot-sync compatibility path
+       └─ ready: canonical order + Web Crypto SHA-256
+            -> { conversationId, clientRequestId, inputHash,
+                 inputMessageIds, budgetPolicyVersion }
+            -> POST /chat-turns (JWT, expected 202)
   -> strict shared request schema
   -> owner from AuthenticatedUser (body userId is rejected)
   -> ChatTurnEnqueueService
@@ -21,9 +27,12 @@ POST /chat-turns (JWT)
   -> later Outbox -> BullMQ -> Worker
 ```
 
-`(userId, clientRequestId)` 保证同 owner 重试幂等；conversation/message owner、input hash 和预算版本在 durable boundary
-内校验。响应不携带正文、prompt、hash、Outbox payload、凭据或 Provider 原文。该 admission 目前属于
-`implemented` + `mock/static validated`，尚未被 Web、`/api/chat` 或浏览器 replay 消费。
+正文只在浏览器内存中参与 `chat-turn-input-v1` hash，不进入 enqueue body。`web-chat-turn-v1` request id 绑定 owner、conversation、
+input hash、message ids 和预算版本；相同请求的网络/短暂 HTTP 重试可复用 id，abort、4xx、owner/session/schema/conflict 不重试。
+`(userId, clientRequestId)` 继续保证服务端 owner-scoped 幂等，响应不携带正文、prompt、hash、Outbox payload、凭据或 Provider 原文。
+
+Web adapter 和 admission 目前都属于 `implemented` + `mock/static validated`。`ChatRuntimeProvider` 仍使用 `/api/chat` 与完成后的
+`/chat-messages/sync`，ticket 03 才做产品切换；浏览器 replay 仍待 ticket 04。
 
 ## 当前 Chat Stream bounded replay flow（2026-09-02）
 
@@ -196,9 +205,9 @@ validator -> crash-only prefix recovery` 的独立 zero-provider 流；其 autho
 
 > 最近封存的 P1 L2 controlled-Live flow（2026-08-09）：唯一 run 的入口围栏为
 > `exact argv -> source/remote parity -> approved tag -> frozen manifest/policy/baseline/S2 identity ->
-> DeepSeek/Qwen data-boundary receipt -> exact lineage/source authorization -> bounded budget -> selective root .env
-> projection -> credential capability -> exclusive marker/reservation -> 8 guards -> 6 DeepSeek rewrite -> 6 DeepSeek
-> FinalResponse -> strict scorer -> fsynced journal -> hard-link artifact -> validator`。
+DeepSeek/Qwen data-boundary receipt -> exact lineage/source authorization -> bounded budget -> selective root .env
+projection -> credential capability -> exclusive marker/reservation -> 8 guards -> 6 DeepSeek rewrite -> 6 DeepSeek
+FinalResponse -> strict scorer -> fsynced journal -> hard-link artifact -> validator`。
 > Qwen embedding policy calls 固定为 `0`；最大并发 `1`、candidate cap `12`、input/output cap `37600/8800`、成本 cap `0.176 CNY`。
 > 唯一 run `ff035203-500f-4744-b33c-3c375ae4c785` 通过 8 guards 后执行两条 DeepSeek rewrite：`rewrite_01`
 > strict 成功，`rewrite_03` 以 bounded `schema` failure 打开 breaker，剩余 10 条 lane 不 dispatch。终态
@@ -214,12 +223,12 @@ validator -> crash-only prefix recovery` 的独立 zero-provider 流；其 autho
 > `drb/phase-6-9-8-retriever-final-response-schema-recovery-sr2`，继续使用独立
 > `phase-6.9.8-retriever-final-response-schema-recovery-v1`。本阶段数据只经过
 > `held-out/provider-like fixture -> bounded prompt-derived responder -> module-owned raw-content parser -> canonical
-> rewrittenQuery projection -> local safety/authority -> candidate outcome sidecar -> Retriever node observation projection`；
+rewrittenQuery projection -> local safety/authority -> candidate outcome sidecar -> Retriever node observation projection`；
 > 合成 runtime 固定 `reviewed_mock/mock/mock`，每个 eligible dispatch 只允许一次且禁止 retry；recent-turn/context
 > metamorphic、fault category、pre-abort/expired deadline 与 no-raw 约束均在内存验证。不读取 `.env`/credential，不创建
 > marker/journal/report/artifact/recovery claim，不调用 DeepSeek/Qwen，不进入 Docker/API/browser、Trace、BackgroundJob、
 > Outbox 或产品写入。SR2 authority=`zero_provider_retriever_final_response_schema_recovery_robustness /
-> qualityAuthority=none`，diagnostic 在 node 边界丢弃；focused `12/12`（329 assertions），SR1+SR2/node/query-rewrite
+qualityAuthority=none`，diagnostic 在 node 边界丢弃；focused `12/12`（329 assertions），SR1+SR2/node/query-rewrite
 > 组合 `43/43`（743 assertions），Agent full `1462/1462`（24841 expect()，184 files）、AI full `345/345`，只解锁下一阶段
 > SR3 runner/durability；该实现不改变已封存
 > P1 L2 flow。验收见
@@ -280,9 +289,9 @@ strict scorer -> marker/journal/artifact publication`。
 
 > 当前 L2 admission contract（zero-provider）：在 S2/main parity 后，固定
 > `source/remote parity -> approved tag binding -> frozen S2 identity -> DeepSeek/Qwen boundary receipt -> exact
-> lineage/source authorization -> bounded budget -> single-use admission capability`。admission 输出
+lineage/source authorization -> bounded budget -> single-use admission capability`。admission 输出
 > `mode=zero_provider_admission`、`providerDispatchAllowed=false`，并固定 `providerCalls=0 / credentialReads=0 /
-> formalEvidence=0`；不创建 approved tag、marker、journal、artifact 或 recovery claim，不读取 `.env`，不执行
+formalEvidence=0`；不创建 approved tag、marker、journal、artifact 或 recovery claim，不读取 `.env`，不执行
 > proxy/network、Provider、Docker/API/browser、Trace、BackgroundJob、Outbox 或产品写入。L2 focused `4/4`，与 G1/G2/S2
 > focused `18/18`。协议 token 不代表用户已接受边界或已授权 Live；验收见
 > `docs/acceptance/phase-6-9-8-retriever-final-response-p1-l2-admission-zero-provider.md`。该 admission 的文档 parity、`main`
@@ -2297,6 +2306,7 @@ Phase 3 已将 OCR 识别链路从 Markdown-first 升级为 structured output：
 4. 保存错题优先使用结构化字段，多题按 `sourceGroupId:questionId` 生成独立防重 key。
 5. 旧 OCR 历史继续通过 legacy adapter 和 `parseOcrResult()` 兜底。
 6. `createWrongQuestion`、`searchKnowledge`、`createReviewTask` 已保留为 tool action proposal 边界，暂不自动写库。
+
 ## SR5 next-lineage boundary
 
 Git parity and source-object bundle produce an immutable predecessor receipt and a single-use zero-provider capability. The flow stops before credentials, providers, formal evidence, business writes, Trace, BackgroundJob, and Outbox. The planned v3 evidence namespace is isolated from sealed v1/v2 namespaces.
@@ -2308,6 +2318,7 @@ D1 flow: exact v3 source identity + exact boundary receipt + exact one-shot auth
 D2 flow: C2 tag capability -> D1 authorization capability -> exact source identity cross-check -> strict zero-call proxy attestation -> preflight-only capability. The flow stops with runner invocation and Provider dispatch both disabled; no credential or evidence port exists.
 
 D3 recovery flow: complete recovery merge -> v5 annotated tag -> Git verifier dynamic receipt -> D3 structural parity + exact V5 authorization binding -> zero-provider contract record. D3 itself stops with `gitAuthorityIssued=false`; verifier capability, credentials, reservation, and execution are later boundaries. The immutable v4 tag passed Git inspection but is blocked by its post-tag focused test failure.
+
 # Phase 6.9.8 SR5 D4 runtime runner/durability data flow
 
 ```text
@@ -2325,6 +2336,7 @@ D3 runtime source receipt + exact boundary/authorization binding
 D4 does not use the historical v1/v2 Live runner, D2 v3 static source, root `.env`, Provider adapters, Docker, Trace,
 BackgroundJob, Outbox, or product repositories. The future final Git verifier is the only owner allowed to produce a real v5 source
 receipt; D4 itself has no Git, runner, or Provider authority.
+
 ## SR5 D5 source verification flow
 
 ```text

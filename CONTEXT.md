@@ -30,3 +30,10 @@ assistant 消息、ChatTurn 终态、BackgroundJob 终态和 `chat.response.comp
 新的 Chat 请求必须由 `ChatTurnEnqueueService` 在同一个 `Serializable` 事务中创建 `ChatTurn(QUEUED)`、
 `BackgroundJob(QUEUED)` 与 `OutboxEvent(chat.response.requested)`。事务提交前不调用 Bull、Provider 或 Worker；任一写入失败全部回滚。
 重复请求返回已有三件事实，Outbox payload 只允许 turn/job id、输入 hash 和预算版本等 bounded projection。可靠入队不等于 Worker、Replay 或完整断线恢复。
+
+## ChatTurn Web enqueue adapter
+
+Web 端只在 conversation 已建立且消息已确认服务端持久化时准备入队请求。正文只参与浏览器内存中的
+`chat-turn-input-v1` SHA-256；HTTP body 只包含 conversation/request/hash/message ids/budget facts。相同 owner/session 的短暂网络错误
+可复用稳定 `clientRequestId`，abort、4xx、owner/session/schema/conflict 不重试；未就绪时显式保留 snapshot-sync 兼容路径。
+当前 adapter 尚未接入 `/api/chat`，所以它不代表产品已 turn-backed 或浏览器已支持断线 replay。

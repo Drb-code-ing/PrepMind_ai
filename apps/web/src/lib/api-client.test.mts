@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
 
-import {
-  ApiClientError,
-  createApiClient,
-  resolveApiClientBaseUrl,
-} from './api-client.ts';
+import { ApiClientError, createApiClient, resolveApiClientBaseUrl } from './api-client.ts';
 
 async function run() {
   testResolvesInternalApiBaseUrlBeforePublicUrl();
@@ -12,6 +8,9 @@ async function run() {
   await testThrowsApiFailure();
   await testThrowsInvalidJson();
   await testThrowsNetworkFailure();
+  await testClassifiesAbortSeparately();
+  await testClassifiesAbortDuringResponseBodyRead();
+  await testRejectsUnexpectedStatus();
 }
 
 function testResolvesInternalApiBaseUrlBeforePublicUrl() {
@@ -145,6 +144,70 @@ async function testThrowsNetworkFailure() {
     assert.equal(error.status, 0);
     assert.equal(error.code, 'NETWORK_ERROR');
     assert.equal(error.message, '网络连接失败，请稍后重试');
+    return true;
+  });
+}
+
+async function testRejectsUnexpectedStatus() {
+  const client = createApiClient({
+    baseUrl: 'http://localhost:3001',
+    fetchImpl: async () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: { ok: true },
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      ),
+  });
+
+  await assert.rejects(client.post('/chat-turns', {}, { expectedStatus: 202 }), (error) => {
+    assert.ok(error instanceof ApiClientError);
+    assert.equal(error.status, 200);
+    assert.equal(error.code, 'UNEXPECTED_STATUS');
+    return true;
+  });
+}
+
+async function testClassifiesAbortSeparately() {
+  const controller = new AbortController();
+  controller.abort();
+  const client = createApiClient({
+    baseUrl: 'http://localhost:3001',
+    fetchImpl: async () => {
+      throw new DOMException('aborted', 'AbortError');
+    },
+  });
+
+  await assert.rejects(client.post('/chat-turns', {}, { signal: controller.signal }), (error) => {
+    assert.ok(error instanceof ApiClientError);
+    assert.equal(error.status, 0);
+    assert.equal(error.code, 'REQUEST_ABORTED');
+    return true;
+  });
+}
+
+async function testClassifiesAbortDuringResponseBodyRead() {
+  const controller = new AbortController();
+  const client = createApiClient({
+    baseUrl: 'http://localhost:3001',
+    fetchImpl: async () => {
+      const response = new Response(null, { status: 503 });
+      response.json = async () => {
+        controller.abort();
+        throw new DOMException('aborted', 'AbortError');
+      };
+      return response;
+    },
+  });
+
+  await assert.rejects(client.post('/chat-turns', {}, { signal: controller.signal }), (error) => {
+    assert.ok(error instanceof ApiClientError);
+    assert.equal(error.status, 0);
+    assert.equal(error.code, 'REQUEST_ABORTED');
     return true;
   });
 }

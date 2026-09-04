@@ -13,13 +13,13 @@
 
 `POST /chat-turns` 需要 `JwtAuthGuard`。请求只允许提交已经持久化的事实：
 
-| 字段 | 约束 |
-| --- | --- |
-| `conversationId` | trim 后为 1-128 位安全 id，字符集与共享 `CHAT_TURN_ID_PATTERN` 一致 |
-| `clientRequestId` | trim 后 1-120 位，同一 owner 下幂等 |
-| `inputHash` | `sha256:` 加 64 位小写十六进制 |
-| `inputMessageIds` | 1-1000 个唯一、bounded、安全 id |
-| `budgetPolicyVersion` | trim 后 1-80 位 |
+| 字段                  | 约束                                                                |
+| --------------------- | ------------------------------------------------------------------- |
+| `conversationId`      | trim 后为 1-128 位安全 id，字符集与共享 `CHAT_TURN_ID_PATTERN` 一致 |
+| `clientRequestId`     | trim 后 1-120 位，同一 owner 下幂等                                 |
+| `inputHash`           | `sha256:` 加 64 位小写十六进制                                      |
+| `inputMessageIds`     | 1-1000 个唯一、bounded、安全 id                                     |
+| `budgetPolicyVersion` | trim 后 1-80 位                                                     |
 
 响应为 `202 Accepted`，并经过全局 response envelope：
 
@@ -120,5 +120,7 @@ merged-main git diff --check: passed
 
 ## 8. 后续
 
-下一张 ticket 是 Web enqueue adapter；之后才按依赖推进 `/api/chat` bridge、浏览器 replay、ChatRunBudget/Trace ledger 和真实模型
-Worker gate。每张 ticket 仍从最新已推送 `main` 开普通分支，并在合并 `main` 后再次复验。
+Web enqueue adapter（ticket 02）已在独立普通分支实现，详见
+[`phase-6-chat-turn-web-enqueue-adapter.md`](phase-6-chat-turn-web-enqueue-adapter.md)。下一张 ticket 才按依赖推进 `/api/chat`
+bridge；之后是浏览器 replay、ChatRunBudget/Trace ledger 和真实模型 Worker gate。每张 ticket 仍从最新已推送 `main` 开普通分支，
+并在合并 `main` 后再次复验。

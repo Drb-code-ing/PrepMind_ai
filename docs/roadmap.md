@@ -7,8 +7,8 @@
 ## 当前焦点
 
 **Phase 6 Agent 运行时总审计**。最新原子任务已完成 ChatTurn/BackgroundJob/Outbox 到 BullMQ 的 deterministic Worker durable
-baseline，并补齐 `chat-turn-stream-v1`、Redis bounded replay 和 owner-bound 状态查询。下一步不是继续堆一次性 Live 脚本，而是
-补齐 turn-backed 产品切换、全链路预算、断线恢复和各 Agent 的真实模型产品证据。
+baseline，并补齐 `chat-turn-stream-v1`、Redis bounded replay、owner-bound 状态查询、认证 enqueue API 和 Web enqueue
+adapter。下一步不是继续堆一次性 Live 脚本，而是接通 turn-backed 产品路径、断线恢复、全链路预算和各 Agent 的真实模型证据。
 
 当前基线（2026-09-04）：
 
@@ -17,25 +17,26 @@ baseline，并补齐 `chat-turn-stream-v1`、Redis bounded replay 和 owner-boun
 - `packages/agent/src/graph/index.ts` 是 `catalog_only` 治理目录，不是执行器；产品 Chat 编排在 Web/API composition。
 - Tool-Using Orchestrator 尚未实现；MemoryAgent 仍是确定性候选策略。
 - 历史 controlled-Live 只读且不可重跑；语义质量、产品可用性、billing 和 SLA 分开记录。
-- 认证 `POST /chat-turns` 已提供 durable admission 和安全 `202` 投影，并已合并到 `main=582f2aef`；Web 与 `/api/chat` 尚未消费该 seam。
+- 认证 `POST /chat-turns` 已提供 durable admission；ticket 02 Web adapter 已能从 owner-bound 持久化消息生成稳定 request/hash，
+  严格校验安全 `202`，并保留明确 snapshot fallback。`/api/chat` 尚未消费该 seam。
 
 ## 阶段总览
 
-| 阶段              | 主题                                                                                    | 状态                                                                       |
-| ----------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Phase 0-3         | Monorepo、产品 MVP、鉴权、OCR、AI 讲题                                                  | 已完成并持续维护                                                           |
-| Phase 4           | FSRS 复习、今日任务、统计、计划与离线评分                                               | 已完成                                                                     |
-| Phase 5           | 文档处理、Qwen embedding、Hybrid RAG、知识库页面                                        | 已完成；持续做运行时回归                                                   |
-| Phase 6.0-6.8     | Agent contracts、Router/Tutor/Verifier/Organizer/Review/Planner/Memory/Knowledge agents | 已实现基础能力；真实模型证据按矩阵分开                                     |
-| Phase 6.9.1-6.9.4 | Agent eval、ModelAgentRuntime、Router/Verifier 混合路径                                 | 工程与既有产品验收完成，默认 gate 关闭                                     |
-| Phase 6.9.5-6.9.6 | Review/Planner、Knowledge agents                                                        | 有受限 candidate 和历史验收；当前审计仍需确认持续/产品证据                 |
-| Phase 6.9.7       | Tutor / WrongQuestionOrganizer schema recovery 与产品回放                               | 历史 lineage 已封存，主线不再拼接旧证据                                    |
-| Phase 6.9.8       | Retriever / FinalResponse、transport/schema recovery                                    | 部分工程收口；Task 9C/R5 质量门失败历史不可重跑，产品 turn-backed 仍待补齐 |
+| 阶段              | 主题                                                                                    | 状态                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Phase 0-3         | Monorepo、产品 MVP、鉴权、OCR、AI 讲题                                                  | 已完成并持续维护                                                                        |
+| Phase 4           | FSRS 复习、今日任务、统计、计划与离线评分                                               | 已完成                                                                                  |
+| Phase 5           | 文档处理、Qwen embedding、Hybrid RAG、知识库页面                                        | 已完成；持续做运行时回归                                                                |
+| Phase 6.0-6.8     | Agent contracts、Router/Tutor/Verifier/Organizer/Review/Planner/Memory/Knowledge agents | 已实现基础能力；真实模型证据按矩阵分开                                                  |
+| Phase 6.9.1-6.9.4 | Agent eval、ModelAgentRuntime、Router/Verifier 混合路径                                 | 工程与既有产品验收完成，默认 gate 关闭                                                  |
+| Phase 6.9.5-6.9.6 | Review/Planner、Knowledge agents                                                        | 有受限 candidate 和历史验收；当前审计仍需确认持续/产品证据                              |
+| Phase 6.9.7       | Tutor / WrongQuestionOrganizer schema recovery 与产品回放                               | 历史 lineage 已封存，主线不再拼接旧证据                                                 |
+| Phase 6.9.8       | Retriever / FinalResponse、transport/schema recovery                                    | 部分工程收口；Task 9C/R5 质量门失败历史不可重跑，产品 turn-backed 仍待补齐              |
 | Phase 7           | Worker、Outbox、Readiness、Admin、Audit 与导出                                          | 核心子阶段已完成；Chat response worker/Stream 为 deterministic baseline，产品切换待完成 |
-| Phase 6.10        | 分层记忆（瞬时/短期/长期）                                                              | 待全部 Agent 架构和合同稳定后开始                                          |
-| Phase 8           | 性能优化与 PWA                                                                          | 计划中                                                                     |
-| Phase 9           | MCP Tool 体系                                                                           | 计划中                                                                     |
-| Phase 10          | 生产级部署与持续运维                                                                    | 计划中                                                                     |
+| Phase 6.10        | 分层记忆（瞬时/短期/长期）                                                              | 待全部 Agent 架构和合同稳定后开始                                                       |
+| Phase 8           | 性能优化与 PWA                                                                          | 计划中                                                                                  |
+| Phase 9           | MCP Tool 体系                                                                           | 计划中                                                                                  |
+| Phase 10          | 生产级部署与持续运维                                                                    | 计划中                                                                                  |
 
 ## 当前工作包
 
@@ -65,10 +66,13 @@ ChatTurn + BackgroundJob + chat.response.requested Outbox
 
 1. ~~完成 [`ChatTurn Enqueue API spec`](../.scratch/chat-turn-enqueue-api/spec.md) 的 ticket 01。~~ 已提供认证 HTTP 入队 seam，
    详见 [`phase-6-chat-turn-enqueue-api.md`](acceptance/phase-6-chat-turn-enqueue-api.md)；
-2. 完成 Web enqueue adapter（ticket 02），再将 bounded replay API 接入 SSE/browser，并处理 cursor 过期与状态恢复（ticket 04）；
-3. `/api/chat` turn-backed 路径与旧 snapshot sync 兼容窗口（ticket 03）；
-4. 全链路 ChatRunBudget ledger、Trace 对账和跨节点上限（ticket 05）；
-5. 真实模型 Worker 的独立 gate、usage/cost 和产品 smoke（ticket 06）。
+2. ~~完成 Web enqueue adapter（ticket 02）。~~ 已实现 typed adapter、稳定 canonical identity、strict `202`、owner/abort/offline
+   边界与 snapshot compatibility decision；详见
+   [`phase-6-chat-turn-web-enqueue-adapter.md`](acceptance/phase-6-chat-turn-web-enqueue-adapter.md)；
+3. `/api/chat` turn-backed 路径、owner/session 生命周期与旧 snapshot sync 兼容窗口（ticket 03）；
+4. 将 bounded replay API 接入 SSE/browser，并处理 cursor 过期与 PostgreSQL 状态恢复（ticket 04）；
+5. 全链路 ChatRunBudget ledger、Trace 对账和跨节点上限（ticket 05）；
+6. 真实模型 Worker 的独立 gate、usage/cost 和产品 smoke（ticket 06）。
 
 ### C. 分层记忆（Phase 6.10）
 

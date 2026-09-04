@@ -1,5 +1,24 @@
 # PrepMind AI 开发日志
 
+> 2026-09-04 — ChatTurn Web enqueue adapter ticket 02：
+>
+> 从最新已推送 `main=ef74c4ac` 创建普通分支 `drb/chat-turn-web-enqueue-adapter`。新增 Web typed adapter，将 authenticated
+> owner 的已持久化 `StoredMessage[]` 规范化为 `chat-turn-input-v1` SHA-256，并从 owner、conversation、input hash、message ids
+> 和 budget version 派生稳定 `web-chat-turn-v1` 幂等 id。请求最终经过共享 strict schema，只发送 conversation/request/hash/message
+> ids/budget 五类 bounded facts；正文只参与浏览器内存 hash，不进入 HTTP body。
+>
+> `prepareChatTurnSubmission` 在 conversation 未就绪或消息未确认持久化时显式返回现有 snapshot-sync 兼容路径；不会在 enqueue
+> 失败后静默 fallback。API client 新增 expected-status 检查，ChatTurn adapter 只接受 `202` 和 strict safe response。独立 Standards/Spec
+> review 发现 fetch/response body 两个阶段的 AbortError 分类与 retry 排除边界不完整；现统一映射为 `REQUEST_ABORTED`，确保用户取消、登出或会话切换不会被离线策略重试。
+> 只有 network、`408/425/429` 和 `5xx` 可在同 owner/session 下复用稳定 request，4xx/schema/owner/conflict/local errors 均 terminal。
+>
+> 功能分支 focused API client + adapter `9/9`、Web full tests `499/499`、完整 Web ESLint、Next production build/TypeScript、
+> targeted Prettier 和 `git diff --check` 通过；修复后的两路独立只读复审均无 blocker/P1/P2。merged-main 回执待 Git 收口后回填。
+> 证据等级为 `implemented` + `mock/static validated`。
+> 本 ticket 没有改 `/api/chat`、`ChatRuntimeProvider`、BullMQ/Worker/Redis replay 或现有 `/chat-messages/sync`；没有调用 Provider，
+> 没有启动/清理 Docker/API/browser 或写业务数据。用户既有 ReviewAgent、WrongQuestionOrganizer 和 triage-labels dirty 文件未暂存、
+> 未提交。详细验收见 `docs/acceptance/phase-6-chat-turn-web-enqueue-adapter.md`。
+>
 > 2026-09-04 — ChatTurn Enqueue API ticket 01：
 >
 > 在 `drb/chat-turn-enqueue-api` 上完成认证 `POST /chat-turns`。新增 `@repo/types` strict Zod 请求/响应合同（bounded
