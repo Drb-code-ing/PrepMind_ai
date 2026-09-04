@@ -25,7 +25,11 @@
 > 精确清理为 0；浏览器窗口保留。未查看凭据值、未调用 DeepSeek/Qwen/其他 Provider、未产生真实模型费用，也未清理 Docker
 > 容器、镜像、cache、volume、Redis 或 MinIO。证据等级为 `implemented + mock/static validated + Mock 产品链路验收`；浏览器
 > status/SSE/replay、全链路 ledger 与真实模型 Worker 仍待 ticket 04-06。详细记录见
-> `docs/acceptance/phase-6-chat-turn-api-bridge.md`。功能提交、merge SHA、远程 parity 与 merged-main 复验在 Git 收口后补录。
+> `docs/acceptance/phase-6-chat-turn-api-bridge.md`。功能提交
+> `5832b379c2b4091dd5202f11937e9eff8aa62ca8` 已推送到 `origin/drb/chat-turn-api-bridge`，随后以 `--no-ff`
+> 合并并推送为 `main=dfdd35adb69be5ceeb5ea6c3fe39c71c0b855762`，`main == origin/main`。merged-main 最小复验再次确认
+> `server/worker` healthy、Server `/health=200`、Web `/login=200`，可见浏览器正常呈现登录页；默认恢复
+> Mock/live-off、全部 Agent gate=false、bridge=false。用户既有 7 个 dirty 文件保持未暂存、未进入提交。
 >
 > 2026-09-04 — ChatTurn Web enqueue adapter ticket 02：
 >
