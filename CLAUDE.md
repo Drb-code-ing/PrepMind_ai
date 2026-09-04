@@ -62,3 +62,17 @@ rag -> database, ai, types
 
 `packages/` 不得依赖 `apps/`；API contract 优先放在 `@repo/types` 的 Zod schema。Agent 只消费 owner-bound、bounded projection，
 本地代码掌握身份、权限、业务事实和写操作。
+
+## Agent skills
+
+### Issue tracker
+
+工程 issue 与 spec 使用仓库内的本地 Markdown tracker，位于 `.scratch/<feature>/`。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用 Matt Pocock skills 的五个默认 triage label。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+本仓库采用 single-context：根目录 `CONTEXT.md` 与按需创建的 `docs/adr/`。详见 `docs/agents/domain.md`。
