@@ -13,6 +13,7 @@ async function run() {
   testMapsLocalMessagesToSyncRequest();
   await testListsChatMessages();
   await testSyncsChatMessages();
+  await testPreparesChatTurnMessages();
 }
 
 function testMapsServerResponseToLocalRecord() {
@@ -171,6 +172,73 @@ async function testSyncsChatMessages() {
   assert.equal(result.conversationId, 'conv_1');
   assert.equal(result.messages[0]?.role, 'user');
   assert.equal(result.state, null);
+}
+
+async function testPreparesChatTurnMessages() {
+  let request: { url?: string; body?: unknown; authorization?: string | null } = {};
+  const client = createApiClient({
+    baseUrl: 'http://localhost:3001',
+    fetchImpl: async (input, init) => {
+      request = {
+        url: String(input),
+        body: init?.body ? JSON.parse(String(init.body)) : undefined,
+        authorization: new Headers(init?.headers).get('authorization'),
+      };
+
+      return jsonResponse({
+        success: true,
+        data: {
+          conversationId: 'conv_1',
+          messages: [
+            {
+              id: 'msg_1',
+              userId: 'user_1',
+              conversationId: 'conv_1',
+              role: 'USER',
+              content: 'Question',
+              order: 0,
+              metadata: null,
+              createdAt: '2026-09-04T00:00:00.000Z',
+            },
+          ],
+        },
+        requestId: 'req_prepare',
+      });
+    },
+  });
+  const chatMessageApi = createChatMessageApi(client);
+  const input = {
+    conversationId: 'conv_1',
+    messages: [
+      {
+        id: 'msg_1',
+        role: 'USER' as const,
+        content: 'Question',
+        order: 0,
+      },
+    ],
+  };
+
+  const result = await chatMessageApi.prepareForTurn('token_1', input);
+
+  assert.deepEqual(request, {
+    url: 'http://localhost:3001/chat-messages/prepare',
+    body: input,
+    authorization: 'Bearer token_1',
+  });
+  assert.deepEqual(result, {
+    conversationId: 'conv_1',
+    messages: [
+      {
+        id: 'msg_1',
+        userId: 'user_1',
+        role: 'user',
+        content: 'Question',
+        order: 0,
+        createdAt: Date.parse('2026-09-04T00:00:00.000Z'),
+      },
+    ],
+  });
 }
 
 function jsonResponse(body: unknown) {

@@ -1,5 +1,32 @@
 # PrepMind AI 开发日志
 
+> 2026-09-05 — ChatTurn `/api/chat` product bridge ticket 03：
+>
+> 从已推送 `main=9aa0acde` 的普通分支 `drb/chat-turn-api-bridge` 接通 authenticated `/api/chat` 的 durable
+> admission。默认 gate `PREPMIND_CHAT_TURN_BRIDGE_ENABLED=false`；gate-on 且 conversation ready 时，Web BFF 先调用
+> owner-bound、append-only 的 `POST /chat-messages/prepare`，再以 bounded ids/hash/request/budget facts 调用
+> `POST /chat-turns`，并通过 AI SDK data stream 返回 `prepmind-chat-turn-handoff-v1` annotation 和 `202`。首轮无
+> conversation id 或 gate-off 保留旧同步路径；无效身份/窗口、prepare/enqueue 失败均 fail-closed，不静默回退 Provider。
+>
+> prepare 使用 Serializable transaction；只对 `P2034`/PostgreSQL `40001` 有限重试，`P2002` 直接 `409`。长会话只取
+> `1000 messages / 2M chars` 的连续尾窗并保留绝对 order，非零尾窗必须有 durable predecessor；数据库已有新版本时拒绝
+> 过期客户端覆盖。handoff assistant 不写 Dexie/旧 snapshot sync，并阻止 pending turn 期间的重叠提交；在 ticket 04 自动恢复
+> 尚未接入前，提示用户稍后刷新页面查看结果，不再暗示页面会自行解锁。
+>
+> 分支验证：Web `513/513`、Server affected `42/42`、ChatMessages `19/19`、Types `46/46`、Web production build/TypeScript
+> 与 Server build 通过；交互修复后的 bridge/provider focused Web `37/37`、目标 ESLint/Prettier、Compose config、Markdown
+> 结构/链接和 diff check 也通过。最终复审发现等待占位无法自行解除的交互误导，已改为明确刷新提示并补回归；修复后无未关闭
+> blocker/P1/P2。Docker 以 Mock/live=false、全部模型 gate=false、仅 bridge=true 启动，
+> server/worker healthy。保留的 PostgreSQL volume 缺少 `20260825090000_chat_turn_state_machine`，首次验收失败后只执行
+> `prisma migrate deploy` 补迁移，没有 reset/删表/清卷；成功重跑得到唯一 Turn/Job terminal success、requested/completed
+> Outbox success 和 Redis `started/delta/completed` 回放。
+>
+> 可见浏览器确认首轮兼容、第二轮 handoff、重叠提交阻止和刷新后 PostgreSQL 权威回答恢复。一个合成账号及其级联数据在验收后
+> 精确清理为 0；浏览器窗口保留。未查看凭据值、未调用 DeepSeek/Qwen/其他 Provider、未产生真实模型费用，也未清理 Docker
+> 容器、镜像、cache、volume、Redis 或 MinIO。证据等级为 `implemented + mock/static validated + Mock 产品链路验收`；浏览器
+> status/SSE/replay、全链路 ledger 与真实模型 Worker 仍待 ticket 04-06。详细记录见
+> `docs/acceptance/phase-6-chat-turn-api-bridge.md`。功能提交、merge SHA、远程 parity 与 merged-main 复验在 Git 收口后补录。
+>
 > 2026-09-04 — ChatTurn Web enqueue adapter ticket 02：
 >
 > 从最新已推送 `main=ef74c4ac` 创建普通分支 `drb/chat-turn-web-enqueue-adapter`。新增 Web typed adapter，将 authenticated

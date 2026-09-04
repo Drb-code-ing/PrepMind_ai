@@ -9,11 +9,12 @@ import type {
   AgentTraceRealtimePrepareRequest,
   AgentTraceRealtimeStartRequest,
 } from '@repo/types/api/agent-trace';
-import { apiClient } from '@/lib/api-client';
+import { ApiClientError, apiClient } from '@/lib/api-client';
 import { createMockChatText } from '@/lib/ai-usage-guard';
 import { createAgentTraceApi } from '@/lib/agent-trace-api';
 import { buildChatAgentTracePayload } from '@/lib/agent-trace-payload';
 import { parseChatApiRequestBody, shouldSearchKnowledgeForChat } from '@/lib/chat-api-policy';
+import { createChatMessageApi } from '@/lib/chat-message-api';
 import {
   readCanonicalChatBearerToken,
   resolveCanonicalChatAgentAccess,
@@ -27,6 +28,13 @@ import {
   runChatContextPreparation,
 } from '@/lib/chat-context-orchestration';
 import { verifyKnowledgeChunksForChat } from '@/lib/chat-rag-context';
+import {
+  admitChatTurnBridge,
+  resolveChatTurnBridgeConfig,
+  resolveChatTurnBridgeDecision,
+} from '@/lib/chat-turn-bridge';
+import { createChatTurnHandoffResponse } from '@/lib/chat-turn-handoff-response';
+import { chatTurnApi } from '@/lib/chat-turn-api';
 import { createChatFinalResponseRuntimeV1 } from '@/lib/chat-final-response-runtime';
 import { createFinalResponseDataStreamAdapterV1 } from '@/lib/final-response-data-stream-adapter';
 import {
@@ -60,6 +68,7 @@ import {
 const AGENT_TRACE_TIMEOUT_MS = 800;
 const CHAT_REQUEST_DEADLINE_MS = 120_000;
 const agentTraceApi = createAgentTraceApi(apiClient);
+const chatMessageApi = createChatMessageApi(apiClient);
 
 const CHAT_ERROR_MESSAGE = 'AI 服务暂时不可用，请检查 API Key、模型配置或稍后重试。';
 
@@ -274,6 +283,44 @@ function createAnonymousMockChatResponse(input: {
   });
 }
 
+function createChatTurnBridgeFailureResponse(error: unknown) {
+  if (error instanceof ApiClientError) {
+    const status =
+      error.code === 'REQUEST_ABORTED'
+        ? 499
+        : error.status === 0
+          ? 503
+          : error.status >= 400 && error.status <= 599
+            ? error.status
+            : 500;
+    const message =
+      status === 401
+        ? '登录状态已失效，请重新登录'
+        : status === 403 || status === 404
+          ? '聊天会话权限或状态已变化，请刷新后重试'
+          : status === 409
+            ? '聊天消息已发生变化，请刷新后重试'
+            : status === 499
+              ? '请求已取消'
+              : '后台回答暂时无法入队，请稍后重试';
+    return Response.json(
+      { error: message },
+      {
+        status,
+        headers: { 'x-prepmind-chat-turn-path': 'turn-backed-rejected' },
+      },
+    );
+  }
+
+  return Response.json(
+    { error: '后台回答暂时无法入队，请稍后重试' },
+    {
+      status: 500,
+      headers: { 'x-prepmind-chat-turn-path': 'turn-backed-rejected' },
+    },
+  );
+}
+
 export async function POST(req: Request) {
   const requestScope = createRequestAbortScopeV1(req.signal);
   let responseOwnsRequestScope = false;
@@ -287,7 +334,8 @@ export async function POST(req: Request) {
       return Response.json({ error: parsedRequest.error }, { status: parsedRequest.status });
     }
 
-    const { messages, activeContext, accessToken, conversationId } = parsedRequest.data;
+    const { messages, turnInputMessages, activeContext, accessToken, conversationId } =
+      parsedRequest.data;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return Response.json({ error: '消息列表不能为空' }, { status: 400 });
@@ -345,14 +393,55 @@ export async function POST(req: Request) {
       return response;
     }
 
-    if (!providerStatus.configured) {
-      return Response.json({ error: providerStatus.message }, { status: 503 });
-    }
     if (canonicalAccessToken === null) {
       return Response.json(
         { error: 'Chat authorization context is unavailable.' },
         { status: 500 },
       );
+    }
+
+    const chatTurnBridgeDecision = resolveChatTurnBridgeDecision({
+      config: resolveChatTurnBridgeConfig(process.env),
+      conversationId,
+      messages: turnInputMessages,
+    });
+    if (chatTurnBridgeDecision.kind === 'reject') {
+      return Response.json(
+        { error: '聊天消息状态无效，请刷新后重试' },
+        {
+          status: 400,
+          headers: { 'x-prepmind-chat-turn-path': 'turn-backed-rejected' },
+        },
+      );
+    }
+    if (chatTurnBridgeDecision.kind === 'enqueue') {
+      try {
+        const handoff = await admitChatTurnBridge(
+          {
+            ownerId: executionContext.principal.ownerId,
+            accessToken: canonicalAccessToken,
+            decision: chatTurnBridgeDecision,
+            signal: executionContext.signal,
+          },
+          {
+            prepareMessages: (token, request, options) =>
+              chatMessageApi.prepareForTurn(token, request, options),
+            enqueueTurn: (token, request, options) => chatTurnApi.enqueue(token, request, options),
+          },
+        );
+        const response = bindResponseBodyCancellationV1(
+          createChatTurnHandoffResponse(handoff),
+          requestScope,
+        );
+        responseOwnsRequestScope = true;
+        return response;
+      } catch (error) {
+        return createChatTurnBridgeFailureResponse(error);
+      }
+    }
+
+    if (!providerStatus.configured) {
+      return Response.json({ error: providerStatus.message }, { status: 503 });
     }
 
     traceStartPayload = buildRealtimeChatTraceStartV1({

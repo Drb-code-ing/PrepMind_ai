@@ -132,8 +132,13 @@ bun run dev:server
 ```powershell
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker up -d --build `
   postgres redis minio minio-init server worker web admin
+docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker exec server `
+  sh -lc "cd /app/packages/database && bun prisma migrate deploy"
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker ps
 ```
+
+`migrate deploy` 只应用仓库中尚未执行的增量迁移，不得改成 `migrate reset`。保留旧 volume 启动新代码时必须先执行；若迁移发生在
+`server/worker` 已启动之后，再用 `docker compose ... restart server worker` 让长驻进程重新建立干净连接。
 
 `worker` healthcheck 使用容器内的 `bun apps/server/dist/scripts/worker-readiness.js`。查看状态和日志：
 
@@ -159,8 +164,18 @@ AI_ENABLE_LIVE_CALLS=false
 包括 Router、KnowledgeVerifier、Tutor、Retriever query rewrite、FinalResponse、Review、Planner、KnowledgeDedup 和
 KnowledgeOrganizer；具体变量和预算见 [`phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)。
 
-`/api/chat` 的产品顺序为认证/owner -> Router/Tutor -> Retriever（可选 rewrite）-> KnowledgeVerifier -> 本地 evidence
-projector -> FinalResponse stream。模型只产生 bounded candidate；owner、权限、业务事实、写命令和最终安全边界由本地代码掌握。
+`/api/chat` 先完成认证/owner 绑定，再按 bridge gate 分流：
+
+```text
+PREPMIND_CHAT_TURN_BRIDGE_ENABLED=false
+  -> Router/Tutor -> Retriever -> KnowledgeVerifier -> FinalResponse stream
+
+PREPMIND_CHAT_TURN_BRIDGE_ENABLED=true + conversation ready
+  -> POST /chat-messages/prepare -> POST /chat-turns -> 202 handoff
+```
+
+首轮没有 conversation id 时仍走兼容路径以建立会话。bridge 开启后无效消息窗口或 admission 失败会 fail-closed，不静默回退同步
+Provider。模型只产生 bounded candidate；owner、权限、业务事实、写命令和最终安全边界由本地代码掌握。
 
 Chat response worker 当前是 `deterministic-worker-v1`，用于验证 claim、幂等、重试和 durable terminal commit，不要把它说成真实模型。
 详见 [`phase-6-chat-response-worker.md`](acceptance/phase-6-chat-response-worker.md)。
@@ -173,8 +188,10 @@ GET /chat-turns/:turnId/events?cursor=<redis-stream-id>&limit=100
 ```
 
 事件回放是 bounded Redis Stream（默认 `256` 条、`512 KiB`、`24 h` TTL）。`transport=unavailable` 或 `cursorState=expired` 时，
-客户端必须读取第一个状态接口；PostgreSQL 的 turn/assistant response 才是权威。当前 `/api/chat` 尚未调用这两个入口，浏览器也未
-切换到 turn-backed/SSE。实现和 focused 证据见 [`phase-6-chat-stream-replay.md`](acceptance/phase-6-chat-stream-replay.md)。
+客户端必须读取第一个状态接口；PostgreSQL 的 turn/assistant response 才是权威。当前 `/api/chat` 已返回 turn handoff，但浏览器尚未
+主动调用这两个入口或接入 SSE。实现和 focused 证据见
+[`phase-6-chat-stream-replay.md`](acceptance/phase-6-chat-stream-replay.md) 与
+[`phase-6-chat-turn-api-bridge.md`](acceptance/phase-6-chat-turn-api-bridge.md)。
 
 ## 7. 常用验证
 
@@ -212,15 +229,21 @@ bun --filter @repo/server test -- --runInBand chat-turns
 bun --filter @repo/server test -- --runInBand config/swagger.spec.ts
 ```
 
-ChatTurn Web adapter focused 回归（不需要 Docker/API/Provider）：
+ChatTurn Web adapter 与 product bridge focused 回归（不需要 Provider）：
 
 ```powershell
-node --experimental-transform-types --test apps/web/src/lib/api-client.test.mts apps/web/src/lib/chat-turn-api.test.mts
-bun --cwd apps/web eslint src/lib/api-client.ts src/lib/api-client.test.mts src/lib/chat-turn-api.ts src/lib/chat-turn-api.test.mts
+node --experimental-transform-types --test `
+  apps/web/src/lib/api-client.test.mts `
+  apps/web/src/lib/chat-turn-api.test.mts `
+  apps/web/src/lib/chat-message-api.test.mts `
+  apps/web/src/lib/chat-turn-bridge.test.mts `
+  apps/web/src/lib/chat-turn-handoff-response.test.mts `
+  apps/web/src/lib/chat-turn-handoff.test.mts
+bun --filter @repo/server test -- --runInBand chat-messages
 ```
 
-该 adapter 目前没有接入 `/api/chat`，所以 focused 通过只证明 bounded request、严格 `202`、snapshot compatibility decision 和
-abort/offline 分类，不证明浏览器产品断线恢复。
+这些回归证明 bounded request、append-only prepare、严格 `202`、handoff 隔离和 abort/offline 分类；仍需 Docker/可见浏览器证明
+真实 `useChat` 消费时序。即使该验收通过，也不证明浏览器已经具备 SSE/断线恢复。
 
 Agent focused eval、controlled-Live 和产品验收只能运行对应 acceptance 文档明确的入口；历史一次性授权不可复用。
 

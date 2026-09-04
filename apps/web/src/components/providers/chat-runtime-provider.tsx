@@ -14,6 +14,7 @@ import {
   type SetStateAction,
 } from 'react';
 import { useChat } from '@ai-sdk/react';
+import type { JSONValue } from 'ai';
 
 import { useChatMessages, useSyncChatMessages } from '@/hooks/use-chat-messages';
 import { ApiClientError } from '@/lib/api-client';
@@ -28,6 +29,7 @@ import {
 import type { ActiveStudyContext } from '@/lib/chat-context';
 import { createChatRuntimeRequestBodyPreparer } from '@/lib/chat-runtime-request';
 import { beginChatServerSync, buildChatSyncSignature } from '@/lib/chat-sync';
+import { hasPendingChatTurnHandoff, omitChatTurnHandoffMessages } from '@/lib/chat-turn-handoff';
 import {
   createConversationStateCache,
   createConversationStateRuntimeBridge,
@@ -46,6 +48,7 @@ type RuntimeMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  annotations?: JSONValue[];
 };
 
 type ChatRuntimeContextValue = {
@@ -128,7 +131,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     messages,
     setMessages,
     handleInputChange: baseHandleInputChange,
-    handleSubmit,
+    handleSubmit: baseHandleSubmit,
     input,
     setInput: setChatInput,
     isLoading,
@@ -177,7 +180,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const toStoredMessages = useCallback(
     (runtimeMessages: RuntimeMessage[]): StoredMessage[] => {
       const ts = chatTimestampsRef.current;
-      return runtimeMessages.map((message, index) => ({
+      return omitChatTurnHandoffMessages(runtimeMessages).map((message, index) => ({
         id: message.id,
         userId: userId ?? '',
         role: message.role,
@@ -258,22 +261,20 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     const expectedUserId = userId;
-    void conversationStateRuntimeBridge
-      .changeIdentity(userId)
-      .then((restoredState) => {
-        if (
-          !restoredState ||
-          !shouldApplyConversationStateRestore({
-            cancelled,
-            expectedUserId,
-            currentUserId: userIdRef.current,
-            restored: restoredState,
-          })
-        ) {
-          return;
-        }
-        setConversationId(restoredState.conversationId);
-      });
+    void conversationStateRuntimeBridge.changeIdentity(userId).then((restoredState) => {
+      if (
+        !restoredState ||
+        !shouldApplyConversationStateRestore({
+          cancelled,
+          expectedUserId,
+          currentUserId: userIdRef.current,
+          restored: restoredState,
+        })
+      ) {
+        return;
+      }
+      setConversationId(restoredState.conversationId);
+    });
 
     if (!userId) {
       serverMessagesHydratedRef.current = false;
@@ -418,6 +419,13 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     });
     const syncTimer = window.setTimeout(() => {
       const runtimeMessages = messagesRef.current as RuntimeMessage[];
+      if (hasPendingChatTurnHandoff(runtimeMessages)) {
+        lastEmptyAssistantUserMessageIdRef.current = '';
+        streamStartedRef.current = false;
+        const storedMessages = toStoredMessages(runtimeMessages);
+        if (storedMessages.length > 0) void saveChatToDb(storedMessages);
+        return;
+      }
       const completionGuard = getChatCompletionGuard({
         messages: runtimeMessages,
         isLoading: false,
@@ -530,6 +538,18 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       setInputDraft(value);
     },
     [setChatInput, setInputDraft],
+  );
+
+  const handleSubmit = useCallback<ReturnType<typeof useChat>['handleSubmit']>(
+    (event, requestOptions) => {
+      if (hasPendingChatTurnHandoff(messagesRef.current as RuntimeMessage[])) {
+        event?.preventDefault?.();
+        setChatError('上一条回答已交给后台处理，请稍后刷新页面查看结果，再继续发送。');
+        return;
+      }
+      baseHandleSubmit(event, requestOptions);
+    },
+    [baseHandleSubmit],
   );
 
   const value = useMemo<ChatRuntimeContextValue>(

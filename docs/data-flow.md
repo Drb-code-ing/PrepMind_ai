@@ -4,39 +4,42 @@
 > [`docs/acceptance/phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)；历史 controlled-Live 段落只读，
 > 不构成新的运行授权。
 
-## 当前 ChatTurn Web adapter 与 enqueue admission（2026-09-04）
+## 当前 ChatTurn 产品 bridge（2026-09-05）
 
-Web adapter 已能从认证 owner 的已持久化消息生成稳定、bounded admission request；当前产品 `/api/chat` 尚未调用这条 seam：
+产品 `/api/chat` 已在默认关闭的 gate 后接入 durable admission：
 
 ```text
-authenticated owner + persisted StoredMessage[]
-  -> prepareChatTurnSubmission
-       ├─ missing conversation / not persisted: explicit snapshot-sync compatibility path
-       └─ ready: canonical order + Web Crypto SHA-256
+authenticated /api/chat
+  -> canonical /auth/me + owner/bearer binding
+  -> PREPMIND_CHAT_TURN_BRIDGE_ENABLED
+       |- false: existing synchronous Agent/Provider path
+       |- conversation missing: first-turn compatibility path
+       `- true + conversation ready:
+            bounded continuous tail <= 1000 messages / <= 2M chars
+            -> POST /chat-messages/prepare
+                 JWT owner + append-only Serializable persistence
+            -> canonical SHA-256 + stable web-chat-turn-v1 request id
             -> { conversationId, clientRequestId, inputHash,
                  inputMessageIds, budgetPolicyVersion }
-            -> POST /chat-turns (JWT, expected 202)
-  -> strict shared request schema
-  -> owner from AuthenticatedUser (body userId is rejected)
-  -> ChatTurnEnqueueService
-       Serializable transaction:
-         ChatTurn(QUEUED)
-         BackgroundJob(QUEUED)
-         chat.response.requested Outbox
-  -> 202 safe turn/job projection
-  -> later Outbox -> BullMQ -> Worker
+            -> POST /chat-turns (expected 202)
+                 ChatTurn(QUEUED)
+                 BackgroundJob(QUEUED)
+                 chat.response.requested Outbox
+            -> prepmind-chat-turn-handoff-v1 annotation
+            -> later Outbox -> BullMQ -> Worker
 ```
 
-正文只在浏览器内存中参与 `chat-turn-input-v1` hash，不进入 enqueue body。`web-chat-turn-v1` request id 绑定 owner、conversation、
-input hash、message ids 和预算版本；相同请求的网络/短暂 HTTP 重试可复用 id，abort、4xx、owner/session/schema/conflict 不重试。
-`(userId, clientRequestId)` 继续保证服务端 owner-scoped 幂等，响应不携带正文、prompt、hash、Outbox payload、凭据或 Provider 原文。
+正文只参与浏览器/服务端 prepare 的 canonical 校验和本地 hash，不进入 enqueue body。Worker 收到的是 owner-bound 引用，随后从
+PostgreSQL 加载正文。相同请求的短暂网络重试可复用 id；abort、4xx、owner/session/schema/conflict 不重试。bridge 开启后，无效
+message identity/window、prepare 或 enqueue 失败都 fail-closed，不静默回到旧 Provider，避免双写和两份回答。
 
-Web adapter 和 admission 目前都属于 `implemented` + `mock/static validated`。`ChatRuntimeProvider` 仍使用 `/api/chat` 与完成后的
-`/chat-messages/sync`，ticket 03 才做产品切换；浏览器 replay 仍待 ticket 04。
+`202` 临时 handoff 不写 Dexie，也不进入旧 `/chat-messages/sync`，并阻止重叠发送。当前浏览器还不会主动消费 turn
+status/events；刷新后可从 PostgreSQL 恢复已完成回答，但自动 SSE/replay、cursor 过期和断线恢复仍待 ticket 04。实现和 Mock
+产品验收见 [`phase-6-chat-turn-api-bridge.md`](acceptance/phase-6-chat-turn-api-bridge.md)。
 
 ## 当前 Chat Stream bounded replay flow（2026-09-02）
 
-本 checkpoint 已实现传输层，但尚未把现有 `/api/chat` 切换为 turn-backed 入口：
+本 checkpoint 已实现传输层，ticket 03 已让 `/api/chat` 产生 turn handoff；浏览器消费仍未接入：
 
 ```text
 POST /chat-turns admission

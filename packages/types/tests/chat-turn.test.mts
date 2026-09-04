@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import {
+  chatTurnHandoffAnnotationSchema,
   chatTurnEnqueueRequestSchema,
   chatTurnEnqueueResponseSchema,
 } from '../src/api/chat-turn.ts';
@@ -56,6 +57,16 @@ assert.throws(() =>
     turn: { ...response.turn, inputHash: request.inputHash },
   }),
 );
+
+const handoff = chatTurnHandoffAnnotationSchema.parse({
+  type: 'prepmind-chat-turn-handoff-v1',
+  turnId: 'turn_1',
+  conversationId: 'conversation_1',
+  status: 'QUEUED',
+  backgroundJobId: 'job_1',
+});
+assert.equal(handoff.turnId, 'turn_1');
+assert.throws(() => chatTurnHandoffAnnotationSchema.parse({ ...handoff, prompt: 'must not pass' }));
 assert.throws(() =>
   chatTurnEnqueueResponseSchema.parse({
     ...response,

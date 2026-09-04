@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import * as chatRuntimeRequest from '../../lib/chat-runtime-request.ts';
@@ -44,4 +45,18 @@ test('reads the current runtime context for every prepared chat request', () => 
   assert.equal(nextBody.conversationId, 'conv_2');
   assert.equal(nextBody.accessToken, 'token_2');
   assert.deepEqual(nextBody.activeContext, activeContext);
+});
+
+test('keeps a ChatTurn handoff placeholder out of snapshot sync and blocks overlapping submit', async () => {
+  const source = await readFile(new URL('./chat-runtime-provider.tsx', import.meta.url), 'utf8');
+  const pendingIndex = source.indexOf('if (hasPendingChatTurnHandoff(runtimeMessages))');
+  const completionIndex = source.indexOf('const completionGuard = getChatCompletionGuard');
+
+  assert.ok(pendingIndex >= 0);
+  assert.ok(completionIndex > pendingIndex);
+  assert.match(source, /omitChatTurnHandoffMessages\(runtimeMessages\)\.map/u);
+  assert.match(
+    source,
+    /hasPendingChatTurnHandoff\([\s\S]*?messagesRef\.current[\s\S]*?setChatError\('上一条回答已交给后台处理，请稍后刷新页面查看结果/u,
+  );
 });

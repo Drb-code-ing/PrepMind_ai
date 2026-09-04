@@ -19,12 +19,12 @@
 
 4. 不把旧的回执、Mock 结果或历史分支推断成当前状态；以最新 acceptance 文档和可复现命令为准。
 
-## 2. 当前项目状态（2026-09-02）
+## 2. 当前项目状态（2026-09-05）
 
 - 2026-08-31 文档分层整理已合并并推送；开始新任务前始终用 `git rev-parse main` 与 `git rev-parse origin/main` 核对，不要复制历史 SHA。
-- Phase 6 Agent 运行时总审计仍是当前主线。最新原子任务已完成 ChatTurn/BackgroundJob/Outbox 到 BullMQ 的 deterministic Worker
-  durable baseline，并实现 `chat-turn-stream-v1`、Redis bounded replay 和 owner-bound 状态查询；它不是真实模型 Worker，也未切换
-  `/api/chat` turn-backed/SSE 产品路径。
+- Phase 6 Agent 运行时总审计仍是当前主线。最新原子任务已在 deterministic Worker、bounded replay、enqueue API/Web adapter
+  之上接通 authenticated `/api/chat -> message prepare -> durable enqueue -> 202 handoff`；浏览器 status/SSE replay、全链路 ledger
+  与真实模型 Worker 仍未完成。
 - `packages/agent/src/graph/index.ts` 是受治理的 catalog descriptor，不是执行器；产品 Chat 编排仍在 Web/API composition。
 - Tool-Using Orchestrator 尚未实现。Review/Planner、Knowledge agents、Router/Verifier、Tutor、Retriever/FinalResponse
   的真实模型产品证据必须按矩阵逐项确认，不能用一条 Chat smoke 代替。
@@ -64,11 +64,15 @@
 
 ## 5. 必须保护的用户文件
 
-以下三个文件当前含有用户预先修改，除非用户明确指定，本任务不得读取后改写、暂存或提交：
+以下七个文件当前含有用户预先修改，除非用户明确指定，本任务不得读取后改写、暂存或提交：
 
+- `apps/server/src/review-agent/review-agent.controller.ts`
+- `apps/server/src/review-agent/review-agent.service.spec.ts`
+- `apps/server/src/review-agent/review-agent.service.ts`
 - `apps/server/src/wrong-question-organizer/wrong-question-organizer-agent-trace.ts`
 - `apps/server/src/wrong-question-organizer/wrong-question-organizer.service.spec.ts`
 - `apps/server/src/wrong-question-organizer/wrong-question-organizer.service.ts`
+- `docs/agents/triage-labels.md`
 
 提交和合并前后都要确认它们仍在工作区、没有进入 staged/commit。
 

@@ -70,6 +70,36 @@ test('Chat route propagates one execution context through retrieval and FinalRes
   assert.doesNotMatch(source, /streamText\(/u);
 });
 
+test('Chat route admits an authenticated turn before the legacy Provider path', async () => {
+  const source = await readFile(new URL('./route.ts', import.meta.url), 'utf8');
+  const accessIndex = source.indexOf(
+    'const canonicalAccess = await resolveCanonicalChatAgentAccess',
+  );
+  const anonymousIndex = source.indexOf("if (executionContext.principal.kind === 'anonymous')");
+  const bridgeDecisionIndex = source.indexOf(
+    'const chatTurnBridgeDecision = resolveChatTurnBridgeDecision',
+  );
+  const admissionIndex = source.indexOf('const handoff = await admitChatTurnBridge');
+  const bridgeRejectIndex = source.indexOf("if (chatTurnBridgeDecision.kind === 'reject')");
+  const providerConfiguredIndex = source.indexOf('if (!providerStatus.configured)');
+  const traceIndex = source.indexOf('traceStartPayload = buildRealtimeChatTraceStartV1');
+
+  assert.ok(accessIndex >= 0);
+  assert.ok(anonymousIndex > accessIndex);
+  assert.ok(bridgeDecisionIndex > anonymousIndex);
+  assert.ok(bridgeRejectIndex > bridgeDecisionIndex);
+  assert.ok(admissionIndex > bridgeDecisionIndex);
+  assert.ok(providerConfiguredIndex > admissionIndex);
+  assert.ok(traceIndex > providerConfiguredIndex);
+  assert.match(
+    source,
+    /prepareMessages:[\s\S]*?chatMessageApi\.prepareForTurn[\s\S]*?enqueueTurn:[\s\S]*?chatTurnApi\.enqueue/u,
+  );
+  assert.match(source, /createChatTurnHandoffResponse\(handoff\)/u);
+  assert.match(source, /chatTurnBridgeDecision\.kind === 'reject'[\s\S]*?status:\s*400/u);
+  assert.match(source, /turn-backed-rejected/u);
+});
+
 test('Chat route starts Trace before every Agent runtime, prepares before stream, and finalizes after terminal', async () => {
   const source = await readFile(new URL('./route.ts', import.meta.url), 'utf8');
   const startIndex = source.indexOf('const traceStarted = await startAgentTraceSafely');

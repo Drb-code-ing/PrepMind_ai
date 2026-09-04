@@ -471,6 +471,12 @@ describe('Docker Compose worker readiness healthcheck', () => {
     expect(webService).toContain(
       'AI_ENABLE_LIVE_CALLS: ${AI_ENABLE_LIVE_CALLS:-false}',
     );
+    expect(webService).toContain(
+      'PREPMIND_CHAT_TURN_BRIDGE_ENABLED: ${PREPMIND_CHAT_TURN_BRIDGE_ENABLED:-false}',
+    );
+    expect(webService).toContain(
+      'PREPMIND_CHAT_TURN_BUDGET_POLICY_VERSION: ${PREPMIND_CHAT_TURN_BUDGET_POLICY_VERSION:-chat-budget-v1}',
+    );
     expect(webService).toContain('AI_MODEL: ${AI_MODEL:-deepseek-v4-flash}');
     expect(webService).not.toContain('AI_DEV_MODE_SWITCH_ENABLED: ${');
     expect(webService).toContain(

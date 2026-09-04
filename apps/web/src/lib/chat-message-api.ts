@@ -1,9 +1,12 @@
 import {
   chatMessagesResponseSchema,
+  prepareChatMessagesRequestSchema,
+  prepareChatMessagesResponseSchema,
   syncChatMessagesRequestSchema,
   type ChatMessageResponse,
   type ChatMessageRole,
   type ListChatMessagesQuery,
+  type PrepareChatMessagesRequest,
   type SyncChatMessagesRequest,
 } from '@repo/types/api/chat-message';
 import type { ConversationStateResponse } from '@repo/types/api/conversation-context';
@@ -15,7 +18,11 @@ type ApiClient = {
   post: <T>(
     path: string,
     body?: unknown,
-    options?: { accessToken?: string | null },
+    options?: {
+      accessToken?: string | null;
+      expectedStatus?: number | readonly number[];
+      signal?: AbortSignal | null;
+    },
   ) => Promise<T>;
   delete: <T>(path: string, options?: { accessToken?: string | null }) => Promise<T>;
 };
@@ -28,6 +35,11 @@ export type LocalChatMessagesResult = {
   conversationId: string | null;
   messages: StoredMessage[];
   state: ConversationStateResponse | null;
+};
+
+export type PreparedChatMessagesResult = {
+  conversationId: string;
+  messages: StoredMessage[];
 };
 
 export function createChatMessageApi(client: ApiClient) {
@@ -68,6 +80,26 @@ export function createChatMessageApi(client: ApiClient) {
       };
     },
 
+    async prepareForTurn(
+      accessToken: string,
+      input: PrepareChatMessagesRequest,
+      options: { signal?: AbortSignal | null } = {},
+    ): Promise<PreparedChatMessagesResult> {
+      const request = prepareChatMessagesRequestSchema.parse(input);
+      const response = prepareChatMessagesResponseSchema.parse(
+        await client.post<unknown>('/chat-messages/prepare', request, {
+          accessToken,
+          expectedStatus: 200,
+          ...(options.signal !== undefined ? { signal: options.signal } : {}),
+        }),
+      );
+
+      return {
+        conversationId: response.conversationId,
+        messages: response.messages.map(mapChatMessageResponseToLocalRecord),
+      };
+    },
+
     async clear(accessToken: string, conversationId?: string | null) {
       return client.delete<{ ok: true }>(
         `/chat-messages${toQueryString({ conversationId: conversationId ?? undefined })}`,
@@ -79,9 +111,7 @@ export function createChatMessageApi(client: ApiClient) {
   };
 }
 
-export function mapChatMessageResponseToLocalRecord(
-  response: ChatMessageResponse,
-): StoredMessage {
+export function mapChatMessageResponseToLocalRecord(response: ChatMessageResponse): StoredMessage {
   return {
     id: response.id,
     userId: response.userId,
