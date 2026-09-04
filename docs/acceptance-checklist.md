@@ -31,7 +31,8 @@
 - [x] `POST /chat-turns` 只复用 `ChatTurnEnqueueService` 的 Turn/BackgroundJob/Outbox 同事务，不直接调用 Provider/队列
 - [x] ChatTurn enqueue controller + Swagger focused `13/13`、ChatTurn focused `52/52`、types `44/44`、Server build/目标 ESLint/Prettier
 - [x] ticket 01 已推送并以 `--no-ff` 合并 `main=582f2aef`；merged-main focused/static 回归与远程 parity 通过
-- [ ] Web enqueue adapter 消费 `POST /chat-turns`（ticket 02）
+- [x] Web enqueue adapter：owner-bound canonical hash/request id、bounded body、strict safe `202` response（ticket 02）
+- [x] ticket 02 显式 snapshot-sync compatibility decision；abort 不重试，network/408/425/429/5xx 才可复用稳定 request
 - [ ] `/api/chat` 消费 Stream/SSE 的端到端断连恢复（当前仅有独立 replay API）
 - [ ] `/api/chat` turn-backed 切换与旧 snapshot sync 兼容窗口
 - [ ] 全链路 owner capability 与 budget ledger
@@ -41,7 +42,8 @@
 - [x] 本阶段合并 main、推送远程并在 merged-main 复验（feature=`04ef0f6f`、merge=`d034d3be`、closeout=`c3876b2c`）
 
 权威矩阵：`docs/acceptance/phase-6-agent-runtime-audit.md`。入队 ticket 的详细证据：
-`docs/acceptance/phase-6-chat-turn-enqueue-api.md`。未完成项不得因 mock/static 通过而勾选完成。
+`docs/acceptance/phase-6-chat-turn-enqueue-api.md` 与
+`docs/acceptance/phase-6-chat-turn-web-enqueue-adapter.md`。未完成项不得因 mock/static 通过而勾选完成。
 
 这份文档是日常开发、阶段收尾、面试复盘前的统一入口。它不替代
 `docs/dev-start.md`、`docs/ai-behavior-acceptance.md` 和各阶段设计文档，而是回答一个更直接的问题：

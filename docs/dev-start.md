@@ -212,6 +212,16 @@ bun --filter @repo/server test -- --runInBand chat-turns
 bun --filter @repo/server test -- --runInBand config/swagger.spec.ts
 ```
 
+ChatTurn Web adapter focused 回归（不需要 Docker/API/Provider）：
+
+```powershell
+node --experimental-transform-types --test apps/web/src/lib/api-client.test.mts apps/web/src/lib/chat-turn-api.test.mts
+bun --cwd apps/web eslint src/lib/api-client.ts src/lib/api-client.test.mts src/lib/chat-turn-api.ts src/lib/chat-turn-api.test.mts
+```
+
+该 adapter 目前没有接入 `/api/chat`，所以 focused 通过只证明 bounded request、严格 `202`、snapshot compatibility decision 和
+abort/offline 分类，不证明浏览器产品断线恢复。
+
 Agent focused eval、controlled-Live 和产品验收只能运行对应 acceptance 文档明确的入口；历史一次性授权不可复用。
 
 ## 8. Prisma 与观测
