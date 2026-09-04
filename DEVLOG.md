@@ -6749,3 +6749,9 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 > 2026-08-14 - Phase 6.9.8 SR5 v9 evidence namespace recovery started
 >
 > The authorized v8 entrypoint failed at source admission with `providerCalls=0 / credentialReads=0 / formalEvidence=0`. CodeGraph/FastCtx traced the failure to an unversioned formal-evidence regex and path family that treated sealed v2 files as current evidence. v9 versions marker, journal, report, recovery claim, temporary report, and dispatch lock paths; a new regression proves legacy sealed files are ignored while v9 leftovers still fail closed. Focused passed `67/67` (`148 expect()`), Agent full `1657/1657` (`25474 expect()`, `203 files`), and typecheck/lint/diff check passed. No old artifact is moved, deleted, or rewritten. Next gates are feature commit, `--no-ff` merge/push, merged-main zero-provider replay, v9 tag parity, then fresh V9 authorization.
+
+## 2026-09-04 — Matt Pocock engineering skills 仓库配置
+
+- 由于 `gh` CLI 不可用，本仓库选择本地 Markdown issue tracker，新增 `docs/agents/issue-tracker.md`、`triage-labels.md` 和 `domain.md`，并在 `CLAUDE.md` 增加 `## Agent skills` 兼容入口。
+- 后续工程流程按 `grill-with-docs -> to-spec -> to-tickets -> implement/TDD -> code-review` 推进；ticket 存放于 `.scratch/<feature>/issues/`，不创建平行外部 tracker。
+- 本次仅配置文档，不读取 `.env`，不调用 DeepSeek/Qwen，不启动或清理 Docker，不修改用户既有 dirty 文件，也没有业务数据变化。证据等级：`implemented`（workflow configuration）。
