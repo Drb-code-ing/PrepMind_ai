@@ -17,7 +17,7 @@ baseline，并补齐 `chat-turn-stream-v1`、Redis bounded replay 和 owner-boun
 - `packages/agent/src/graph/index.ts` 是 `catalog_only` 治理目录，不是执行器；产品 Chat 编排在 Web/API composition。
 - Tool-Using Orchestrator 尚未实现；MemoryAgent 仍是确定性候选策略。
 - 历史 controlled-Live 只读且不可重跑；语义质量、产品可用性、billing 和 SLA 分开记录。
-- 认证 `POST /chat-turns` 已提供 durable admission 和安全 `202` 投影；Web 与 `/api/chat` 尚未消费该 seam。
+- 认证 `POST /chat-turns` 已提供 durable admission 和安全 `202` 投影，并已合并到 `main=582f2aef`；Web 与 `/api/chat` 尚未消费该 seam。
 
 ## 阶段总览
 

@@ -19,3 +19,5 @@
   server build and target ESLint/Prettier passed. Full server Jest remains `237 passed / 2 failed / 3 skipped` because of two pre-existing
   environment/tooling failures documented in `docs/acceptance/phase-6-chat-turn-enqueue-api.md`. No credentials, Provider, Docker or business
   data were touched.
+- 2026-09-04: Feature commit `4511d3ee` was pushed and merged with `--no-ff` as `main=582f2aef`; merged-main focused/static checks
+  passed and `main == origin/main`.

@@ -30,6 +30,7 @@
 - [x] ChatTurn enqueue ticket 01：strict shared request/response schema、JWT owner binding、`202 Accepted` 安全投影
 - [x] `POST /chat-turns` 只复用 `ChatTurnEnqueueService` 的 Turn/BackgroundJob/Outbox 同事务，不直接调用 Provider/队列
 - [x] ChatTurn enqueue controller + Swagger focused `13/13`、ChatTurn focused `52/52`、types `44/44`、Server build/目标 ESLint/Prettier
+- [x] ticket 01 已推送并以 `--no-ff` 合并 `main=582f2aef`；merged-main focused/static 回归与远程 parity 通过
 - [ ] Web enqueue adapter 消费 `POST /chat-turns`（ticket 02）
 - [ ] `/api/chat` 消费 Stream/SSE 的端到端断连恢复（当前仅有独立 replay API）
 - [ ] `/api/chat` turn-backed 切换与旧 snapshot sync 兼容窗口

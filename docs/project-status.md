@@ -11,8 +11,8 @@ deterministic Worker durable baseline 上补齐 Chat Stream contract、Redis bou
 
 ## 当前基线
 
-- 文档入口分层整理已合并并推送；2026-09-04 已在普通分支补齐 Chat Stream contract、Redis bounded replay API、
-  deterministic Worker 发布链路和认证 `POST /chat-turns` durable admission seam。开始新任务前用 `git rev-parse main` 与
+- 文档入口分层整理已合并并推送；2026-09-04 的 ticket 01 已从 `main=a8a0697a` 开分支实现并以 `--no-ff` 合并推送为
+  `main=582f2aef`，补齐认证 `POST /chat-turns` durable admission seam。开始新任务前用 `git rev-parse main` 与
   `git rev-parse origin/main` 核对当前主线。
 - 默认运行模式：`AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`，所有组件模型 gate 关闭。
 - 业务事实权威：PostgreSQL；Redis/BullMQ 负责缓存和队列；MinIO 负责对象存储；Dexie 负责本地恢复/离线补偿。

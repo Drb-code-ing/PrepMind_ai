@@ -97,7 +97,8 @@ HTTP request
 3. ~~补齐认证 ChatTurn enqueue HTTP seam。~~ 已完成：`POST /chat-turns` 以 strict shared contract 校验 bounded facts，从 JWT
    取得 owner，复用 `ChatTurnEnqueueService` 的 Turn/BackgroundJob/Outbox 同事务，并返回 `202` 安全投影。Controller + Swagger
    `13/13`、ChatTurn `52/52`、types `44/44`、Server build、目标 ESLint/Prettier 通过；全量 Server Jest 的两个失败仍是既有
-   readiness/integration 环境问题。详见 `docs/acceptance/phase-6-chat-turn-enqueue-api.md`。
+   readiness/integration 环境问题。功能提交 `4511d3ee` 已推送并以 `--no-ff` 合并为 `main=582f2aef`；merged-main
+   focused/static 回归通过且 `main == origin/main`。详见 `docs/acceptance/phase-6-chat-turn-enqueue-api.md`。
 4. 继续完成 Chat 全链路预算与断线 durability。设计 checkpoint、可靠入队、deterministic Worker durable baseline 与 Chat Stream
    bounded replay API 已完成；浏览器/`/api/chat` 产品切换、全链路 ledger 与真实模型 Worker 仍未完成，详见两份 Chat acceptance
    文档。当前新增回归为 Chat Stream 5 suites/110 tests、chat-turns 10 suites/52 tests、enqueue controller + Swagger 13/13、

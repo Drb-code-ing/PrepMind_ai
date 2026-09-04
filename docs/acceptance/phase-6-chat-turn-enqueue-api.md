@@ -1,7 +1,7 @@
 # Phase 6 ChatTurn Enqueue API
 
 更新时间：2026-09-04
-状态：ticket 01 已实现并通过功能分支验证；合并 `main` 的收口结果以本次 Git 回执为准。
+状态：ticket 01 已实现、推送并以 `--no-ff` 合并 `main`；merged-main 复验通过。
 
 ## 1. 目的
 
@@ -97,7 +97,28 @@ operator-audit integration 无法连接 `127.0.0.1:5433`。`@repo/types lint` �
 没有启动、清理或重建 Docker，没有触碰 PostgreSQL/Redis/MinIO 业务数据，也没有创建 controlled-Live 证据。`202` 只证明 durable
 admission，不证明 Worker 已执行、模型已返回或产品 `/api/chat` 已切换。
 
-## 7. 后续
+## 7. Git 与合并回执
+
+```text
+base main: a8a0697a0087e68ae3369dd690bcccfa6b6a4c30
+feature branch: drb/chat-turn-enqueue-api
+feature commit: 4511d3ee9b2602b9f9b8e55d8c04c4a09c229a40
+feature remote: origin/drb/chat-turn-enqueue-api (pushed)
+main merge: 582f2aefc922edee9f31475424e09cbe93c83e42
+main == origin/main: yes
+merged-main controller + Swagger: 13/13 passed
+merged-main @repo/types: 44 tests passed; typecheck passed
+merged-main Server build: passed
+merged-main target ESLint: passed
+merged-main target Prettier (`--end-of-line=crlf`): passed
+merged-main git diff --check: passed
+```
+
+合并后二次复验没有重复调用 Provider。Server 全量 Jest 的既有 `worker-readiness` 退出码断言和本地
+`127.0.0.1:5433` operator-audit integration 仍分别失败；它们不是本 ticket 引入，详见上面的验证说明。工作区中
+用户预先修改的 ReviewAgent、WrongQuestionOrganizer 文件和 `docs/agents/triage-labels.md` 均未暂存或提交。
+
+## 8. 后续
 
 下一张 ticket 是 Web enqueue adapter；之后才按依赖推进 `/api/chat` bridge、浏览器 replay、ChatRunBudget/Trace ledger 和真实模型
 Worker gate。每张 ticket 仍从最新已推送 `main` 开普通分支，并在合并 `main` 后再次复验。

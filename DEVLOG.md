@@ -14,7 +14,10 @@
 > 本轮未读取 `.env`、未调用 DeepSeek/Qwen/其他 Provider、未启动或清理 Docker/PostgreSQL/Redis/MinIO，证据等级为
 > `implemented` + `mock/static validated`；Web adapter、`/api/chat` bridge、真实模型 Worker 和浏览器验收仍未完成。
 >
-> 分支收口：`drb/chat-turn-enqueue-api`；功能提交、远程推送、`main` 合并和 merged-main 复验在本任务收口后回填。
+> 分支收口：从 `main=a8a0697a0087e68ae3369dd690bcccfa6b6a4c30` 创建 `drb/chat-turn-enqueue-api`，功能提交
+> `4511d3ee9b2602b9f9b8e55d8c04c4a09c229a40` 已推送；随后以 `--no-ff` 合并并推送 `main=582f2aefc922edee9f31475424e09cbe93c83e42`。
+> merged-main controller + Swagger `13/13`、types `44/44` + typecheck、Server build、目标 ESLint、CRLF-aware Prettier 和
+> `git diff --check` 再次通过，`main == origin/main`。未启动 Docker/API/browser；用户既有 dirty 文件保持未暂存、未提交。
 
 > 2026-09-02 — Phase 6 Chat Stream contract 与 bounded Redis replay：
 >
