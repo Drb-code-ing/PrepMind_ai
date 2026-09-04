@@ -6755,3 +6755,9 @@ Attempt D 已将 Router 真实 strict success 推进到 15/16，但固定 case `
 - 由于 `gh` CLI 不可用，本仓库选择本地 Markdown issue tracker，新增 `docs/agents/issue-tracker.md`、`triage-labels.md` 和 `domain.md`，并在 `CLAUDE.md` 增加 `## Agent skills` 兼容入口。
 - 后续工程流程按 `grill-with-docs -> to-spec -> to-tickets -> implement/TDD -> code-review` 推进；ticket 存放于 `.scratch/<feature>/issues/`，不创建平行外部 tracker。
 - 本次仅配置文档，不读取 `.env`，不调用 DeepSeek/Qwen，不启动或清理 Docker，不修改用户既有 dirty 文件，也没有业务数据变化。证据等级：`implemented`（workflow configuration）。
+
+## 2026-09-04 — ChatTurn Enqueue API spec 与 tracer-bullet tickets
+
+- 按本地 tracker 约定新增 `.scratch/chat-turn-enqueue-api/spec.md` 与 6 张按依赖排序的垂直 ticket。第一张 ticket 将现有 `ChatTurnEnqueueService` 暴露为认证 `POST /chat-turns`，后续依次覆盖 Web adapter、`/api/chat` bridge、浏览器 replay、预算/Trace ledger 和真实模型 Worker gate。
+- Ticket 01 明确只接收 owner 已持久化消息 id、幂等事实和预算版本；不在 HTTP 入队阶段写 snapshot、调用 BullMQ/Redis/Provider 或暴露 Outbox payload。依赖边界和验收标准已写入 spec，未修改产品代码。
+- 本次未读取 `.env`、未调用 DeepSeek/Qwen、未启动或清理 Docker、未触碰用户既有 dirty 文件。证据等级：`implemented`（spec/ticket planning）。

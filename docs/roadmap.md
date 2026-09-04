@@ -62,10 +62,11 @@ ChatTurn + BackgroundJob + chat.response.requested Outbox
 
 仍需独立任务完成：
 
-1. 将 bounded replay API 接入 SSE/browser，并处理 cursor 过期与状态恢复；
-2. `/api/chat` turn-backed 路径与旧 snapshot sync 兼容窗口；
-3. 全链路 ChatRunBudget ledger、Trace 对账和跨节点上限；
-4. 真实模型 Worker 的独立 gate、usage/cost 和产品 smoke。
+1. 先完成 [`ChatTurn Enqueue API spec`](../.scratch/chat-turn-enqueue-api/spec.md) 的 ticket 01，提供认证 HTTP 入队 seam；
+2. 将 bounded replay API 接入 SSE/browser，并处理 cursor 过期与状态恢复（ticket 04）；
+3. `/api/chat` turn-backed 路径与旧 snapshot sync 兼容窗口（ticket 03）；
+4. 全链路 ChatRunBudget ledger、Trace 对账和跨节点上限（ticket 05）；
+5. 真实模型 Worker 的独立 gate、usage/cost 和产品 smoke（ticket 06）。
 
 ### C. 分层记忆（Phase 6.10）
 
