@@ -46,6 +46,9 @@ model User {
   conversationSummaries      ConversationSummary[]
   conversationStates         ConversationState[]
   chatTurns                  ChatTurn[]
+  chatRunBudgets             ChatRunBudget[]
+  chatRunBudgetReservations  ChatRunBudgetReservation[]
+  chatRunBudgetEvents        ChatRunBudgetEvent[]
 }
 
 model Account {
@@ -427,6 +430,32 @@ enum OutboxEventStatus {
   SUCCEEDED
   FAILED
   DEAD
+}
+
+enum ChatRunBudgetStage {
+  ROUTER
+  TUTOR
+  RETRIEVER
+  VERIFIER
+  FINAL_RESPONSE
+  WORKER
+}
+
+enum ChatRunBudgetReservationStatus {
+  RESERVED
+  DISPATCHED
+  SETTLED
+  RELEASED
+  UNCERTAIN
+}
+
+enum ChatRunBudgetEventType {
+  RESERVED
+  DISPATCHED
+  SETTLED
+  RELEASED
+  UNCERTAIN
+  CANCELLED
 }
 
 enum OperatorAuditAction {
@@ -877,15 +906,100 @@ model ChatTurn {
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  conversation    Conversation @relation(fields: [conversationId, userId], references: [id, userId], onDelete: Cascade)
-  responseMessage ChatMessage? @relation(fields: [responseMessageId, userId], references: [id, userId], onDelete: Restrict)
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation       Conversation               @relation(fields: [conversationId, userId], references: [id, userId], onDelete: Cascade)
+  responseMessage    ChatMessage?               @relation(fields: [responseMessageId, userId], references: [id, userId], onDelete: Restrict)
+  budget             ChatRunBudget?
+  budgetReservations ChatRunBudgetReservation[]
+  budgetEvents       ChatRunBudgetEvent[]
 
   @@unique([id, userId])
   @@unique([userId, clientRequestId])
   @@unique([responseMessageId, userId])
   @@index([userId, conversationId, createdAt])
   @@index([userId, status, createdAt])
+}
+
+model ChatRunBudget {
+  id               String    @id @default(cuid())
+  userId           String
+  turnId           String
+  policyVersion    String    @db.VarChar(80)
+  maxCalls         Int
+  maxInputTokens   Int
+  maxOutputTokens  Int
+  maxCostMicros    Int
+  usedCalls        Int       @default(0)
+  usedInputTokens  Int       @default(0)
+  usedOutputTokens Int       @default(0)
+  usedCostMicros   Int       @default(0)
+  heldCalls        Int       @default(0)
+  heldInputTokens  Int       @default(0)
+  heldOutputTokens Int       @default(0)
+  heldCostMicros   Int       @default(0)
+  cancelledAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user         User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  turn         ChatTurn                   @relation(fields: [turnId, userId], references: [id, userId], onDelete: Cascade)
+  reservations ChatRunBudgetReservation[]
+  events       ChatRunBudgetEvent[]
+
+  @@unique([id, userId])
+  @@unique([turnId, userId])
+  @@index([userId, cancelledAt])
+}
+
+model ChatRunBudgetReservation {
+  id                String                         @id @default(cuid())
+  userId            String
+  turnId            String
+  ledgerId          String
+  stage             ChatRunBudgetStage
+  status            ChatRunBudgetReservationStatus @default(RESERVED)
+  inputTokens       Int
+  outputTokens      Int
+  costMicros        Int
+  usageInputTokens  Int                            @default(0)
+  usageOutputTokens Int                            @default(0)
+  usageCostMicros   Int                            @default(0)
+  createdAt         DateTime                       @default(now())
+  dispatchedAt      DateTime?
+  settledAt         DateTime?
+  releasedAt        DateTime?
+
+  user   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  turn   ChatTurn             @relation(fields: [turnId, userId], references: [id, userId], onDelete: Cascade)
+  ledger ChatRunBudget        @relation(fields: [ledgerId, userId], references: [id, userId], onDelete: Cascade)
+  events ChatRunBudgetEvent[]
+
+  @@unique([id, userId])
+  @@index([userId, turnId, status])
+  @@index([userId, ledgerId, stage])
+}
+
+model ChatRunBudgetEvent {
+  id                String                 @id @default(cuid())
+  userId            String
+  turnId            String
+  ledgerId          String
+  reservationId     String?
+  stage             ChatRunBudgetStage?
+  type              ChatRunBudgetEventType
+  usageInputTokens  Int?
+  usageOutputTokens Int?
+  usageCostMicros   Int?
+  createdAt         DateTime               @default(now())
+
+  user        User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  turn        ChatTurn                  @relation(fields: [turnId, userId], references: [id, userId], onDelete: Cascade)
+  ledger      ChatRunBudget             @relation(fields: [ledgerId, userId], references: [id, userId], onDelete: Cascade)
+  reservation ChatRunBudgetReservation? @relation(fields: [reservationId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([id, userId])
+  @@index([userId, turnId, createdAt])
+  @@index([userId, ledgerId, createdAt])
 }
 
 model OcrRecord {

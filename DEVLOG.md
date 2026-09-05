@@ -14,6 +14,18 @@
 > `--end-of-line auto` Prettier 和 diff check 均通过，`main == origin/main`。本地 feature branch 已在合并复验后删除；七个用户预修改文件
 > 仍未暂存。下一切片实现持久化 reservation/event 与并发服务。
 
+> 2026-09-05 — Ticket 05 ChatRunBudget Prisma 结构第二原子切片：
+>
+> 在最新 `main=caa1350c` 创建普通分支 `drb/chat-run-budget-ledger`，新增 `ChatRunBudget`、`ChatRunBudgetReservation`、
+> `ChatRunBudgetEvent` 三个 owner-bound Prisma 模型、stage/status/event enums、复合 owner 外键、turn 唯一约束和查询索引，并新增
+> `20260905100000_chat_run_budget` migration。数据库 CHECK 覆盖非负值、`used + held <= max`、reservation 生命周期/时间顺序、settled
+> usage 上限和 cancellation event 的 bounded 语义；没有 prompt/provider 原文或凭据字段。
+>
+> `packages/database` 测试 `11 passed / 0 failed`、Prisma schema validate/generate 通过；本次未执行 migrate deploy，未触碰现有 Docker
+> 数据。Prisma CLI 自动加载了根 `.env` 以解析 schema，但没有输出或读取任何凭据值，也没有调用 Provider。证据等级为
+> `implemented + mock/static validated`；runtime repository、Serializable/CAS、Worker/Agent 接入和 Trace 对账仍未完成。下一切片实现
+> owner-scoped reservation repository/service。
+
 > 2026-09-05 — Docker 冗余容器清理与 Worker readiness 恢复：
 >
 > 在 `drb/worker-readiness-recovery` 上先做只读归属审计，确认当前规范 Compose project 为 `docker`。精确删除了两个 10 天前
