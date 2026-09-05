@@ -96,6 +96,10 @@ Server full Jest：239 suites passed / 1 failed / 3 skipped
   唯一失败：既有 worker-readiness direct ts-node CLI 期望 exit 2、实际在入口编译阶段 exit 1
 Server build：passed
 Web/Server Docker image build：passed
+Merged-main recovery focused：24/24 passed
+Merged-main Server stream/config focused：94/94 passed
+Merged-main `git diff --check`：passed
+Merged-main Docker/API post-check：server `/health=200`；`main == origin/main`
 ```
 
 Server 全量唯一失败与本任务无关，且已在 2026-08-28、2026-09-04 的 `DEVLOG.md` 记录：direct `ts-node` 在脚本业务
@@ -103,7 +107,7 @@ Server 全量唯一失败与本任务无关，且已在 2026-08-28、2026-09-04 
 和 Server build 均通过；本任务不在 Ticket 04 内扩大范围改写 Readiness CLI。
 
 Web ESLint、Next production build/TypeScript、Server build 和 Server stream/config focused 均通过；Server full 的唯一失败仍为
-既有 readiness CLI 退出码断言。owned-file Prettier、Markdown 结构/链接/敏感值扫描和 `git diff --check` 在 Git 收口前补录。
+既有 readiness CLI 退出码断言。owned-file Prettier、Markdown 结构/链接/敏感值扫描和 `git diff --check` 均通过。
 
 ### 5.2 Mock Docker 与可见浏览器
 
@@ -140,10 +144,10 @@ implemented + mock/static validated + Mock Docker/可见浏览器产品验收
 
 ```text
 feature branch: drb/chat-turn-browser-replay
-feature commit: Git 收口后补录
-feature remote: Git 收口后补录
-main merge: Git 收口后补录
-main == origin/main: merged-main 复验后补录
+feature commit: `711347470b297a30594239b7dcaec00097d988dd`
+feature remote: `origin/drb/chat-turn-browser-replay`
+main merge: `94677fa1aff9101e1e910a0887ed293d9159e19e`
+main == origin/main: confirmed after merged-main re-verification
 ```
 
-提交、合并和 merged-main 复验不得包含七个用户预修改文件；最终 SHA、merged-main 结果和分支 parity 由后续只改文档的 closeout 原子提交补录。
+提交、合并和 merged-main 复验均未包含七个用户预修改文件；它们仍保持工作区未暂存。

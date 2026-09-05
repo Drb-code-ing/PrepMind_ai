@@ -18,8 +18,10 @@
 > Provider credential、未调用 DeepSeek/Qwen/其他 Provider，费用为 0。合成账号 `cmtnr0irv0000my01lopx81py` 及其 User、Conversation、
 > ChatMessage、ChatTurn、BackgroundJob、目标 Outbox、Bull job、Stream key 和浏览器 owner-scoped 数据已精确清理为 0；未执行
 > `FLUSHDB/FLUSHALL`、数据库 reset、volume 删除、MinIO wipe 或 Docker prune。证据等级为 `implemented + mock/static validated +
-> Mock Docker/可见浏览器产品验收`；真实模型 Worker、全链路 ChatRunBudget ledger、SSE push 和 production-used 仍未完成。功能提交、
-> `main` 合并 SHA 及 merged-main 复验结果在 Git 收口后补录。
+> Mock Docker/可见浏览器产品验收`；真实模型 Worker、全链路 ChatRunBudget ledger、SSE push 和 production-used 仍未完成。功能提交
+> `711347470b297a30594239b7dcaec00097d988dd` 已推送到 `origin/drb/chat-turn-browser-replay`，随后以 `--no-ff` 合并并推送为
+> `main=94677fa1aff9101e1e910a0887ed293d9159e19e`；merged-main recovery `24/24`、Server stream/config `94/94`、Docker/API
+> health 和 `main == origin/main` 均复验通过。七个用户预修改文件仍未暂存。
 
 > 2026-09-05 — ChatTurn `/api/chat` product bridge ticket 03：
 >
