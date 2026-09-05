@@ -1,5 +1,10 @@
 # PrepMind AI 开发日志
 
+> 2026-09-05 — Ticket 05 Serializable retry 回归切片：
+>
+> 新增 repository 测试，注入一次 PostgreSQL `P2034` serialization conflict，确认事务重试后 reservation/event 只写入一次且不重复扣账。
+> focused Server budget tests `6/6`、build 和 diff check 通过；这是 mock Prisma harness 证据，不等同于真实跨节点并发压测。未调用 Provider、未读取凭据、未触碰 Docker。
+
 > 2026-09-05 — Ticket 05 Agent budget port 原子切片：
 >
 > 在 `@repo/agent` 增加不依赖 Prisma/Nest 的 `AgentBudgetPort` 与 `runBudgetedStage`，统一阶段的 reserve -> dispatch -> settle 生命周期；dispatch 失败释放，

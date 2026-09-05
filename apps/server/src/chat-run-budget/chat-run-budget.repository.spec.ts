@@ -1,4 +1,5 @@
 import {
+  Prisma,
   type ChatRunBudget,
   type ChatRunBudgetReservation,
 } from '@prisma/client';
@@ -87,6 +88,50 @@ describe('ChatRunBudgetRepository', () => {
       }),
     ).rejects.toThrow('exhausted');
     expect(transaction.chatRunBudgetReservation.create).not.toHaveBeenCalled();
+  });
+
+  it('retries a serializable transaction conflict without duplicating the reservation', async () => {
+    const ledger = makeLedger();
+    const reservation = makeReservation();
+    const transaction = {
+      chatRunBudget: {
+        findUnique: jest.fn().mockResolvedValue(ledger),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      chatRunBudgetReservation: {
+        findUnique: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(reservation),
+        create: jest.fn().mockResolvedValue(reservation),
+      },
+      chatRunBudgetEvent: { create: jest.fn().mockResolvedValue({}) },
+    };
+    const serializationConflict = new Prisma.PrismaClientKnownRequestError(
+      'serialization conflict',
+      { code: 'P2034', clientVersion: 'test' },
+    );
+    const prisma = {
+      $transaction: jest
+        .fn()
+        .mockRejectedValueOnce(serializationConflict)
+        .mockImplementation(async (operation: (tx: typeof transaction) => unknown) =>
+          operation(transaction),
+        ),
+    } as never;
+    const repository = new ChatRunBudgetRepository(prisma);
+
+    await expect(
+      repository.reserve({
+        ownerId,
+        turnId,
+        ledgerId,
+        reservationId,
+        stage: 'ROUTER',
+        inputTokens: 100,
+        outputTokens: 50,
+        costMicros: 1000,
+      }),
+    ).resolves.toBe(reservation);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(transaction.chatRunBudgetReservation.create).toHaveBeenCalledTimes(1);
   });
 
   it('settles once and moves held usage into used usage', async () => {
