@@ -33,13 +33,15 @@ authenticated /api/chat
 PostgreSQL 加载正文。相同请求的短暂网络重试可复用 id；abort、4xx、owner/session/schema/conflict 不重试。bridge 开启后，无效
 message identity/window、prepare 或 enqueue 失败都 fail-closed，不静默回到旧 Provider，避免双写和两份回答。
 
-`202` 临时 handoff 不写 Dexie，也不进入旧 `/chat-messages/sync`，并阻止重叠发送。当前浏览器还不会主动消费 turn
-status/events；刷新后可从 PostgreSQL 恢复已完成回答，但自动 SSE/replay、cursor 过期和断线恢复仍待 ticket 04。实现和 Mock
-产品验收见 [`phase-6-chat-turn-api-bridge.md`](acceptance/phase-6-chat-turn-api-bridge.md)。
+`202` 临时 handoff 不写普通 Dexie message snapshot，也不进入旧 `/chat-messages/sync`。ticket 04 会把它写成 owner/conversation/
+turn-scoped Dexie recovery checkpoint，浏览器随后消费 status + JSON cursor replay。recovery 存在时 snapshot sync 与重叠发送短路；
+Redis 不可用或 cursor 过期后进入 status-only，最终只接受 PostgreSQL 的 terminal assistant response。实现和 Mock 产品验收见
+[`phase-6-chat-turn-api-bridge.md`](acceptance/phase-6-chat-turn-api-bridge.md) 与
+[`phase-6-chat-turn-browser-replay.md`](acceptance/phase-6-chat-turn-browser-replay.md)。
 
 ## 当前 Chat Stream bounded replay flow（2026-09-02）
 
-本 checkpoint 已实现传输层，ticket 03 已让 `/api/chat` 产生 turn handoff；浏览器消费仍未接入：
+服务端 checkpoint 已实现传输层，ticket 03 让 `/api/chat` 产生 handoff，ticket 04 已接浏览器 consumer：
 
 ```text
 POST /chat-turns admission
@@ -55,12 +57,19 @@ POST /chat-turns admission
        ├─ available: replay after cursor
        ├─ expired/unavailable: GET /chat-turns/:turnId
        └─ terminal: PostgreSQL status/response remains authoritative
+  -> browser recovery coordinator
+       ├─ persist bounded cursor/preview in Dexie v10
+       ├─ identity/conversation/token Abort fence
+       ├─ capped polling backoff; no hot loop
+       └─ replace placeholder by durable absolute order
 ```
 
 Stream key 只保存 `sha256(userId + NUL + turnId)`，事件正文通过 `chat-turn-stream-v1` strict schema 限长；Lua append 同时保证
 sequence、event id/hash 幂等、终态封锁、trim 与 TTL。Redis/BullMQ 是 bounded transport，不替代 PostgreSQL，也不进入 Outbox。Worker
-当前 generator 仍是 `deterministic-worker-v1`，因此这条流只形成 `implemented`/`mock-static validated` 证据。实现与回归见
-[`docs/acceptance/phase-6-chat-stream-replay.md`](acceptance/phase-6-chat-stream-replay.md)。
+当前 generator 仍是 `deterministic-worker-v1`。服务端传输层证据仍是 `implemented`/`mock-static validated`；ticket 04 另有 Mock
+Docker/可见浏览器产品验收。当前 consumer 是 JSON polling，不是真正 SSE push。实现与回归见
+[`docs/acceptance/phase-6-chat-stream-replay.md`](acceptance/phase-6-chat-stream-replay.md) 与
+[`docs/acceptance/phase-6-chat-turn-browser-replay.md`](acceptance/phase-6-chat-turn-browser-replay.md)。
 
 ## 当前 SR5 run-bound revalidation flow（zero-provider，2026-08-12）
 

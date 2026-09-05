@@ -126,3 +126,13 @@ merged-main 复验记录（2026-09-02）：
 
 收口遵循：显式路径提交 -> 推送功能分支 -> `git merge --no-ff` 到最新 `main` -> 推送 `main` -> 在 merged-main 重跑必要回归。
 用户预修改的三个 `wrong-question-organizer` 文件及其他既有 dirty 文件不得进入本任务提交。
+
+## 7. 后续关联（2026-09-05）
+
+本文件保留 2026-09-02 服务端传输层的历史边界；当时“浏览器尚未消费”是准确事实，不改写其证据等级。后续 ticket 03 已让
+`/api/chat` 产生 `202` handoff，ticket 04 已让浏览器通过 authenticated status + JSON cursor replay/polling、Dexie v10 checkpoint
+和 PostgreSQL status-only 自动恢复。详细产品证据见
+[`phase-6-chat-turn-browser-replay.md`](phase-6-chat-turn-browser-replay.md)。
+
+该后续关系不会把本历史任务升级成 Provider、SSE push 或 `production-used` 证据；服务端 `ChatStreamStore` 在 ticket 04 只额外加入
+默认 1.5 秒 Redis operation timeout，以便暂停/故障时及时返回 bounded `unavailable`。

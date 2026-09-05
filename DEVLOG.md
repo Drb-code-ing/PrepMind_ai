@@ -1,5 +1,26 @@
 # PrepMind AI 开发日志
 
+> 2026-09-05 — ChatTurn 浏览器恢复与 JSON cursor replay ticket 04：
+>
+> 在 `drb/chat-turn-browser-replay` 上把 ticket 03 的 authenticated `202` handoff 接入浏览器恢复链路。新增 Dexie v10
+> `chatTurnRecoveries` owner/conversation/turn scoped 缓存、严格 status/events response adapter、JSON cursor replay/polling、
+> bounded backoff、Redis unavailable/cursor expired 的 status-only 降级、identity/conversation/token Abort fence，以及按 PostgreSQL
+> durable absolute order 原位替换 handoff placeholder 的终态合并。恢复期间隔离旧 snapshot sync、hydration 和重叠 submit，避免跨会话
+> recovery 互相阻塞或造成 `409` order 漂移；Redis Chat Stream client 另加默认 `CHAT_STREAM_OPERATION_TIMEOUT_MS=1500` 有界等待。
+>
+> 分支验证：Web recovery focused `30/30`、Web full `538/538`、Web ESLint、Next production build/TypeScript、Server stream/config
+> focused `94/94` 和 Server build 通过。Server full Jest 为 `2257 passed / 1 failed / 30 skipped`，唯一失败是既有 worker-readiness
+> direct ts-node CLI 在入口编译阶段返回 1 而历史断言期望 2；不属于 ticket 04，未扩大范围改写。Mock Docker 与 headed 浏览器确认
+> Worker 延迟刷新保留 USER/placeholder、Redis 暂停后进入 status-only、恢复后由 PostgreSQL 最终回答替换，以及下一轮 enqueue
+> 正常；当前仍是 JSON polling，不是长连接 BFF SSE push。
+>
+> 验收期间保持 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、Agent gates=false，仅临时启用 ChatTurn bridge；未读取
+> Provider credential、未调用 DeepSeek/Qwen/其他 Provider，费用为 0。合成账号 `cmtnr0irv0000my01lopx81py` 及其 User、Conversation、
+> ChatMessage、ChatTurn、BackgroundJob、目标 Outbox、Bull job、Stream key 和浏览器 owner-scoped 数据已精确清理为 0；未执行
+> `FLUSHDB/FLUSHALL`、数据库 reset、volume 删除、MinIO wipe 或 Docker prune。证据等级为 `implemented + mock/static validated +
+> Mock Docker/可见浏览器产品验收`；真实模型 Worker、全链路 ChatRunBudget ledger、SSE push 和 production-used 仍未完成。功能提交、
+> `main` 合并 SHA 及 merged-main 复验结果在 Git 收口后补录。
+
 > 2026-09-05 — ChatTurn `/api/chat` product bridge ticket 03：
 >
 > 从已推送 `main=9aa0acde` 的普通分支 `drb/chat-turn-api-bridge` 接通 authenticated `/api/chat` 的 durable

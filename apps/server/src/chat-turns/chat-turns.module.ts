@@ -55,6 +55,9 @@ const chatResponseWorkerProviders = createChatResponseWorkerProviders(
         maxEvents: config.get('CHAT_STREAM_MAX_EVENTS', { infer: true }),
         maxBytes: config.get('CHAT_STREAM_MAX_BYTES', { infer: true }),
         ttlSeconds: config.get('CHAT_STREAM_TTL_SECONDS', { infer: true }),
+        operationTimeoutMs: config.get('CHAT_STREAM_OPERATION_TIMEOUT_MS', {
+          infer: true,
+        }),
       }),
     },
     ChatStreamStore,

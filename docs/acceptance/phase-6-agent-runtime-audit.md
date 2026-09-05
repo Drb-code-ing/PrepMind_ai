@@ -4,11 +4,13 @@
 范围：Phase 6 全部 Agent、模型 gate、通信边界、权限、预算、Trace、降级和现有证据。  
 结论级别：本文件是审计基线，不代表所有 Agent 已完成真实模型验收。
 
-本次同步补录 2026-09-02 Chat Stream 原子任务的收口事实：`chat.response.requested` 已经 Outbox 幂等桥接到 BullMQ，Worker 可在
-owner-scoped claim 后以同一事务提交 assistant、ChatTurn、BackgroundJob 和终态 Outbox；随后以 `chat-turn-stream-v1` 合同发布
-有界 Redis Stream 事件，并提供 owner-bound turn 状态/回放接口。当前生成器仍明确是 `deterministic-worker-v1`；浏览器尚未
-消费 status/SSE replay，完整 ledger 和真实模型 Worker 仍未完成。详细边界见
-`docs/acceptance/phase-6-chat-response-worker.md` 与 `docs/acceptance/phase-6-chat-stream-replay.md`。
+2026-09-02 Chat Stream 原子任务已将 `chat.response.requested` 通过 Outbox 幂等桥接到 BullMQ，Worker 可在 owner-scoped claim 后
+以同一事务提交 assistant、ChatTurn、BackgroundJob 和终态 Outbox；随后以 `chat-turn-stream-v1` 合同发布有界 Redis Stream 事件，
+并提供 owner-bound turn 状态/回放接口。2026-09-05 ticket 04 又让浏览器消费 authenticated status + JSON cursor replay/polling，
+支持 Dexie checkpoint、刷新恢复和 Redis 故障后的 PostgreSQL status-only。当前生成器仍明确是 `deterministic-worker-v1`，当前
+consumer 也不是真正 SSE push；完整 ledger 和真实模型 Worker 仍未完成。详细边界见
+`docs/acceptance/phase-6-chat-response-worker.md`、`docs/acceptance/phase-6-chat-stream-replay.md` 与
+`docs/acceptance/phase-6-chat-turn-browser-replay.md`。
 
 2026-09-04 的 ticket 01 又在同一 durable 写边界之上补齐认证 `POST /chat-turns`：请求由 strict shared Zod contract
 约束，owner 只来自 JWT，controller 仅委托 `ChatTurnEnqueueService`，并以 `202` 返回不含正文、hash、Outbox payload 或凭据的
@@ -26,6 +28,11 @@ HTTP body 只携带 bounded ids/hash/budget facts；adapter 严格要求 `202` �
 Docker/可见浏览器已证明 handoff、重叠提交阻止、Worker durable success、Redis initial replay 和刷新后的 PostgreSQL 恢复；浏览器
 仍未主动消费 status/events，详见 `docs/acceptance/phase-6-chat-turn-api-bridge.md`。
 
+同日 ticket 04 已补齐浏览器 consumer：handoff 进入 owner/conversation/turn-scoped Dexie v10 recovery，客户端按 cursor 读取
+JSON event page，以 capped backoff 查询 status；Redis unavailable/cursor expired 时转 status-only，终态只信 PostgreSQL assistant
+response。identity/conversation/token fence、absolute order、旧 snapshot sync 隔离和恢复期间 submit guard 均有回归；Mock Docker/
+可见浏览器覆盖 Worker 延迟、刷新、Redis 暂停/恢复和恢复后的下一轮 enqueue。它不是 SSE push、真实模型或生产证据。
+
 ## 1. 结论摘要
 
 - 产品 `/api/chat` 有两条受 gate 控制的链路：bridge-off 或首轮无 conversation 时继续同步
@@ -38,9 +45,10 @@ Docker/可见浏览器已证明 handoff、重叠提交阻止、Worker durable su
 - 默认环境保持 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、各组件 gate=false。打开 gate 需要独立的组件 key、预算和产品验收，不应把默认关闭误解为未实现。
 - ChatTurn、可靠入队、deterministic Worker durable baseline 和 Chat Stream bounded replay API 已完成：请求 Outbox 幂等桥接到
   BullMQ，Worker 在 owner-scoped claim 后将 assistant/Turn/BackgroundJob/终态 Outbox 同事务提交，再发布可幂等回放的 Redis 事件；
-  product bridge 已能 admission/handoff，但这仍不等于真实模型 Worker、浏览器 SSE 或断线自动恢复。
+  product bridge 已能 admission/handoff，浏览器也已接 JSON replay/status recovery；这仍不等于真实模型 Worker、SSE push 或生产
+  持续运行。
 - Web enqueue adapter 已实现稳定 owner-bound request/hash、strict `202`、显式 snapshot fallback 和 abort/offline 分类；ticket 03 已由
-  `/api/chat` 消费该 seam，但浏览器尚未消费 status/events，不能把 handoff 说成完整 replay UI。
+  `/api/chat` 消费该 seam，ticket 04 已把严格 handoff 接到 owner-bound browser recovery。Redis preview 不是最终业务回答。
 
 ## 2. Agent 总矩阵
 
@@ -55,7 +63,7 @@ status/replay 查询。active claim recovery、产品切换、真实模型和生
 | RetrieverAgent                    | owner-scoped 关键词+向量 hybrid search，返回 bounded evidence                                                     | 检索本体确定性；query rewrite 可选 DeepSeek `deepseek-v4-pro`                  | `RETRIEVER_QUERY_REWRITE_MODEL_ENABLED` + 全局 live；4s，`1200/160`，cap `0.005 CNY`                  | canonical auth、owner、run/request/deadline 绑定；不得跨 owner 或写业务                              | query hash、命中数、延迟、rewrite disposition；失败可 `failed_no_rag`；历史 SR5 不是 quality authority                 | 没有单独 product-live rewrite 成功证据；budget 未跨节点聚合                                      |
 | KnowledgeVerifierAgent            | 审查 Retriever evidence 的可信度                                                                                  | 先确定性 `verifyKnowledgeChunks`；模型只能收紧结论                             | `KNOWLEDGE_VERIFIER_MODEL_ENABLED` + 全局 live；共享 `2 / 2400 / 800`；4s                             | 只读 chunks；不得放宽安全边界或写知识库；输出 `trusted/suspicious/conflict/insufficient`             | conservative fallback；observation 进 Trace；无专属 product-live 证据                                                  | 与 Router 共用 bundle，缺少显式跨节点 capability/预算记录                                        |
 | FinalResponseAgent                | 消费本地 projection、citation、bounded turns/guidance 并流式回答                                                  | 产品真实流式节点；DeepSeek `deepseek-v4-pro` non-thinking，mock/live 双路径    | `FINAL_RESPONSE_AGENT_MODEL_ENABLED` + 全局 live；20s，`2500/1200`，cap `0.015 CNY`                   | 只读 context-bound request；不得直接写业务或引入未授权 citation；必须产生唯一 terminal               | Trace finalize best-effort；已具备合并后 `/api/chat` live smoke                                                        | 现有 smoke 未逐项证明上游每个 Agent 成功；全链路预算/断连持久化仍待补强                          |
-| ChatTurn product bridge           | `/api/chat` 在 gate-on 且 conversation ready 时 prepare durable snapshot、enqueue 并返回 turn/job handoff         | 非模型 admission；正文不进 enqueue payload；Worker 仍是 deterministic baseline | gate 默认 false；bounded tail `1000 / 2M`；安全 `202`；短暂错误复用稳定 request id                    | canonical JWT owner；append-only prepare；无效窗口/admission fail-closed；临时 handoff 不写 snapshot | API/adapter/bridge 回归 + Mock Docker/可见浏览器；Turn/Job/Outbox/Redis terminal 证据见 ticket 03 acceptance           | 浏览器 status/SSE/replay、全链路 ledger 与真实模型 Worker 仍未完成                               |
+| ChatTurn product bridge           | `/api/chat` prepare/enqueue/`202`；浏览器消费 status + JSON cursor replay 并恢复 durable answer                  | 非模型 admission/recovery；Worker 仍是 deterministic baseline                 | gate 默认 false；bounded tail `1000 / 2M`；replay page `100`；capped backoff；Redis op 默认 1.5s      | JWT owner；Dexie owner/conversation/turn；identity/token Abort fence；PostgreSQL terminal authority  | API/adapter/bridge/recovery 回归 + Mock Docker/可见浏览器；ticket 04 acceptance                                             | 全链路 ledger 与真实模型 Worker 未完成；当前不是 SSE push                                       |
 | WrongQuestionOrganizerAgent       | 组织单题/批量错题，并通过 command executor 执行受控写操作                                                         | 确定性 organizer 为权威；可选 DeepSeek candidate                               | 一次调用，`3500/800`，5s，cap `0.016 CNY`；worker 强制关闭                                            | JWT + owner snapshot/freshness/admission；模型不得直接写，必须经过 trace/admission/command           | AgentTrace best-effort；用户预修改文件不在本轮审计范围                                                                 | 需要独立产品真实模型 smoke；不能触碰当前 3 个用户 dirty 文件                                     |
 | ReviewAgent                       | `GET /review-agent/suggestions`，生成复习分析/建议                                                                | 确定性 tasks/preferences/cards/logs 为权威；可选 Review candidate              | Review/Planner 共享 `2 / 1950 / 440`；默认 4.5s                                                       | JWT；只读业务快照；candidate 不得写业务                                                              | AgentTrace best-effort；AbortSignal 与外层 deterministic fallback 已有 focused `13/13`；无本轮产品 live endpoint smoke | 仍需独立真实模型产品验收、共享 ledger 与持续运行证据                                             |
 | PlannerAgent                      | 同一 suggestions endpoint 的学习计划生成                                                                          | 确定性 `planStudy` 为权威；可选 Planner candidate                              | 与 Review 共享 `2 / 1950 / 440`；默认 4.5s                                                            | JWT；只读快照；输出计划候选，不得改任务数据                                                          | AgentTrace best-effort；AbortSignal 与外层 fallback 已修复；无本轮产品 live endpoint smoke                             | 仍需独立真实模型产品验收、并发预算与持续运行证据                                                 |
@@ -88,12 +96,12 @@ HTTP request
 1. `packages/agent/src/graph/index.ts` 已升级为受治理 catalog：明确 `executionAuthority=catalog_only`、产品组合层权威、typed communication edges、模型模式、领域写权限和 planned Orchestrator；它仍不执行 Agent，也不伪造 owner capability、budget ledger 或 terminal policy。
 2. `packages/agent/src/runtime.ts` 的通用运行时与产品 `/api/chat` 不是同一执行契约，不能用它证明产品链路已经串联。
 3. 行为文档中的 Tool-Using Orchestrator 尚未实现，不能列入“已完成 Agent”。
-4. Chat Trace 是旁路 best-effort，写入超时或失败不会阻断回答；Worker 与 Redis bounded stream 已建立 durable baseline 的传输层，
-   `/api/chat` 已接 admission/handoff，但浏览器 SSE、断线后的 status/replay 编排仍未接入。
+4. Chat Trace 是旁路 best-effort，写入超时或失败不会阻断回答；Worker 与 Redis bounded stream 已建立 durable baseline，`/api/chat`
+   已接 admission/handoff，浏览器 status/JSON replay 与断线恢复也已接入。真正 SSE push 仍未实现，但不作为 ticket 04 完成条件。
 5. Review/Planner 的 HTTP AbortSignal 与 candidate 外层 fallback 已完成；但共享预算 ledger 和真实模型产品验收仍未建立。
 6. Router/Verifier/Tutor/FinalResponse 各自持有局部预算，全链路没有统一 ledger，需补跨节点上限和越界测试。
-7. `POST /chat-turns`、Web adapter 和 `/api/chat` bridge 都已实现；当前 `202` 只表示 Worker 已接管，临时 handoff 不会自动订阅结果，
-   因此不能把“产品已入队”误读为“浏览器已完成 SSE/replay/断线恢复”。
+7. `POST /chat-turns`、Web adapter、`/api/chat` bridge 和 browser recovery 都已实现；`202` 仍只表示 Worker 已接管，浏览器必须继续
+   通过 authenticated status/JSON replay 取得结果。不得把该 polling consumer 误读为 SSE push 或 Provider 成功。
 
 ## 4. 证据分级
 
@@ -121,7 +129,8 @@ HTTP request
    `docs/acceptance/phase-6-chat-turn-web-enqueue-adapter.md`。
 5. ~~补齐 `/api/chat` admission/handoff bridge。~~ 已完成 authenticated prepare、durable enqueue、`202` handoff、临时消息隔离、
    重叠提交阻止和 Mock Docker/可见浏览器验收；详见 `docs/acceptance/phase-6-chat-turn-api-bridge.md`。
-6. 继续完成浏览器 status/SSE/replay、全链路 ledger 与真实模型 Worker。Worker 当前仍是 deterministic，不代表真实模型。
+6. ~~完成浏览器 status/replay（ticket 04）。~~ 已接 authenticated JSON cursor replay/polling、Dexie v10、identity fence、
+   PostgreSQL terminal authority 和 Mock Docker/可见浏览器验收；不是 SSE push。继续完成全链路 ledger 与真实模型 Worker。
 7. 为 MemoryAgent 定义真实模型增强的隐私、候选确认、预算和 Trace 合同；完成 Agent 架构后再进入分层记忆实现。
 8. 做独立 Review/Planner、Knowledge agents、Router/Verifier/Tutor/Rewrite 的产品验收，保持浏览器窗口可见并保留证据。
 9. 所有代码/文档任务逐项提交、推送、`--no-ff` 合并 main，再在 merged-main 复验；全部 Agent 架构与真实验收完成后，才写两篇面试博客。

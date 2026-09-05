@@ -6,14 +6,14 @@
 ## 一句话结论
 
 PrepMind 的产品基础和大部分 Agent 合同已经落地，但 **Phase 6 Agent 运行时总审计仍未结束**。当前最新原子任务已将
-authenticated `/api/chat` 后续 turn 接到 PostgreSQL 消息 prepare、durable ChatTurn admission 和 `202` handoff；浏览器尚未
-自动消费 status/SSE replay，Worker 仍是 deterministic baseline，也不是真实模型 Worker。
+authenticated `/api/chat` 后续 turn 接到 durable ChatTurn，并让浏览器通过 owner-bound status + JSON cursor replay/polling 在
+刷新、Redis 故障和 Worker 延迟后自动恢复；Worker 仍是 deterministic baseline，也不是真实模型 Worker。
 
 ## 当前基线
 
 - ticket 01 已补齐认证 `POST /chat-turns` durable admission；ticket 02 已实现 Web bounded adapter；ticket 03 已在默认关闭的
-  gate 后接通 `/api/chat -> message prepare -> enqueue -> 202 handoff`，并完成 Mock Docker/可见浏览器验收。开始新任务前仍用
-  `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
+  gate 后接通 `/api/chat -> message prepare -> enqueue -> 202 handoff`；ticket 04 已接浏览器 JSON replay/status-only recovery，
+  并完成 Mock Docker/可见浏览器验收。开始新任务前仍用 `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
 - 默认运行模式：`AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`，所有组件模型 gate 关闭。
 - 业务事实权威：PostgreSQL；Redis/BullMQ 负责缓存和队列；MinIO 负责对象存储；Dexie 负责本地恢复/离线补偿。
 - Docker 数据必须保留。验收只允许清理本次创建的合成数据和隔离浏览器状态。
@@ -29,8 +29,8 @@ authenticated `/api/chat` 后续 turn 接到 PostgreSQL 消息 prepare、durable
 | Review / Planner            | 只读建议与受限 candidate 已实现                                                                                  | 共享 ledger、持续运行证据和独立产品 Live 仍待补齐                                                       |
 | Knowledge Dedup / Organizer | owner-scoped shortlist、受限 candidate 与 deterministic fallback 已实现                                          | 需要最新矩阵确认真实产品 smoke 状态                                                                     |
 | Retriever / FinalResponse   | `/api/chat` 主回答链有真实模型 smoke；历史质量门失败证据不可重跑                                                 | 不能据此证明上游每个 Agent 或 SLA                                                                       |
-| Chat response worker        | Outbox -> BullMQ -> claim -> durable terminal commit；Stream contract、Redis bounded replay 和状态查询已实现     | 当前 generator 是 `deterministic-worker-v1`；浏览器未接入 replay；全链路 ledger、真实模型 Worker 未完成 |
-| ChatTurn product bridge     | authenticated `/api/chat` 在 gate-on 且 conversation ready 时 prepare 消息、durable enqueue 并返回 `202` handoff | gate 默认关闭；首轮保留 legacy；浏览器 status/SSE/replay 与断线自动恢复仍待 ticket 04                   |
+| Chat response worker        | Outbox -> BullMQ -> claim -> durable terminal commit；Stream contract、Redis bounded replay 和状态查询已实现     | 当前 generator 是 `deterministic-worker-v1`；全链路 ledger、真实模型 Worker 未完成                     |
+| ChatTurn product bridge     | gate-on 后 prepare/enqueue/`202`；浏览器 owner-bound status + JSON cursor replay、刷新恢复和 status-only 降级      | gate 默认关闭；首轮保留 legacy；当前不是长连接 BFF SSE push，也不是生产持续运行证据                    |
 | MemoryAgent                 | PostgreSQL 候选/确认/停用/删除流程已实现                                                                         | 当前无模型 gate、自动注入或完整分层记忆实现                                                             |
 | Tool-Using Orchestrator     | 未实现                                                                                                           | 仅在治理 catalog/规划中出现                                                                             |
 
@@ -47,10 +47,9 @@ authenticated `/api/chat` 后续 turn 接到 PostgreSQL 消息 prepare、durable
 ## 下一步顺序
 
 1. 完成 Phase 6 Agent 审计：逐项确认通信、owner/权限、并发、预算 ledger、取消、Trace 和真实模型产品 smoke。
-2. 将浏览器接到既有 turn status + Redis/SSE replay 合同（ticket 04），处理 cursor 过期和 PostgreSQL 权威恢复；兼容期保留旧
-   snapshot sync。
-3. 补齐 ChatRunBudget 全链路 ledger、跨节点 reservation 与 Trace 对账。
-4. 为 Chat Worker 接入独立真实模型 gate、usage/cost 记录和产品 controlled smoke；继续保持默认 mock/off。
+2. 补齐 ChatRunBudget 全链路 ledger、跨节点 reservation 与 Trace 对账（ticket 05）。
+3. 为 Chat Worker 接入独立真实模型 gate、usage/cost 记录和产品 controlled smoke（ticket 06）；继续保持默认 mock/off。
+4. 以负载和延迟数据评估是否另做真正 SSE push；ticket 04 当前是 JSON replay/polling，不伪称 SSE。
 5. 在全部 Agent 架构完成后，设计并实现分层记忆：瞬时上下文、短期会话缓存、长期持久化记忆；再按用户要求编写两篇独立面试博客。
 6. 之后进入 Phase 8 性能/PWA、Phase 9 MCP Tool 体系和 Phase 10 生产部署。
 
@@ -60,6 +59,7 @@ authenticated `/api/chat` 后续 turn 接到 PostgreSQL 消息 prepare、durable
 - ChatTurn 入队 API：[`phase-6-chat-turn-enqueue-api.md`](acceptance/phase-6-chat-turn-enqueue-api.md)
 - ChatTurn Web adapter：[`phase-6-chat-turn-web-enqueue-adapter.md`](acceptance/phase-6-chat-turn-web-enqueue-adapter.md)
 - ChatTurn 产品 bridge：[`phase-6-chat-turn-api-bridge.md`](acceptance/phase-6-chat-turn-api-bridge.md)
+- ChatTurn 浏览器恢复：[`phase-6-chat-turn-browser-replay.md`](acceptance/phase-6-chat-turn-browser-replay.md)
 - Chat Stream 合同与回放：[`phase-6-chat-stream-replay.md`](acceptance/phase-6-chat-stream-replay.md)
 - 本地启动与运维：[`dev-start.md`](dev-start.md)
 - 当前路线：[`roadmap.md`](roadmap.md)

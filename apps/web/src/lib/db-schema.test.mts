@@ -18,3 +18,22 @@ test('database v9 exposes the sanitized conversation state table and exact index
     ['userId', '[userId+conversationId]', 'expiresAt', 'updatedAt'],
   );
 });
+
+test('database v10 exposes owner-scoped ChatTurn recovery metadata', () => {
+  const table = db.tables.find((candidate) => candidate.name === 'chatTurnRecoveries');
+  assert.ok(table);
+  assert.equal(table.schema.primKey.src, 'id');
+  assert.equal(table.schema.primKey.unique, true);
+  assert.deepEqual(
+    table.schema.indexes.map((index) => index.src),
+    [
+      'userId',
+      '[userId+conversationId]',
+      '[userId+turnId]',
+      'conversationId',
+      'turnId',
+      'expiresAt',
+      'updatedAt',
+    ],
+  );
+});

@@ -7,8 +7,8 @@
 ## 当前焦点
 
 **Phase 6 Agent 运行时总审计**。最新原子任务已完成 ChatTurn/BackgroundJob/Outbox 到 BullMQ 的 deterministic Worker durable
-baseline、bounded replay、认证 enqueue API、Web adapter，以及 `/api/chat` 的 gated prepare/enqueue/`202` handoff。下一步不是
-继续堆一次性 Live 脚本，而是接浏览器 status/SSE replay、断线恢复、全链路预算和各 Agent 的真实模型证据。
+baseline、认证 enqueue、`/api/chat` handoff，以及浏览器 owner-bound status + JSON cursor replay/polling、刷新恢复和 status-only
+降级。下一步不是继续堆一次性 Live 脚本，而是补全链路预算和各 Agent 的真实模型证据。
 
 当前基线（2026-09-05）：
 
@@ -17,8 +17,8 @@ baseline、bounded replay、认证 enqueue API、Web adapter，以及 `/api/chat
 - `packages/agent/src/graph/index.ts` 是 `catalog_only` 治理目录，不是执行器；产品 Chat 编排在 Web/API composition。
 - Tool-Using Orchestrator 尚未实现；MemoryAgent 仍是确定性候选策略。
 - 历史 controlled-Live 只读且不可重跑；语义质量、产品可用性、billing 和 SLA 分开记录。
-- 认证 `POST /chat-turns` 已提供 durable admission；ticket 02 Web adapter 生成稳定 request/hash；ticket 03 已让 `/api/chat` 在
-  gate-on 且 conversation ready 时 prepare、enqueue 并返回 `202` handoff。浏览器尚未消费 status/events。
+- ticket 01-03 已完成 durable admission、Web adapter 和 `/api/chat` handoff；ticket 04 已接入 JSON replay/status recovery。
+  当前不是长连接 BFF SSE push，Worker 仍是 deterministic baseline。
 
 ## 阶段总览
 
@@ -72,7 +72,9 @@ ChatTurn + BackgroundJob + chat.response.requested Outbox
 3. ~~`/api/chat` turn-backed admission/handoff、owner/session 生命周期与旧 snapshot sync 兼容窗口（ticket 03）。~~ 已完成
    gated prepare/enqueue、临时 handoff 隔离、重叠提交阻止与 Mock Docker/可见浏览器验收；详见
    [`phase-6-chat-turn-api-bridge.md`](acceptance/phase-6-chat-turn-api-bridge.md)；
-4. 将 bounded replay API 接入 SSE/browser，并处理 cursor 过期与 PostgreSQL 状态恢复（ticket 04）；
+4. ~~将 bounded replay API 接入浏览器，并处理 cursor 过期与 PostgreSQL 状态恢复（ticket 04）。~~ 已完成 authenticated JSON
+   cursor replay/polling、Dexie v10 checkpoint、身份 fence、status-only 和 Mock Docker/可见浏览器验收；详见
+   [`phase-6-chat-turn-browser-replay.md`](acceptance/phase-6-chat-turn-browser-replay.md)。真正 SSE push 不在本 ticket 范围；
 5. 全链路 ChatRunBudget ledger、Trace 对账和跨节点上限（ticket 05）；
 6. 真实模型 Worker 的独立 gate、usage/cost 和产品 smoke（ticket 06）。
 

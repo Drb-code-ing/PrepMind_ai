@@ -22,9 +22,7 @@ export function createChatTurnHandoffResponse(result: ChatTurnEnqueueResponse) {
           backgroundJobId: result.backgroundJob.id,
         }),
       );
-      dataStream.write(
-        formatDataStreamPart('text', '回答已加入后台处理。请稍后刷新页面查看结果，再继续发送。'),
-      );
+      dataStream.write(formatDataStreamPart('text', '回答已加入后台处理，正在连接实时进度...'));
     },
   });
 }

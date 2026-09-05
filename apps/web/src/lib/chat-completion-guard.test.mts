@@ -6,6 +6,7 @@ import {
   CHAT_EMPTY_ASSISTANT_MESSAGE,
   getChatCompletionGuard,
   getChatSyncSettleMs,
+  selectHydratedChatHistory,
   shouldPersistChatSnapshot,
   trimIncompleteChatTail,
 } from './chat-completion-guard.ts';
@@ -201,5 +202,25 @@ test('trims incomplete user-only and blank assistant tails from hydrated history
       },
     ]),
     completeTurn,
+  );
+});
+
+test('preserves the durable user tail while a background ChatTurn is being recovered', () => {
+  const pendingTurn = [
+    ...baseMessages,
+    {
+      id: 'msg-3',
+      role: 'user' as const,
+      content: 'Continue this answer in the background.',
+    },
+  ];
+
+  assert.equal(
+    selectHydratedChatHistory(pendingTurn, { preserveIncompleteTail: true }),
+    pendingTurn,
+  );
+  assert.deepEqual(
+    selectHydratedChatHistory(pendingTurn, { preserveIncompleteTail: false }),
+    baseMessages,
   );
 });

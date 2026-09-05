@@ -29,6 +29,7 @@ test('returns an AI SDK-compatible 202 handoff stream with bounded correlation f
   const body = await response.text();
   assert.match(body, /prepmind-chat-turn-handoff-v1/u);
   assert.match(body, /回答已加入后台处理/u);
-  assert.match(body, /刷新页面查看结果/u);
+  assert.match(body, /正在连接实时进度/u);
+  assert.doesNotMatch(body, /刷新页面查看结果/u);
   assert.doesNotMatch(body, /inputHash|prompt|accessToken/u);
 });
