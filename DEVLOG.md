@@ -1,5 +1,12 @@
 # PrepMind AI 开发日志
 
+> 2026-09-05 — Ticket 05 Agent budget port 原子切片：
+>
+> 在 `@repo/agent` 增加不依赖 Prisma/Nest 的 `AgentBudgetPort` 与 `runBudgetedStage`，统一阶段的 reserve -> dispatch -> settle 生命周期；dispatch 失败释放，
+> Provider/执行异常保留 `UNCERTAIN`，并提供显式 `settleUncertain` 能力供带外部 usage 证据的恢复流程使用。新增 2 个 Bun 单元测试，验证正常结算和异常不退款。
+> Agent typecheck、lint 和 focused tests 均通过；本次未调用 Provider、未读取凭据、未触碰 Docker。证据等级为 `implemented + mock/static validated`。
+> 当前 port 尚未由产品 composition root 注入 Router/Tutor/Retriever/Verifier/FinalResponse，Trace 对账与真实模型 usage 仍是后续切片。
+
 > 2026-09-05 — Ticket 05 UNCERTAIN recovery 原子切片：
 >
 > 为已 dispatch 但 Provider 结果未知的预算 reservation 增加 `settleUncertain` 显式恢复入口。该入口要求带外部 usage 证据后才把
