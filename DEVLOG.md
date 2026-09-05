@@ -34,7 +34,9 @@
 >
 > Server focused tests `24/24`、Server build 通过；数据库 migration 未部署到现有 Docker，未执行真实 Provider 调用。证据等级为
 > `implemented + mock/static validated`，仍不代表真实 PostgreSQL 跨节点并发、其他 Agent stages、Trace reconciliation 或真实模型
-> usage/cost 已完成。下一切片在隔离数据库部署 migration 并补并发/crash 回归。
+> usage/cost 已完成。功能提交 `14e0b8ee` 已推送，随后以 `--no-ff` 合并并推送为 `main=b2b56200`；merged-main focused `24/24`、Server
+> build、database `11/11`、diff check 和 `main == origin/main` 均复验通过。本地 feature branch 已删除；七个用户预修改文件仍未暂存。
+> 下一切片在隔离数据库部署 migration 并补并发/crash 回归。
 
 > 2026-09-05 — Docker 冗余容器清理与 Worker readiness 恢复：
 >
