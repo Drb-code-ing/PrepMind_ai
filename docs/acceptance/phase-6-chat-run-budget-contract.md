@@ -1,7 +1,7 @@
 # Phase 6 ChatRunBudget 合同验收
 
 更新时间：2026-09-05
-状态：共享类型、Prisma schema/migration、owner-scoped repository 和 deterministic Worker 预留/结算接入已实现；Trace 对账、生产迁移和真实模型验收未实现。
+状态：共享类型、Prisma schema/migration、owner-scoped repository 和 deterministic Worker 预留/结算接入已实现；本地 PostgreSQL migration 已部署；Trace 对账、并发/crash 证据和真实模型验收未实现。
 
 ## 1. 目的
 
@@ -25,7 +25,7 @@
 
 ## 3. 验证证据
 
-在分支 `drb/chat-run-budget-contract` 执行：
+在分支 `drb/chat-run-budget-contract` 与后续终态对账分支执行：
 
 ```text
 packages/types: 49 passed, 0 failed
@@ -33,14 +33,16 @@ typecheck: passed
 Prettier: passed
 ```
 
-测试覆盖数值边界、unknown/raw payload 拒绝、reservation 生命周期以及 settlement/cancellation event 语义。证据等级为
-`implemented + mock/static validated`；本次未读取 `.env`、未调用 DeepSeek/Qwen 或其他 Provider、未触碰 Docker 数据。
+追加验证：`apps/server` focused Jest 17/17、`packages/database` tests 11/11、Server build 通过；`prisma migrate deploy` 已成功应用
+`20260905100000_chat_run_budget`，随后 `prisma migrate status` 报告 schema up to date。测试覆盖数值边界、unknown/raw payload 拒绝、reservation
+生命周期、settlement/cancellation event 语义和 terminal 未 dispatch 释放。证据等级为 `implemented + mock/static validated`；本次未读取 `.env` 中
+的凭据、未调用 DeepSeek/Qwen 或其他 Provider，Docker 仅读取容器状态且未清理数据。
 
 ## 4. 明确未完成项
 
 这次已完成合同、数据库结构和最小运行时接入，但不代表已完成生产级全链路预算。后续 ticket 05 切片必须实现：
 
-1. 将 migration 在隔离验收数据库部署，补真实 PostgreSQL 并发超限、取消释放、dispatch 后 uncertain 和重复请求幂等回归。
+1. 在隔离验收数据库补真实 PostgreSQL 并发超限、取消释放、dispatch 后 uncertain、重复请求幂等和 crash/recovery 回归；当前本地 migration 已部署，尚无并发证据。
 2. 扩展 Router/Tutor/Retriever/Verifier/FinalResponse 的 Agent stage 接入，结算真实 usage/cost，并与 terminal Outbox、Redis stream、Trace 做 bounded reconciliation。
 3. 补 crash/recovery、跨节点竞争和产品链路回归；默认仍保持 mock/off，真实模型需另有授权和独立 controlled-Live 证据。
 

@@ -1,5 +1,14 @@
 # PrepMind AI 开发日志
 
+> 2026-09-05 — Ticket 05 ChatRunBudget 终态对账与本地数据库验收：
+>
+> 在 `drb/chat-run-budget-terminal-reconcile` 完成 Worker 成功/不可重试失败后的 terminal reconciliation：只释放仍为 `RESERVED` 的未 dispatch
+> reservation，保留 `DISPATCHED/UNCERTAIN`，避免在 Provider 结果未知时伪造退款；同时追加 bounded `RELEASED` events 和 repository/Worker 回归测试。
+> 分支提交 `6503f364` 已推送，随后以 `--no-ff` 合并并推送 `main=5fa5a10b`。合并后 Server focused Jest `17/17`、Server build、database tests
+> `11/11`、`prisma migrate deploy`（新增 `20260905100000_chat_run_budget`）和 `prisma migrate status`（schema up to date）均通过，`main == origin/main`。
+> Docker 仅读取既有容器状态，未清理数据、卷、Redis 或 MinIO；未调用 Provider，未读取或输出凭据。证据等级为 `implemented + mock/static validated`。
+> 当前仍未完成 UNCERTAIN recovery、真实 PostgreSQL 并发/crash 证据、Router/Tutor/Retriever/Verifier/FinalResponse ledger 接入和 Trace 对账。
+
 > 2026-09-05 — Ticket 05 ChatRunBudget 共享合同第一切片：
 >
 > 从已推送 `main=a53b0706` 创建普通分支 `drb/chat-run-budget-contract`，在 `@repo/types` 新增严格的 policy、run-level ledger、stage
