@@ -1,5 +1,17 @@
 # PrepMind AI 开发日志
 
+> 2026-09-05 — Ticket 05 ChatRunBudget 共享合同第一切片：
+>
+> 从已推送 `main=a53b0706` 创建普通分支 `drb/chat-run-budget-contract`，在 `@repo/types` 新增严格的 policy、run-level ledger、stage
+> reservation、usage 与 bounded ledger event 合同，并从 package 根入口和子路径导出。合同绑定 owner/turn/ledger/reservation，覆盖
+> Router、Tutor、Retriever、Verifier、FinalResponse、Worker，限制微 CNY、token、calls 数值范围，校验 reservation 生命周期和时间顺序，
+> 禁止 settled usage 超过预留或 ledger `used + held` 超过 policy；事件拒绝 prompt、provider response、API key 等原始字段。
+>
+> `packages/types` 全量测试 `49 passed / 0 failed`、typecheck 和 Prettier 通过；本次未读取 `.env`、未调用 DeepSeek/Qwen 或其他 Provider，未
+> 触碰 Docker 数据。证据等级为 `implemented + mock/static validated`，不代表 Prisma ledger、Serializable/CAS、跨节点预算 enforcement、
+> Worker/Agent 接入、Trace 对账或真实模型结算完成。详见 `docs/acceptance/phase-6-chat-run-budget-contract.md`、更新后的预算设计和 Agent
+> runtime audit。下一切片实现持久化 reservation/event 与并发服务。
+
 > 2026-09-05 — Docker 冗余容器清理与 Worker readiness 恢复：
 >
 > 在 `drb/worker-readiness-recovery` 上先做只读归属审计，确认当前规范 Compose project 为 `docker`。精确删除了两个 10 天前

@@ -14,3 +14,4 @@ export * from './api/review-preference';
 export * from './api/review-task';
 export * from './api/upload';
 export * from './api/chat-stream';
+export * from './api/chat-run-budget';
