@@ -410,6 +410,61 @@ export class ChatRunBudgetRepository {
     });
   }
 
+  async reconcileTerminal(ownerId: string, turnId: string) {
+    return this.runSerializable(async (transaction) => {
+      const ledger = await transaction.chatRunBudget.findUnique({
+        where: { turnId_userId: { turnId, userId: ownerId } },
+      });
+      if (!ledger) return null;
+      const now = new Date();
+      const releasable = await transaction.chatRunBudgetReservation.findMany({
+        where: { ledgerId: ledger.id, userId: ownerId, status: 'RESERVED' },
+        select: {
+          id: true,
+          turnId: true,
+          stage: true,
+          inputTokens: true,
+          outputTokens: true,
+          costMicros: true,
+        },
+      });
+      if (releasable.length === 0) return ledger;
+      const totals = releasable.reduce(
+        (sum, reservation) => ({
+          calls: sum.calls + 1,
+          inputTokens: sum.inputTokens + reservation.inputTokens,
+          outputTokens: sum.outputTokens + reservation.outputTokens,
+          costMicros: sum.costMicros + reservation.costMicros,
+        }),
+        { calls: 0, inputTokens: 0, outputTokens: 0, costMicros: 0 },
+      );
+      await transaction.chatRunBudgetReservation.updateMany({
+        where: { ledgerId: ledger.id, userId: ownerId, status: 'RESERVED' },
+        data: { status: 'RELEASED', releasedAt: now },
+      });
+      await transaction.chatRunBudgetEvent.createMany({
+        data: releasable.map((reservation) => ({
+          userId: ownerId,
+          turnId: reservation.turnId,
+          ledgerId: ledger.id,
+          reservationId: reservation.id,
+          stage: reservation.stage,
+          type: 'RELEASED' as const,
+          createdAt: now,
+        })),
+      });
+      return transaction.chatRunBudget.update({
+        where: { id_userId: { id: ledger.id, userId: ownerId } },
+        data: {
+          heldCalls: { decrement: totals.calls },
+          heldInputTokens: { decrement: totals.inputTokens },
+          heldOutputTokens: { decrement: totals.outputTokens },
+          heldCostMicros: { decrement: totals.costMicros },
+        },
+      });
+    });
+  }
+
   private async transition(
     ownerId: string,
     reservationId: string,

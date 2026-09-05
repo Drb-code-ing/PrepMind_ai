@@ -368,6 +368,7 @@ describe('ChatResponseWorkerService', () => {
       dispatch: jest.fn().mockResolvedValue({ kind: 'updated' }),
       settle: jest.fn().mockResolvedValue({ kind: 'updated' }),
       uncertain: jest.fn().mockResolvedValue({ kind: 'updated' }),
+      reconcileTerminal: jest.fn().mockResolvedValue(null),
     };
   }
 

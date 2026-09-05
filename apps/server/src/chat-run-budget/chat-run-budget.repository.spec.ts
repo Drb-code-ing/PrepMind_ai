@@ -128,6 +128,49 @@ describe('ChatRunBudgetRepository', () => {
       }),
     );
   });
+
+  it('reconciles unstarted reservations without touching uncertain work', async () => {
+    const ledger = makeLedger({
+      heldCalls: 1,
+      heldInputTokens: 100,
+      heldOutputTokens: 50,
+      heldCostMicros: 1000,
+    });
+    const transaction = {
+      chatRunBudget: {
+        findUnique: jest.fn().mockResolvedValue(ledger),
+        update: jest.fn().mockResolvedValue({ ...ledger, heldCalls: 0 }),
+      },
+      chatRunBudgetReservation: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: reservationId,
+            turnId,
+            stage: 'TUTOR',
+            inputTokens: 100,
+            outputTokens: 50,
+            costMicros: 1000,
+          },
+        ]),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      chatRunBudgetEvent: {
+        createMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn(
+        async (operation: (tx: typeof transaction) => unknown) =>
+          operation(transaction),
+      ),
+    } as never;
+    const repository = new ChatRunBudgetRepository(prisma);
+
+    await expect(
+      repository.reconcileTerminal(ownerId, turnId),
+    ).resolves.toMatchObject({ heldCalls: 0 });
+    expect(transaction.chatRunBudgetEvent.createMany).toHaveBeenCalledTimes(1);
+  });
 });
 
 function makeLedger(overrides: Partial<ChatRunBudget> = {}): ChatRunBudget {

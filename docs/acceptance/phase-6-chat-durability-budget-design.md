@@ -129,5 +129,5 @@ reservation 的 `RESERVED -> DISPATCHED -> SETTLED|UNCERTAIN` 与未 dispatch �
 - “BackgroundJob + Outbox 同事务”与 Worker durable terminal commit 已实现；gate-on `/api/chat` handoff 和浏览器 JSON status/replay
   已接入，真正 SSE push 尚未实现。
 - 当前 Worker 的生成器是 `deterministic-worker-v1`，只证明执行与持久化骨架，不证明真实模型或语义质量。
-- 本 checkpoint 已增加 runtime repository 和 Worker `WORKER` reservation；Trace reconciliation、真实 PostgreSQL 并发证据和其他 Agent
-  stage 仍未完成。
+- 本 checkpoint 已增加 runtime repository、Worker `WORKER` reservation 和终态对未 dispatch reservation 的释放；完整 Trace reconciliation、
+  真实 PostgreSQL 并发证据和其他 Agent stage 仍未完成。
