@@ -165,6 +165,10 @@ export class ChatResponseWorkerService {
         );
       }
       await this.commitSuccess(payload, claim.claim, generated, bullJobId);
+      await this.budgets?.reconcileTerminal(
+        claim.claim.turn.userId,
+        claim.claim.turn.id,
+      );
       await this.publishCompleted(
         claim.claim.turn,
         generated,
@@ -189,6 +193,10 @@ export class ChatResponseWorkerService {
         bullJobId,
       );
       if (decision === 'retry') throw error;
+      await this.budgets?.reconcileTerminal(
+        claim.claim.turn.userId,
+        claim.claim.turn.id,
+      );
       await this.publishFailed(
         claim.claim.turn,
         classifyFailure(error).code,

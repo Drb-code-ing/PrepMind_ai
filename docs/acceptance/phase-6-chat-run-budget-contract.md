@@ -19,8 +19,9 @@
 - event 只允许 bounded ids、枚举、时间和 usage，strict schema 会拒绝未知字段及 prompt、provider response、API key 等原始载荷。
 - Prisma 已新增 owner-bound `ChatRunBudget`、`ChatRunBudgetReservation`、`ChatRunBudgetEvent` 及复合外键、索引和生命周期 CHECK；迁移
   不携带 prompt、provider 原文或凭据字段。
-- Server repository 使用 Serializable transaction + 条件 `updateMany` 做 reserve、dispatch、settle、release、uncertain 和 cancel；enqueue
-  在创建 ChatTurn/BackgroundJob/Outbox 的同一事务内创建 ledger，Worker 在生成前预留 `WORKER` scope。
+- Server repository 使用 Serializable transaction + 条件 `updateMany` 做 reserve、dispatch、settle、release、uncertain、cancel 和终态
+  reconcile；enqueue 在创建 ChatTurn/BackgroundJob/Outbox 的同一事务内创建 ledger，Worker 在生成前预留 `WORKER` scope，并在终态释放
+  尚未 dispatch 的 reservation。
 
 ## 3. 验证证据
 
