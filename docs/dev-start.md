@@ -157,12 +157,20 @@ Docker Desktop 在中文路径下遇到已知 Bake gRPC shared-key 错误时，�
 ```text
 AI_PROVIDER_MODE=mock
 AI_ENABLE_LIVE_CALLS=false
-所有组件 MODEL_ENABLED=false
+PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true
+AI_DEV_MODE_SWITCH_ENABLED=true
 ```
 
-真实模型必须同时满足全局开关、组件 gate、匹配凭据、HTTPS allowlist、预算、超时、结构化 schema 和安全 eligibility。组件 gate
-包括 Router、KnowledgeVerifier、Tutor、Retriever query rewrite、FinalResponse、Review、Planner、KnowledgeDedup 和
-KnowledgeOrganizer；具体变量和预算见 [`phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)。
+本地 Docker Web 默认把 Router、KnowledgeVerifier、Tutor、Retriever query rewrite 和 FinalResponse 的组件 gate 配置为 ready，
+但基础模式仍是 Mock，启动项目不会调用 Provider。登录后可在 `/agent-trace` 直接选择 Mock/Live：选择 Live 会为后续 Chat 请求
+生成一份进程内有效环境，统一设置全局 Live guard、规范化 DeepSeek `/v1` 地址，并让组件专用 key 在未单独配置时回退到通用
+`DEEPSEEK_API_KEY`；不会改写 `.env`，也不需要重启。显式写为 `MODEL_ENABLED=false` 的组件仍保持关闭。
+
+Live 按钮不会因为 `AI_ENABLE_LIVE_CALLS=false` 或缺少 key 而禁用。若启动环境确实没有有效 key，选择仍会保留，但 Chat 返回明确
+配置错误，不会伪装成 Live 或静默回退 Mock。真实调用仍必须满足匹配凭据、HTTPS provider 边界、预算、超时、结构化 schema、
+安全 eligibility 和登录校验。设置 `AI_DEV_MODE_SWITCH_ENABLED=false` 可显式关闭本地控件；没有
+`PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 的 production runtime 始终不暴露该入口。完整边界见
+[`phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)。
 
 `/api/chat` 先完成认证/owner 绑定，再按 bridge gate 分流：
 

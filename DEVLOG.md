@@ -1,5 +1,22 @@
 # PrepMind AI 开发日志
 
+> 2026-09-05 — 本地 Mock/Live 模式切换默认可用：
+>
+> 在 `drb/ai-mode-switch-defaults` 上恢复 `/agent-trace` 的 AI 模式控件，并把本地 Docker Web 配置改为开箱即用。控件在本地
+> runtime 默认可见，只有显式 `AI_DEV_MODE_SWITCH_ENABLED=false` 才关闭；Live 不再因为基础环境保持
+> `AI_ENABLE_LIVE_CALLS=false` 或启动时缺少 key 而禁用。选择 Live 后仅在当前 Web 进程内为后续 Chat 请求生成统一 effective
+> environment，并传给 Router/Verifier、Tutor、Retriever query rewrite 和 FinalResponse；重启或切回 Mock 后恢复安全默认，
+> 不写回 `.env`。本地 Docker 预配置五个 Chat 链 gate，三个 DeepSeek 组件专用 key 可回退到通用 `DEEPSEEK_API_KEY`；显式
+> `MODEL_ENABLED=false` 仍然优先，普通 production runtime 也不会暴露该入口。
+>
+> 自动化验证：模式/Provider focused `22/22`、Chat 组件 config/runtime `52/52`、Web full `542/542`、Server Compose readiness
+> `21/21`、Web lint 与 production build 通过。脱敏 Compose 检查确认基础模式仍为 Mock/off、五个 Chat gate ready，且没有向 Web
+> 投影 Review/Planner/Organizer 的 server-only secrets。只重建 `web` 容器；headed 浏览器确认 `Mock -> Live -> Mock`，没有提交
+> Chat 消息、没有读取或输出凭据、没有调用 DeepSeek/Qwen/其他 Provider，费用为 0。合成账号已退出并精确删除，目标
+> `ChatTurn=0 / Outbox=0`；未清理容器、镜像、volume、PostgreSQL、Redis 或 MinIO。证据等级为
+> `implemented + mock/static validated + Mock Docker/可见浏览器产品验收`，不代表真实模型质量或 production-used。详细边界见
+> `docs/acceptance/phase-6-local-ai-mode-switch.md`。
+>
 > 2026-09-05 — ChatTurn 浏览器恢复与 JSON cursor replay ticket 04：
 >
 > 在 `drb/chat-turn-browser-replay` 上把 ticket 03 的 authenticated `202` handoff 接入浏览器恢复链路。新增 Dexie v10

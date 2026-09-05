@@ -217,7 +217,7 @@ test('keeps the maximum theoretical cost within the independent 0.005 CNY cap', 
   assert.equal(estimateRetrieverQueryRewriteRequestCostCny(1200, 161), null);
 });
 
-test('Docker projects the three rewrite settings only into web and keeps default false', async () => {
+test('Docker projects the three rewrite settings only into web and keeps local Chat ready', async () => {
   const compose = await readFile(
     new URL('../../../../docker/docker-compose.dev.yml', import.meta.url),
     'utf8',
@@ -239,6 +239,6 @@ test('Docker projects the three rewrite settings only into web and keeps default
   }
   assert.match(
     web,
-    /RETRIEVER_QUERY_REWRITE_MODEL_ENABLED:\s*\$\{RETRIEVER_QUERY_REWRITE_MODEL_ENABLED:-false\}/u,
+    /RETRIEVER_QUERY_REWRITE_MODEL_ENABLED:\s*\$\{RETRIEVER_QUERY_REWRITE_MODEL_ENABLED:-true\}/u,
   );
 });

@@ -456,10 +456,13 @@ describe('Docker Compose worker readiness healthcheck', () => {
     );
     expect(webService).toContain('PREPMIND_LOCAL_DEV_TOOLS_ENABLED:');
     expect(webService).toContain(
-      'ROUTER_MODEL_ENABLED: ${ROUTER_MODEL_ENABLED:-false}',
+      'AI_DEV_MODE_SWITCH_ENABLED: ${AI_DEV_MODE_SWITCH_ENABLED:-true}',
     );
     expect(webService).toContain(
-      'KNOWLEDGE_VERIFIER_MODEL_ENABLED: ${KNOWLEDGE_VERIFIER_MODEL_ENABLED:-false}',
+      'ROUTER_MODEL_ENABLED: ${ROUTER_MODEL_ENABLED:-true}',
+    );
+    expect(webService).toContain(
+      'KNOWLEDGE_VERIFIER_MODEL_ENABLED: ${KNOWLEDGE_VERIFIER_MODEL_ENABLED:-true}',
     );
     expect(webService).toContain(
       'ROUTER_MODEL_TIMEOUT_MS: ${ROUTER_MODEL_TIMEOUT_MS:-5000}',
@@ -478,12 +481,14 @@ describe('Docker Compose worker readiness healthcheck', () => {
       'PREPMIND_CHAT_TURN_BUDGET_POLICY_VERSION: ${PREPMIND_CHAT_TURN_BUDGET_POLICY_VERSION:-chat-budget-v1}',
     );
     expect(webService).toContain('AI_MODEL: ${AI_MODEL:-deepseek-v4-flash}');
-    expect(webService).not.toContain('AI_DEV_MODE_SWITCH_ENABLED: ${');
     expect(webService).toContain(
       'AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com/v1}',
     );
     expect(webService).toContain('DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}');
     expect(webService).toContain('OPENAI_API_KEY: ${OPENAI_API_KEY:-}');
+    expect(webService).toContain(
+      'TUTOR_AGENT_DEEPSEEK_API_KEY: ${TUTOR_AGENT_DEEPSEEK_API_KEY:-${DEEPSEEK_API_KEY:-}}',
+    );
     expect(webService).not.toContain('REVIEW_AGENT_MODEL_ENABLED: ${');
     expect(webService).not.toContain('PLANNER_AGENT_MODEL_ENABLED: ${');
 

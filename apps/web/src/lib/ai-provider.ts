@@ -12,8 +12,7 @@ const DEFAULT_BASE_URL = 'https://api.deepseek.com';
 const DEFAULT_LIVE_MODEL = 'deepseek-v4-flash';
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
-const MISSING_AI_KEY_MESSAGE =
-  'AI API Key 未配置，请在 apps/web/.env.local 设置 DEEPSEEK_API_KEY 或 OPENAI_API_KEY 后重启前端服务。';
+const MISSING_AI_KEY_MESSAGE = '启动环境未注入 AI API Key（DEEPSEEK_API_KEY 或 OPENAI_API_KEY）。';
 const LIVE_CALL_GUARD_MESSAGE =
   '真实模型调用已被成本保护拦截，请设置 AI_ENABLE_LIVE_CALLS=true 后重启前端服务。';
 
@@ -83,11 +82,10 @@ export function getAiProviderStatus(
   options: { modeOverride?: 'mock' | 'live' | null } = {},
 ): AiProviderStatus {
   const mode = options.modeOverride ?? (env.AI_PROVIDER_MODE === 'live' ? 'live' : 'mock');
-  const maxInputTokens = parseAiTokenLimit(
-    env.AI_MAX_INPUT_TOKENS,
-    DEFAULT_AI_MAX_INPUT_TOKENS,
-    { min: 200, max: 12000 },
-  );
+  const maxInputTokens = parseAiTokenLimit(env.AI_MAX_INPUT_TOKENS, DEFAULT_AI_MAX_INPUT_TOKENS, {
+    min: 200,
+    max: 12000,
+  });
   const maxOutputTokens = parseAiTokenLimit(
     env.AI_MAX_OUTPUT_TOKENS,
     DEFAULT_AI_MAX_OUTPUT_TOKENS,

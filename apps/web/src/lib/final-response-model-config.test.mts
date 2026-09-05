@@ -215,7 +215,7 @@ test('keeps the maximum theoretical cost within the independent 0.015 CNY cap', 
   assert.equal(estimateFinalResponseRequestCostCny(2500, 1201), null);
 });
 
-test('Docker projects the three FinalResponse settings only into web and keeps default false', async () => {
+test('Docker projects the three FinalResponse settings only into web and keeps local Chat ready', async () => {
   const compose = await readFile(
     new URL('../../../../docker/docker-compose.dev.yml', import.meta.url),
     'utf8',
@@ -237,6 +237,6 @@ test('Docker projects the three FinalResponse settings only into web and keeps d
   }
   assert.match(
     web,
-    /FINAL_RESPONSE_AGENT_MODEL_ENABLED:\s*\$\{FINAL_RESPONSE_AGENT_MODEL_ENABLED:-false\}/u,
+    /FINAL_RESPONSE_AGENT_MODEL_ENABLED:\s*\$\{FINAL_RESPONSE_AGENT_MODEL_ENABLED:-true\}/u,
   );
 });

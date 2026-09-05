@@ -39,6 +39,9 @@
 - [x] ticket 04：浏览器 authenticated status + JSON cursor replay/polling、Dexie v10 checkpoint、刷新自动恢复与 identity fence
 - [x] ticket 04：cursor expired/Redis unavailable status-only、PostgreSQL terminal authority、absolute-order replacement 和旧 sync 隔离
 - [x] ticket 04 Mock Docker/可见浏览器：Worker 延迟/刷新、Redis 暂停/恢复、终态替换和恢复后的下一轮 enqueue
+- [x] 本地 `/agent-trace` Mock/Live 控件默认可见且不因基础 guard/key 状态禁用；切换无需改 `.env` 或重启
+- [x] Chat effective environment 统一传入 Router/Verifier、Tutor、Retriever rewrite、FinalResponse；Mock 基础模式仍不调用 Provider
+- [x] 模式切换自动化、Compose 脱敏检查与 headed 浏览器 `Mock -> Live -> Mock` 验收；Provider/费用均为 0
 - [ ] 真正长连接 BFF SSE push（与 ticket 04 JSON replay/polling 分开，是否实施需后续负载证据）
 - [ ] 全链路 owner capability 与 budget ledger
 - [ ] Trace 完整性/对账策略
@@ -50,7 +53,8 @@
 `docs/acceptance/phase-6-chat-turn-enqueue-api.md` 与
 `docs/acceptance/phase-6-chat-turn-web-enqueue-adapter.md` 与
 `docs/acceptance/phase-6-chat-turn-api-bridge.md` 与
-`docs/acceptance/phase-6-chat-turn-browser-replay.md`。未完成项不得因 mock/static 通过而勾选完成。
+`docs/acceptance/phase-6-chat-turn-browser-replay.md`。本地模式切换见
+`docs/acceptance/phase-6-local-ai-mode-switch.md`。未完成项不得因 mock/static 通过而勾选完成。
 
 这份文档是日常开发、阶段收尾、面试复盘前的统一入口。它不替代
 `docs/dev-start.md`、`docs/ai-behavior-acceptance.md` 和各阶段设计文档，而是回答一个更直接的问题：

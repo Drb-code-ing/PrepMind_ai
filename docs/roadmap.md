@@ -13,7 +13,8 @@ baseline、认证 enqueue、`/api/chat` handoff，以及浏览器 owner-bound st
 当前基线（2026-09-05）：
 
 - 文档入口分层整理已合并并推送；开始新任务前用 `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
-- 默认 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、各组件 gate=false。
+- 基础模式默认 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`，不会自动调用 Provider；本地 Docker Web 的五个 Chat 链
+  gate 已预配置，`/agent-trace` 显式选择 Live 后才形成进程内有效配置。其他 Server Agent gate 仍默认关闭。
 - `packages/agent/src/graph/index.ts` 是 `catalog_only` 治理目录，不是执行器；产品 Chat 编排在 Web/API composition。
 - Tool-Using Orchestrator 尚未实现；MemoryAgent 仍是确定性候选策略。
 - 历史 controlled-Live 只读且不可重跑；语义质量、产品可用性、billing 和 SLA 分开记录。

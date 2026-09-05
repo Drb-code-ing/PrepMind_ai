@@ -22,15 +22,17 @@
 ## 2. 当前项目状态（2026-09-05）
 
 - 2026-08-31 文档分层整理已合并并推送；开始新任务前始终用 `git rev-parse main` 与 `git rev-parse origin/main` 核对，不要复制历史 SHA。
-- Phase 6 Agent 运行时总审计仍是当前主线。最新原子任务已在 deterministic Worker、bounded replay、enqueue API/Web adapter
-  之上接通 authenticated `/api/chat -> message prepare -> durable enqueue -> 202 handoff`；浏览器 status/SSE replay、全链路 ledger
-  与真实模型 Worker 仍未完成。
+- Phase 6 Agent 运行时总审计仍是当前主线。最新原子任务补齐了本地 `/agent-trace` Mock/Live 切换及 Chat 链 effective
+  environment；在此之前已在 deterministic Worker、bounded replay、enqueue API/Web adapter 之上接通 authenticated
+  `/api/chat -> message prepare -> durable enqueue -> 202 handoff`，并完成浏览器 JSON status/replay recovery。真正长连接 SSE push、
+  全链路 ledger 与真实模型 Worker 仍未完成。
 - `packages/agent/src/graph/index.ts` 是受治理的 catalog descriptor，不是执行器；产品 Chat 编排仍在 Web/API composition。
 - Tool-Using Orchestrator 尚未实现。Review/Planner、Knowledge agents、Router/Verifier、Tutor、Retriever/FinalResponse
   的真实模型产品证据必须按矩阵逐项确认，不能用一条 Chat smoke 代替。
 - MemoryAgent 目前是确定性候选策略；分层记忆实现、记忆注入和两篇面试博客均后置。
-- 日常默认：`AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`、所有组件 gate 关闭。开启任何 Live 或产品 gate
-  都必须有独立数据边界、预算、凭据、授权和清理记录。
+- 日常基础模式仍是 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`。本地 Docker Web 会预配置 Chat 链组件 gate，
+  但只有用户在 `/agent-trace` 显式选择 Live 后才形成进程内有效 Live 环境；其他产品 gate 保持关闭。任何 Agent 自动执行的
+  controlled-Live 仍必须有独立数据边界、预算、凭据、授权和清理记录。
 
 当前矩阵与缺口：`docs/acceptance/phase-6-agent-runtime-audit.md`。项目级摘要：`docs/project-status.md`。
 

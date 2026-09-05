@@ -9,7 +9,7 @@ test('Chat route defers Agent runtime creation until after canonical access and 
   );
   const contextIndex = source.indexOf('accessAndContext = await runChatContextPreparation');
   const runtimeIndex = source.indexOf(
-    'createTutorBundle: () => createTutorModelRuntimeBundle({ env: process.env })',
+    'createTutorBundle: () => createTutorModelRuntimeBundle({ env: chatRuntimeEnv })',
   );
   assert.ok(accessIndex >= 0);
   assert.ok(contextIndex > accessIndex);
@@ -17,7 +17,7 @@ test('Chat route defers Agent runtime creation until after canonical access and 
   assert.doesNotMatch(source, /const\s+tutorModelBundle\s*=/u);
   assert.match(
     source,
-    /createTutorBundle:\s*\(\)\s*=>\s*createTutorModelRuntimeBundle\(\{\s*env:\s*process\.env\s*\}\)/u,
+    /createTutorBundle:\s*\(\)\s*=>\s*createTutorModelRuntimeBundle\(\{\s*env:\s*chatRuntimeEnv\s*\}\)/u,
   );
   assert.match(source, /projectTutorModelAgentObservation\(\s*agentExecution\.tutorObservation/u);
   assert.match(source, /tutor:\s*agentExecution\.tutorObservation/u);
