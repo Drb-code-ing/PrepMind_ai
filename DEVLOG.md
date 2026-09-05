@@ -1,5 +1,13 @@
 # PrepMind AI 开发日志
 
+> 2026-09-05 — Ticket 05 UNCERTAIN recovery 原子切片：
+>
+> 为已 dispatch 但 Provider 结果未知的预算 reservation 增加 `settleUncertain` 显式恢复入口。该入口要求带外部 usage 证据后才把
+> `UNCERTAIN -> SETTLED` 并转移 held/used 计数，重复调用保持幂等；没有无证据释放路径，避免把未知费用误记为零。新增 repository 回归测试，
+> 并同步合同与项目状态文档。Server focused budget tests `5/5`、build 和 `git diff --check` 通过；未调用 Provider、未读取凭据、未触碰 Docker 数据。
+> 该提交误在当时已切换的 `main` 上完成并已推送为 `0840348e`，后续任务恢复从最新 `main` 建分支、功能分支提交后合并的规范。
+> UNCERTAIN recovery 仍需真实 PostgreSQL 并发/crash 证据和产品级运营入口。
+
 > 2026-09-05 — Ticket 05 ChatRunBudget 终态对账与本地数据库验收：
 >
 > 在 `drb/chat-run-budget-terminal-reconcile` 完成 Worker 成功/不可重试失败后的 terminal reconciliation：只释放仍为 `RESERVED` 的未 dispatch

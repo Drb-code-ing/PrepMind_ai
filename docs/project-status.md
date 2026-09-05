@@ -36,7 +36,7 @@ Bun。此前完成的 `/agent-trace` Mock/Live 切换和 durable ChatTurn 浏览
 | Knowledge Dedup / Organizer | owner-scoped shortlist、受限 candidate 与 deterministic fallback 已实现                                       | 需要最新矩阵确认真实产品 smoke 状态                                                 |
 | Retriever / FinalResponse   | `/api/chat` 主回答链有真实模型 smoke；历史质量门失败证据不可重跑                                              | 不能据此证明上游每个 Agent 或 SLA                                                   |
 | Chat response worker        | Outbox -> BullMQ -> claim -> durable terminal commit；Stream contract、Redis bounded replay 和状态查询已实现  | 当前 generator 是 `deterministic-worker-v1`；全链路 ledger、真实模型 Worker 未完成  |
-| ChatRunBudget 合同          | `@repo/types`、Prisma schema/migration（已部署到本地 PostgreSQL）、owner-scoped repository 与 Worker reservation/settlement/terminal reconcile 已实现 | 隔离数据库并发证据、其他 Agent stage、Trace 对账和真实模型结算未完成                |
+| ChatRunBudget 合同          | `@repo/types`、Prisma schema/migration（已部署到本地 PostgreSQL）、owner-scoped repository 与 Worker reservation/settlement/terminal reconcile、显式 UNCERTAIN recovery 已实现 | 隔离数据库并发证据、其他 Agent stage、Trace 对账和真实模型结算未完成                |
 | ChatTurn product bridge     | gate-on 后 prepare/enqueue/`202`；浏览器 owner-bound status + JSON cursor replay、刷新恢复和 status-only 降级 | gate 默认关闭；首轮保留 legacy；当前不是长连接 BFF SSE push，也不是生产持续运行证据 |
 | MemoryAgent                 | PostgreSQL 候选/确认/停用/删除流程已实现                                                                      | 当前无模型 gate、自动注入或完整分层记忆实现                                         |
 | Tool-Using Orchestrator     | 未实现                                                                                                        | 仅在治理 catalog/规划中出现                                                         |
