@@ -1,7 +1,7 @@
 # Phase 6 ChatRunBudget 合同验收
 
 更新时间：2026-09-05
-状态：共享类型合同已实现；持久化 ledger、跨节点 CAS、Worker 接入和真实模型验收未实现。
+状态：共享类型合同以及 Prisma schema/migration 已实现；运行时 repository、跨节点 CAS、Worker 接入和真实模型验收未实现。
 
 ## 1. 目的
 
@@ -17,6 +17,8 @@
 - 支持 `RESERVED -> DISPATCHED -> SETTLED|UNCERTAIN` 以及未 dispatch 时的 `RELEASED` 生命周期；settled usage 只能在结算状态出现。
 - 成本以安全范围内的微 CNY 整数表示；owner、turn、ledger、reservation 绑定字段均为有界 ID。
 - event 只允许 bounded ids、枚举、时间和 usage，strict schema 会拒绝未知字段及 prompt、provider response、API key 等原始载荷。
+- Prisma 已新增 owner-bound `ChatRunBudget`、`ChatRunBudgetReservation`、`ChatRunBudgetEvent` 及复合外键、索引和生命周期 CHECK；迁移
+  不携带 prompt、provider 原文或凭据字段。
 
 ## 3. 验证证据
 
@@ -33,7 +35,7 @@ Prettier: passed
 
 ## 4. 明确未完成项
 
-这次只冻结跨模块合同，不代表功能已经拥有可运行的预算账本。后续 ticket 05 切片必须实现：
+这次已完成合同和数据库结构，但不代表功能已经拥有可运行的预算账本。后续 ticket 05 切片必须实现：
 
 1. Prisma `ChatRunBudget`、reservation、ledger event 持久化及 owner/turn 外键。
 2. Serializable/CAS reservation service，覆盖并发超限、取消释放、dispatch 后 uncertain 和重复请求幂等。

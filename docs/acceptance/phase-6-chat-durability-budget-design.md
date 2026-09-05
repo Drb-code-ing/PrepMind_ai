@@ -91,11 +91,12 @@ ChatRunBudget {
 - 每次 reservation 在 dispatch 前写入 Trace/ledger 的 bounded event；provider 原文、prompt、credential 不落库。
 - 失败、abort、timeout、schema invalid 都释放“未使用”预算但不回滚已发生调用；重试必须新 turn 或显式 retry policy，不能隐式 replay。
 
-共享合同位于 `@repo/types` 的 `chat-run-budget` API：policy、ledger、reservation、usage 和 bounded event 均为 strict Zod schema。
+共享合同位于 `@repo/types` 的 `chat-run-budget` API：policy、ledger、reservation、usage 和 bounded event 均为 strict Zod schema；对应
+Prisma ledger/reservation/event 结构和 migration CHECK 已落地。
 reservation 的 `RESERVED -> DISPATCHED -> SETTLED|UNCERTAIN` 与未 dispatch 的 `RELEASED` 生命周期、时间顺序、结算 usage 不得超过预留值、
 以及 `used + held <= policy` 都在合同层校验。合同验收见
 [`phase-6-chat-run-budget-contract.md`](phase-6-chat-run-budget-contract.md)。这只是 `implemented + mock/static validated`，不代表
-数据库 ledger、CAS、Worker 接入或真实模型调用已完成。
+运行时 repository、CAS、Worker 接入或真实模型调用已完成。
 
 ## 5. 权限、Trace 与 Outbox 边界
 
