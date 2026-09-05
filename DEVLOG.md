@@ -15,7 +15,11 @@
 > Chat 消息、没有读取或输出凭据、没有调用 DeepSeek/Qwen/其他 Provider，费用为 0。合成账号已退出并精确删除，目标
 > `ChatTurn=0 / Outbox=0`；未清理容器、镜像、volume、PostgreSQL、Redis 或 MinIO。证据等级为
 > `implemented + mock/static validated + Mock Docker/可见浏览器产品验收`，不代表真实模型质量或 production-used。详细边界见
-> `docs/acceptance/phase-6-local-ai-mode-switch.md`。
+> `docs/acceptance/phase-6-local-ai-mode-switch.md`。功能提交 `dc538cd3c648c4b31025e6febe6505112db2131e` 已推送，随后以
+> `--no-ff` 合并并推送为 `main=6f94123c43c21102324bdef3d4deab77ae78fd73`。merged-main 再次通过 Web `542/542`、
+> Server Compose readiness `21/21`、Web lint/build、Server build 和 committed diff check；只从主线重新构建并替换 `web`，
+> 可见浏览器复验 `Mock -> Live -> Mock` 后保持 Mock。主线复验创建的合成账号均已退出并精确删除，最终
+> `User/ChatTurn/ChatMessage/Trace/BackgroundJob/Outbox=0`；`main == origin/main`，七个用户预修改文件仍未暂存。
 >
 > 2026-09-05 — ChatTurn 浏览器恢复与 JSON cursor replay ticket 04：
 >

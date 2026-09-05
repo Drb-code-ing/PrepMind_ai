@@ -60,3 +60,14 @@
 
 已知无关状态：现有 `docker-worker-1` 的 readiness 仍显示 `unhealthy`，源于历史 audit maintenance 事务超时；本任务没有清理、重置或
 改写该队列。
+
+## 合并主线复验
+
+- 功能提交 `dc538cd3c648c4b31025e6febe6505112db2131e` 已推送到
+  `origin/drb/ai-mode-switch-defaults`，并以 `--no-ff` 合并、推送为
+  `main=6f94123c43c21102324bdef3d4deab77ae78fd73`。
+- merged-main Web `542/542`、Server Compose readiness `21/21`、Web lint/build、Server build 和 committed diff check 通过。
+- 从合并后的主线只重新构建并替换 `web` 容器；其余服务和 volume 未重建、未清理。可见浏览器再次确认
+  `Mock -> Live -> Mock`，最终 API 状态为 `enabled=true / activeMode=mock / liveAllowedByEnv=true`。
+- 主线复验没有提交 Chat，也没有调用 Provider。复验合成账号均已退出并按精确 id 删除；最终相关
+  `User/ChatTurn/ChatMessage/AgentTraceRun/BackgroundJob/OutboxEvent` 均为 `0`。浏览器保留在可见登录页。
