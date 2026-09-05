@@ -129,6 +129,52 @@ describe('ChatRunBudgetRepository', () => {
     );
   });
 
+  it('settles an UNCERTAIN reservation only with explicit recovered usage', async () => {
+    const reservation = makeReservation({
+      status: 'UNCERTAIN',
+      dispatchedAt: new Date('2026-09-05T00:00:01.000Z'),
+    });
+    const settled = {
+      ...reservation,
+      status: 'SETTLED' as const,
+      usageInputTokens: 90,
+      usageOutputTokens: 40,
+      usageCostMicros: 900,
+      settledAt: new Date('2026-09-05T00:00:02.000Z'),
+    };
+    const transaction = {
+      chatRunBudgetReservation: {
+        findUnique: jest.fn().mockResolvedValue(reservation),
+        update: jest.fn().mockResolvedValue(settled),
+      },
+      chatRunBudget: {
+        findUnique: jest.fn().mockResolvedValue(makeLedger()),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      chatRunBudgetEvent: { create: jest.fn().mockResolvedValue({}) },
+    };
+    const prisma = {
+      $transaction: jest.fn(
+        async (operation: (tx: typeof transaction) => unknown) =>
+          operation(transaction),
+      ),
+    } as never;
+    const repository = new ChatRunBudgetRepository(prisma);
+
+    await expect(
+      repository.settleUncertain(ownerId, reservationId, {
+        inputTokens: 90,
+        outputTokens: 40,
+        costMicros: 900,
+      }),
+    ).resolves.toMatchObject({ kind: 'updated', reservation: settled });
+    expect(transaction.chatRunBudgetEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ type: 'SETTLED', usageCostMicros: 900 }),
+      }),
+    );
+  });
+
   it('reconciles unstarted reservations without touching uncertain work', async () => {
     const ledger = makeLedger({
       heldCalls: 1,

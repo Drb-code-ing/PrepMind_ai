@@ -211,6 +211,94 @@ export class ChatRunBudgetRepository {
     });
   }
 
+  /**
+   * Settles a dispatched attempt after an operator/provider recovery confirms
+   * the usage. An UNCERTAIN reservation is never released: without evidence
+   * that the provider did not run, releasing would undercount spend.
+   */
+  async settleUncertain(
+    ownerId: string,
+    reservationId: string,
+    usage: ChatRunBudgetUsage,
+  ): Promise<BudgetTransition> {
+    const validatedUsage = chatRunBudgetUsageSchema.parse(usage);
+    return this.runSerializable(async (transaction) => {
+      const current = await transaction.chatRunBudgetReservation.findUnique({
+        where: { id_userId: { id: reservationId, userId: ownerId } },
+      });
+      if (!current) return { kind: 'not-found' } as const;
+      if (current.status === 'SETTLED') {
+        return current.usageInputTokens === validatedUsage.inputTokens &&
+          current.usageOutputTokens === validatedUsage.outputTokens &&
+          current.usageCostMicros === validatedUsage.costMicros
+          ? ({ kind: 'updated', reservation: current } as const)
+          : ({ kind: 'conflict', reservation: current } as const);
+      }
+      if (
+        current.status !== 'UNCERTAIN' ||
+        validatedUsage.inputTokens > current.inputTokens ||
+        validatedUsage.outputTokens > current.outputTokens ||
+        validatedUsage.costMicros > current.costMicros
+      ) {
+        return { kind: 'conflict', reservation: current } as const;
+      }
+      const ledger = await transaction.chatRunBudget.findUnique({
+        where: { id_userId: { id: current.ledgerId, userId: ownerId } },
+      });
+      if (!ledger) return { kind: 'not-found' } as const;
+      const updatedLedger = await transaction.chatRunBudget.updateMany({
+        where: {
+          id: current.ledgerId,
+          userId: ownerId,
+          heldCalls: { gte: 1 },
+          heldInputTokens: { gte: current.inputTokens },
+          heldOutputTokens: { gte: current.outputTokens },
+          heldCostMicros: { gte: current.costMicros },
+          usedCalls: { lte: ledger.maxCalls - 1 },
+          usedInputTokens: { lte: ledger.maxInputTokens - validatedUsage.inputTokens },
+          usedOutputTokens: { lte: ledger.maxOutputTokens - validatedUsage.outputTokens },
+          usedCostMicros: { lte: ledger.maxCostMicros - validatedUsage.costMicros },
+        },
+        data: {
+          heldCalls: { decrement: 1 },
+          heldInputTokens: { decrement: current.inputTokens },
+          heldOutputTokens: { decrement: current.outputTokens },
+          heldCostMicros: { decrement: current.costMicros },
+          usedCalls: { increment: 1 },
+          usedInputTokens: { increment: validatedUsage.inputTokens },
+          usedOutputTokens: { increment: validatedUsage.outputTokens },
+          usedCostMicros: { increment: validatedUsage.costMicros },
+        },
+      });
+      if (updatedLedger.count !== 1)
+        return { kind: 'conflict', reservation: current } as const;
+      const reservation = await transaction.chatRunBudgetReservation.update({
+        where: { id_userId: { id: reservationId, userId: ownerId } },
+        data: {
+          status: 'SETTLED',
+          usageInputTokens: validatedUsage.inputTokens,
+          usageOutputTokens: validatedUsage.outputTokens,
+          usageCostMicros: validatedUsage.costMicros,
+          settledAt: new Date(),
+        },
+      });
+      await transaction.chatRunBudgetEvent.create({
+        data: {
+          userId: ownerId,
+          turnId: current.turnId,
+          ledgerId: current.ledgerId,
+          reservationId,
+          stage: current.stage,
+          type: 'SETTLED',
+          usageInputTokens: validatedUsage.inputTokens,
+          usageOutputTokens: validatedUsage.outputTokens,
+          usageCostMicros: validatedUsage.costMicros,
+        },
+      });
+      return { kind: 'updated', reservation } as const;
+    });
+  }
+
   async settle(
     ownerId: string,
     reservationId: string,

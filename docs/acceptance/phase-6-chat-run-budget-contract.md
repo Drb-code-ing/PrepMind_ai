@@ -14,7 +14,8 @@
 - 在 `@repo/types` 新增 `chat-run-budget` API contract，并从 package 根入口和子路径导出。
 - 定义 policy、ledger、reservation request、reservation、usage 和 bounded ledger event 的 Zod strict schema 与 TypeScript 类型。
 - 支持 `ROUTER`、`TUTOR`、`RETRIEVER`、`VERIFIER`、`FINAL_RESPONSE`、`WORKER` stage。
-- 支持 `RESERVED -> DISPATCHED -> SETTLED|UNCERTAIN` 以及未 dispatch 时的 `RELEASED` 生命周期；settled usage 只能在结算状态出现。
+- 支持 `RESERVED -> DISPATCHED -> SETTLED|UNCERTAIN`、经显式 provider/运营证据确认后的 `UNCERTAIN -> SETTLED`，以及未 dispatch 时的
+  `RELEASED` 生命周期；settled usage 只能在结算状态出现，UNCERTAIN 不允许自动退款。
 - 成本以安全范围内的微 CNY 整数表示；owner、turn、ledger、reservation 绑定字段均为有界 ID。
 - event 只允许 bounded ids、枚举、时间和 usage，strict schema 会拒绝未知字段及 prompt、provider response、API key 等原始载荷。
 - Prisma 已新增 owner-bound `ChatRunBudget`、`ChatRunBudgetReservation`、`ChatRunBudgetEvent` 及复合外键、索引和生命周期 CHECK；迁移
@@ -44,6 +45,7 @@ Prettier: passed
 
 1. 在隔离验收数据库补真实 PostgreSQL 并发超限、取消释放、dispatch 后 uncertain、重复请求幂等和 crash/recovery 回归；当前本地 migration 已部署，尚无并发证据。
 2. 扩展 Router/Tutor/Retriever/Verifier/FinalResponse 的 Agent stage 接入，结算真实 usage/cost，并与 terminal Outbox、Redis stream、Trace 做 bounded reconciliation。
+   对 UNCERTAIN 仅允许带外部 usage 证据的显式 `settleUncertain`，不提供无证据释放路径。
 3. 补 crash/recovery、跨节点竞争和产品链路回归；默认仍保持 mock/off，真实模型需另有授权和独立 controlled-Live 证据。
 
 ## 5. 复核入口
