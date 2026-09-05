@@ -80,6 +80,7 @@ describe('parseEnv', () => {
       CHAT_STREAM_MAX_EVENTS: 256,
       CHAT_STREAM_MAX_BYTES: 524288,
       CHAT_STREAM_TTL_SECONDS: 86400,
+      CHAT_STREAM_OPERATION_TIMEOUT_MS: 1500,
     });
   });
 
@@ -90,11 +91,13 @@ describe('parseEnv', () => {
         CHAT_STREAM_MAX_EVENTS: '64',
         CHAT_STREAM_MAX_BYTES: '32768',
         CHAT_STREAM_TTL_SECONDS: '3600',
+        CHAT_STREAM_OPERATION_TIMEOUT_MS: '750',
       }),
     ).toMatchObject({
       CHAT_STREAM_MAX_EVENTS: 64,
       CHAT_STREAM_MAX_BYTES: 32768,
       CHAT_STREAM_TTL_SECONDS: 3600,
+      CHAT_STREAM_OPERATION_TIMEOUT_MS: 750,
     });
     expect(() =>
       parseEnv({ ...requiredEnv, CHAT_STREAM_MAX_EVENTS: 0 }),
@@ -104,6 +107,9 @@ describe('parseEnv', () => {
     ).toThrow();
     expect(() =>
       parseEnv({ ...requiredEnv, CHAT_STREAM_TTL_SECONDS: 59 }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({ ...requiredEnv, CHAT_STREAM_OPERATION_TIMEOUT_MS: 99 }),
     ).toThrow();
   });
 

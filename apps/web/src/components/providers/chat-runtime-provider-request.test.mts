@@ -49,7 +49,7 @@ test('reads the current runtime context for every prepared chat request', () => 
 
 test('keeps a ChatTurn handoff placeholder out of snapshot sync and blocks overlapping submit', async () => {
   const source = await readFile(new URL('./chat-runtime-provider.tsx', import.meta.url), 'utf8');
-  const pendingIndex = source.indexOf('if (hasPendingChatTurnHandoff(runtimeMessages))');
+  const pendingIndex = source.indexOf('hasPendingChatTurnHandoff(runtimeMessages)');
   const completionIndex = source.indexOf('const completionGuard = getChatCompletionGuard');
 
   assert.ok(pendingIndex >= 0);
@@ -57,6 +57,14 @@ test('keeps a ChatTurn handoff placeholder out of snapshot sync and blocks overl
   assert.match(source, /omitChatTurnHandoffMessages\(runtimeMessages\)\.map/u);
   assert.match(
     source,
-    /hasPendingChatTurnHandoff\([\s\S]*?messagesRef\.current[\s\S]*?setChatError\('上一条回答已交给后台处理，请稍后刷新页面查看结果/u,
+    /chatTurnRecoveryRef\.current \|\|[\s\S]*?hasPendingChatTurnHandoff\([\s\S]*?messagesRef\.current[\s\S]*?setChatError\('上一条回答仍在后台处理中，请等待完成后再继续发送/u,
+  );
+  assert.match(
+    source,
+    /chatTurnRecoveryRef\.current \|\|[\s\S]*?hasPendingChatTurnHandoff\(runtimeMessages\)[\s\S]*?return;/u,
+  );
+  assert.match(
+    source,
+    /conversationStateRestore[\s\S]*?readLatestForUser\([\s\S]*?userId,[\s\S]*?restoredConversationId,[\s\S]*?\)/u,
   );
 });

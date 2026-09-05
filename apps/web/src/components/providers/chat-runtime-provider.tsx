@@ -23,19 +23,39 @@ import {
   CHAT_EMPTY_ASSISTANT_MESSAGE,
   getChatCompletionGuard,
   getChatSyncSettleMs,
+  selectHydratedChatHistory,
   shouldPersistChatSnapshot,
-  trimIncompleteChatTail,
 } from '@/lib/chat-completion-guard';
 import type { ActiveStudyContext } from '@/lib/chat-context';
 import { createChatRuntimeRequestBodyPreparer } from '@/lib/chat-runtime-request';
 import { beginChatServerSync, buildChatSyncSignature } from '@/lib/chat-sync';
-import { hasPendingChatTurnHandoff, omitChatTurnHandoffMessages } from '@/lib/chat-turn-handoff';
+import {
+  createChatTurnRecoveryCache,
+  createChatTurnRecoveryRecord,
+} from '@/lib/chat-turn-recovery-cache';
+import {
+  ChatTurnRecoveryHistoryError,
+  removeChatTurnRecoveryMessage,
+  resolveChatTurnRecoveryMessage,
+  upsertChatTurnRecoveryMessage,
+} from '@/lib/chat-turn-recovery-messages';
+import {
+  getLatestChatTurnHandoff,
+  hasPendingChatTurnHandoff,
+  omitChatTurnHandoffMessages,
+} from '@/lib/chat-turn-handoff';
+import { chatTurnReplayApi } from '@/lib/chat-turn-replay-api';
+import {
+  ChatTurnReplayError,
+  followChatTurn,
+  type ChatTurnReplayProgress,
+} from '@/lib/chat-turn-replay';
 import {
   createConversationStateCache,
   createConversationStateRuntimeBridge,
   shouldApplyConversationStateRestore,
 } from '@/lib/conversation-state-cache';
-import { db, type StoredMessage } from '@/lib/db';
+import { db, type StoredChatTurnRecovery, type StoredMessage } from '@/lib/db';
 import { useChatStore } from '@/stores/chatStore';
 import { useUserStore } from '@/stores/userStore';
 
@@ -43,6 +63,7 @@ const STREAM_UI_THROTTLE_MS = 80;
 const conversationStateRuntimeBridge = createConversationStateRuntimeBridge(
   createConversationStateCache(db.conversationStates),
 );
+const chatTurnRecoveryCache = createChatTurnRecoveryCache(db.chatTurnRecoveries);
 
 type RuntimeMessage = {
   id: string;
@@ -111,6 +132,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const [activeStudyContext, setActiveStudyContext] = useState<ActiveStudyContext | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [chatTurnRecovery, setChatTurnRecovery] = useState<StoredChatTurnRecovery | null>(null);
 
   const serverMessagesHydratedRef = useRef(false);
   const messagesSavedRef = useRef(false);
@@ -126,6 +148,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   const userIdRef = useRef(userId);
   const activeStudyContextRef = useRef(activeStudyContext);
   const accessTokenRef = useRef(accessToken);
+  const chatTurnRecoveryRef = useRef(chatTurnRecovery);
 
   const {
     messages,
@@ -153,14 +176,15 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const messagesRef = useRef(messages);
+  const messagesRef = useRef<RuntimeMessage[]>(messages as RuntimeMessage[]);
   useLayoutEffect(() => {
-    messagesRef.current = messages;
+    messagesRef.current = messages as RuntimeMessage[];
     chatTimestampsRef.current = chatTimestamps;
     conversationIdRef.current = conversationId;
     userIdRef.current = userId;
     activeStudyContextRef.current = activeStudyContext;
     accessTokenRef.current = accessToken;
+    chatTurnRecoveryRef.current = chatTurnRecovery;
     isLoadingRef.current = isLoading;
   });
 
@@ -168,6 +192,10 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     () => buildChatCompletionSignature(messages as RuntimeMessage[]),
     [messages],
   );
+  const chatTurnHandoffSignature = useMemo(() => {
+    const latest = getLatestChatTurnHandoff(messages as RuntimeMessage[]);
+    return latest ? `${latest.message.id}\u0000${latest.handoff.turnId}` : '';
+  }, [messages]);
 
   const chatMessagesQuery = useChatMessages(conversationId ? { conversationId } : {});
   const syncChatMessages = useSyncChatMessages();
@@ -192,11 +220,16 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     [userId],
   );
 
-  const trimStoredMessages = useCallback((storedMessages: StoredMessage[]) => {
-    const runtimeMessages = trimIncompleteChatTail(toRuntimeMessages(storedMessages));
-    const validMessageIds = new Set(runtimeMessages.map((message) => message.id));
-    return storedMessages.filter((message) => validMessageIds.has(message.id));
-  }, []);
+  const selectStoredMessagesForHydration = useCallback(
+    (storedMessages: StoredMessage[], preserveIncompleteTail: boolean) => {
+      const runtimeMessages = selectHydratedChatHistory(toRuntimeMessages(storedMessages), {
+        preserveIncompleteTail,
+      });
+      const validMessageIds = new Set(runtimeMessages.map((message) => message.id));
+      return storedMessages.filter((message) => validMessageIds.has(message.id));
+    },
+    [],
+  );
 
   const saveChatToDb = useCallback(
     async (storedMessages: StoredMessage[]) => {
@@ -261,22 +294,11 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     const expectedUserId = userId;
-    void conversationStateRuntimeBridge.changeIdentity(userId).then((restoredState) => {
-      if (
-        !restoredState ||
-        !shouldApplyConversationStateRestore({
-          cancelled,
-          expectedUserId,
-          currentUserId: userIdRef.current,
-          restored: restoredState,
-        })
-      ) {
-        return;
-      }
-      setConversationId(restoredState.conversationId);
-    });
-
+    const conversationStateRestore = conversationStateRuntimeBridge
+      .changeIdentity(userId)
+      .catch(() => null);
     if (!userId) {
+      void conversationStateRestore;
       serverMessagesHydratedRef.current = false;
       messagesSavedRef.current = false;
       inputDraftClearReadyRef.current = false;
@@ -291,6 +313,8 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
         setChatTimestamps({});
         setConversationId(null);
         setActiveStudyContext(null);
+        chatTurnRecoveryRef.current = null;
+        setChatTurnRecovery(null);
         setIsHydrated(false);
       });
       return () => {
@@ -310,30 +334,58 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       setIsHydrated(false);
       setConversationId(null);
       setActiveStudyContext(null);
+      chatTurnRecoveryRef.current = null;
+      setChatTurnRecovery(null);
     });
 
-    db.messages
-      .where('userId')
-      .equals(userId)
-      .sortBy('order')
-      .then((localMessages) => {
-        if (cancelled) return;
+    void Promise.all([
+      conversationStateRestore,
+      db.messages.where('userId').equals(userId).sortBy('order'),
+    ]).then(async ([restoredState, localMessages]) => {
+      if (cancelled) return;
 
-        const validLocalMessages = trimStoredMessages(localMessages);
-        if (validLocalMessages.length !== localMessages.length) {
-          void saveChatToDb(validLocalMessages);
-        }
+      const restoredConversationId =
+        restoredState &&
+        shouldApplyConversationStateRestore({
+          cancelled,
+          expectedUserId,
+          currentUserId: userIdRef.current,
+          restored: restoredState,
+        })
+          ? restoredState.conversationId
+          : null;
+      const restoredRecovery = await chatTurnRecoveryCache.readLatestForUser(
+        userId,
+        restoredConversationId,
+      );
+      if (cancelled || userIdRef.current !== userId) return;
 
-        setMessages(toRuntimeMessages(validLocalMessages));
-        setChatTimestamps(toTimestampMap(validLocalMessages));
-        prevMsgIdsRef.current = new Set(validLocalMessages.map((message) => message.id));
-        setIsHydrated(true);
-      });
+      chatTurnRecoveryRef.current = restoredRecovery;
+      setChatTurnRecovery(restoredRecovery);
+      if (restoredConversationId) {
+        setConversationId(restoredConversationId);
+      } else if (restoredRecovery && conversationIdRef.current === null) {
+        setConversationId(restoredRecovery.conversationId);
+      }
+
+      const validLocalMessages = selectStoredMessagesForHydration(
+        localMessages,
+        restoredRecovery !== null,
+      );
+      if (validLocalMessages.length !== localMessages.length) {
+        void saveChatToDb(validLocalMessages);
+      }
+
+      setMessages(toRuntimeMessages(validLocalMessages));
+      setChatTimestamps(toTimestampMap(validLocalMessages));
+      prevMsgIdsRef.current = new Set(validLocalMessages.map((message) => message.id));
+      setIsHydrated(true);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [saveChatToDb, setMessages, trimStoredMessages, userId]);
+  }, [saveChatToDb, selectStoredMessagesForHydration, setMessages, userId]);
 
   useEffect(() => {
     const serverData = chatMessagesQuery.data;
@@ -348,7 +400,10 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       }
 
       if (serverData.messages.length > 0) {
-        const validServerMessages = trimStoredMessages(serverData.messages);
+        const validServerMessages = selectStoredMessagesForHydration(
+          serverData.messages,
+          chatTurnRecoveryRef.current !== null,
+        );
         const serverRuntimeMessages = toRuntimeMessages(validServerMessages);
         setChatTimestamps(toTimestampMap(validServerMessages));
         lastServerSyncKeyRef.current = buildChatSyncSignature(
@@ -362,6 +417,12 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
       }
 
       const localMessages = toStoredMessages(messagesRef.current as RuntimeMessage[]);
+      if (
+        chatTurnRecoveryRef.current ||
+        hasPendingChatTurnHandoff(messagesRef.current as RuntimeMessage[])
+      ) {
+        return;
+      }
       if (localMessages.length === 0) return;
 
       void syncStoredMessagesToServer(
@@ -376,7 +437,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     saveChatToDb,
     setMessages,
     syncStoredMessagesToServer,
-    trimStoredMessages,
+    selectStoredMessagesForHydration,
     toStoredMessages,
     userId,
   ]);
@@ -401,6 +462,224 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   }, [messages.length]);
 
   useEffect(() => {
+    if (!chatTurnHandoffSignature || !userId || !conversationId) return;
+    const latest = getLatestChatTurnHandoff(messagesRef.current as RuntimeMessage[]);
+    if (!latest || latest.handoff.conversationId !== conversationId) return;
+
+    let cancelled = false;
+    let record: StoredChatTurnRecovery;
+    try {
+      record = createChatTurnRecoveryRecord({
+        userId,
+        handoff: latest.handoff,
+        placeholderMessageId: latest.message.id,
+        createdAt: chatTimestampsRef.current[latest.message.id] ?? Date.now(),
+      });
+    } catch {
+      queueMicrotask(() => {
+        if (!cancelled) setChatError('后台回答标识无效，请刷新页面后重试。');
+      });
+      return;
+    }
+
+    if (chatTurnRecoveryRef.current?.id !== record.id) {
+      chatTurnRecoveryRef.current = record;
+      setChatTurnRecovery(record);
+    }
+    void chatTurnRecoveryCache.begin(record).then((stored) => {
+      if (
+        cancelled ||
+        userIdRef.current !== userId ||
+        conversationIdRef.current !== conversationId ||
+        chatTurnRecoveryRef.current?.id !== record.id
+      ) {
+        return;
+      }
+      chatTurnRecoveryRef.current = stored;
+      setChatTurnRecovery(stored);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [chatTurnHandoffSignature, conversationId, userId]);
+
+  const chatTurnRecoveryId = chatTurnRecovery?.id ?? '';
+  useEffect(() => {
+    const recovery = chatTurnRecoveryRef.current;
+    if (
+      !recovery ||
+      recovery.id !== chatTurnRecoveryId ||
+      !userId ||
+      !accessToken ||
+      !conversationId ||
+      recovery.userId !== userId ||
+      recovery.conversationId !== conversationId ||
+      !isHydrated ||
+      isLoading ||
+      (!serverMessagesHydratedRef.current && chatMessagesQuery.isFetching)
+    ) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const capturedUserId = userId;
+    const capturedAccessToken = accessToken;
+    const capturedConversationId = conversationId;
+    let lastCheckpointSignature = '';
+    const isCurrent = () =>
+      !controller.signal.aborted &&
+      userIdRef.current === capturedUserId &&
+      accessTokenRef.current === capturedAccessToken &&
+      conversationIdRef.current === capturedConversationId &&
+      chatTurnRecoveryRef.current?.id === recovery.id;
+
+    const applyProgress = (progress: ChatTurnReplayProgress) => {
+      if (!isCurrent()) return;
+      const checkpointSignature = JSON.stringify({
+        status: progress.status,
+        transport: progress.transport,
+        cursor: progress.cursor,
+        lastSequence: progress.lastSequence,
+        previewText: progress.previewText,
+      });
+      if (checkpointSignature !== lastCheckpointSignature) {
+        lastCheckpointSignature = checkpointSignature;
+        void chatTurnRecoveryCache.checkpoint(recovery.id, capturedUserId, {
+          status: progress.status,
+          transport: progress.transport,
+          cursor: progress.cursor,
+          lastSequence: progress.lastSequence,
+          previewText: progress.previewText,
+        });
+      }
+
+      const currentMessages = messagesRef.current as RuntimeMessage[];
+      const nextMessages = upsertChatTurnRecoveryMessage(
+        currentMessages,
+        recovery,
+        progress,
+      ) as RuntimeMessage[];
+      if (nextMessages !== currentMessages) {
+        messagesRef.current = nextMessages;
+        setMessages(nextMessages);
+      }
+      if (chatTimestampsRef.current[recovery.placeholderMessageId] === undefined) {
+        const nextTimestamps = {
+          ...chatTimestampsRef.current,
+          [recovery.placeholderMessageId]: recovery.createdAt,
+        };
+        chatTimestampsRef.current = nextTimestamps;
+        setChatTimestamps(nextTimestamps);
+      }
+    };
+
+    setChatError(null);
+    void followChatTurn(
+      {
+        accessToken: capturedAccessToken,
+        turnId: recovery.turnId,
+        conversationId: capturedConversationId,
+        signal: controller.signal,
+        initial: {
+          status: recovery.status,
+          transport: recovery.transport,
+          cursor: recovery.cursor,
+          lastSequence: recovery.lastSequence,
+          previewText: recovery.previewText,
+        },
+        onProgress: applyProgress,
+      },
+      { api: chatTurnReplayApi },
+    )
+      .then(async (result) => {
+        if (!isCurrent()) return;
+        if (result.kind === 'succeeded') {
+          const nextMessages = resolveChatTurnRecoveryMessage(
+            messagesRef.current as RuntimeMessage[],
+            recovery,
+            result,
+          ) as RuntimeMessage[];
+          const nextTimestamps = { ...chatTimestampsRef.current };
+          delete nextTimestamps[recovery.placeholderMessageId];
+          nextTimestamps[result.response.id] = Date.parse(result.response.createdAt);
+          chatTimestampsRef.current = nextTimestamps;
+          messagesRef.current = nextMessages;
+          prevMsgIdsRef.current = new Set(nextMessages.map((message) => message.id));
+          setChatTimestamps(nextTimestamps);
+          setMessages(nextMessages);
+
+          const storedMessages = toStoredMessages(nextMessages);
+          lastServerSyncKeyRef.current = buildChatSyncSignature(
+            storedMessages,
+            capturedConversationId,
+          );
+          void saveChatToDb(storedMessages).catch((error) =>
+            logBackgroundSyncError('[ChatTurn recovery cache]', error),
+          );
+          setChatError(null);
+        } else {
+          const nextMessages = removeChatTurnRecoveryMessage(
+            messagesRef.current as RuntimeMessage[],
+            recovery.turnId,
+          ) as RuntimeMessage[];
+          const nextTimestamps = { ...chatTimestampsRef.current };
+          delete nextTimestamps[recovery.placeholderMessageId];
+          chatTimestampsRef.current = nextTimestamps;
+          messagesRef.current = nextMessages;
+          setChatTimestamps(nextTimestamps);
+          setMessages(nextMessages);
+          setChatError(
+            result.kind === 'cancelled'
+              ? '后台回答已取消，可以重新发送。'
+              : '后台回答生成失败，请重新发送。',
+          );
+        }
+
+        await chatTurnRecoveryCache.remove(recovery.id, capturedUserId);
+        if (isCurrent()) {
+          chatTurnRecoveryRef.current = null;
+          setChatTurnRecovery(null);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!isCurrent() || isAbortError(error)) return;
+        if (
+          error instanceof ChatTurnRecoveryHistoryError ||
+          (error instanceof ChatTurnReplayError &&
+            (error.code === 'CONTEXT_MISMATCH' || error.code === 'DURABLE_RESPONSE_INVALID'))
+        ) {
+          const nextMessages = removeChatTurnRecoveryMessage(
+            messagesRef.current as RuntimeMessage[],
+            recovery.turnId,
+          ) as RuntimeMessage[];
+          messagesRef.current = nextMessages;
+          setMessages(nextMessages);
+          void chatTurnRecoveryCache.remove(recovery.id, capturedUserId);
+          chatTurnRecoveryRef.current = null;
+          setChatTurnRecovery(null);
+          setChatError('后台回答上下文不一致，已停止恢复，请刷新页面。');
+          return;
+        }
+        setChatError('后台回答状态暂时无法确认，请刷新页面继续恢复。');
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    accessToken,
+    chatMessagesQuery.isFetching,
+    chatTurnRecoveryId,
+    conversationId,
+    isHydrated,
+    isLoading,
+    saveChatToDb,
+    setMessages,
+    toStoredMessages,
+    userId,
+  ]);
+
+  useEffect(() => {
     if (!userId || !isHydrated) return;
 
     if (!messagesSavedRef.current) {
@@ -419,7 +698,7 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
     });
     const syncTimer = window.setTimeout(() => {
       const runtimeMessages = messagesRef.current as RuntimeMessage[];
-      if (hasPendingChatTurnHandoff(runtimeMessages)) {
+      if (chatTurnRecoveryRef.current || hasPendingChatTurnHandoff(runtimeMessages)) {
         lastEmptyAssistantUserMessageIdRef.current = '';
         streamStartedRef.current = false;
         const storedMessages = toStoredMessages(runtimeMessages);
@@ -542,9 +821,12 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
 
   const handleSubmit = useCallback<ReturnType<typeof useChat>['handleSubmit']>(
     (event, requestOptions) => {
-      if (hasPendingChatTurnHandoff(messagesRef.current as RuntimeMessage[])) {
+      if (
+        chatTurnRecoveryRef.current ||
+        hasPendingChatTurnHandoff(messagesRef.current as RuntimeMessage[])
+      ) {
         event?.preventDefault?.();
-        setChatError('上一条回答已交给后台处理，请稍后刷新页面查看结果，再继续发送。');
+        setChatError('上一条回答仍在后台处理中，请等待完成后再继续发送。');
         return;
       }
       baseHandleSubmit(event, requestOptions);
@@ -584,6 +866,12 @@ export function ChatRuntimeProvider({ children }: { children: ReactNode }) {
   );
 
   return <ChatRuntimeContext.Provider value={value}>{children}</ChatRuntimeContext.Provider>;
+}
+
+function isAbortError(error: unknown) {
+  return (
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+  );
 }
 
 export function useChatRuntime() {

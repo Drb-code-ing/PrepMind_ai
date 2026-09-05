@@ -39,6 +39,7 @@ export type ChatStreamStoreOptions = Readonly<{
   maxEvents?: number;
   maxBytes?: number;
   ttlSeconds?: number;
+  operationTimeoutMs?: number;
 }>;
 
 export type ChatStreamAppendResult =
@@ -76,6 +77,7 @@ const DEFAULT_PREFIX = 'prepmind';
 const DEFAULT_MAX_EVENTS = 256;
 const DEFAULT_MAX_BYTES = 512 * 1024;
 const DEFAULT_TTL_SECONDS = 86_400;
+const DEFAULT_OPERATION_TIMEOUT_MS = 1_500;
 const MAX_EVENT_BYTES = 16 * 1024;
 const EVENT_STORAGE_OVERHEAD_BYTES = 256;
 const CURSOR_PATTERN = /^\d+-\d+$/;
@@ -199,6 +201,7 @@ export class ChatStreamStore {
   private readonly maxEvents: number;
   private readonly maxBytes: number;
   private readonly ttlSeconds: number;
+  private readonly operationTimeoutMs: number;
 
   constructor(
     @InjectQueue(CHAT_RESPONSE_QUEUE)
@@ -211,13 +214,17 @@ export class ChatStreamStore {
     this.maxEvents = options.maxEvents ?? DEFAULT_MAX_EVENTS;
     this.maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
     this.ttlSeconds = options.ttlSeconds ?? DEFAULT_TTL_SECONDS;
+    this.operationTimeoutMs =
+      options.operationTimeoutMs ?? DEFAULT_OPERATION_TIMEOUT_MS;
     if (
       !Number.isInteger(this.maxEvents) ||
       this.maxEvents < 1 ||
       !Number.isInteger(this.maxBytes) ||
       this.maxBytes < MAX_EVENT_BYTES ||
       !Number.isInteger(this.ttlSeconds) ||
-      this.ttlSeconds < 1
+      this.ttlSeconds < 1 ||
+      !Number.isInteger(this.operationTimeoutMs) ||
+      this.operationTimeoutMs < 1
     ) {
       throw new Error('Invalid chat stream store bounds');
     }
@@ -245,21 +252,23 @@ export class ChatStreamStore {
         : '0';
 
     try {
-      const redis = await this.redis();
-      const raw = await redis.eval(
-        APPEND_SCRIPT,
-        3,
-        key,
-        `${key}:sequence`,
-        `${key}:terminal`,
-        eventJson,
-        parsedDraft.eventId,
-        eventHash,
-        String(eventBytes),
-        terminal,
-        String(this.maxEvents),
-        String(this.maxBytes),
-        String(this.ttlSeconds),
+      const redis = await this.withOperationTimeout(this.redis());
+      const raw = await this.withOperationTimeout(
+        redis.eval(
+          APPEND_SCRIPT,
+          3,
+          key,
+          `${key}:sequence`,
+          `${key}:terminal`,
+          eventJson,
+          parsedDraft.eventId,
+          eventHash,
+          String(eventBytes),
+          terminal,
+          String(this.maxEvents),
+          String(this.maxBytes),
+          String(this.ttlSeconds),
+        ),
       );
       const parsed = appendResultSchema.safeParse(raw);
       if (!parsed.success) {
@@ -293,14 +302,10 @@ export class ChatStreamStore {
     const key = this.key(userId, turnId);
     try {
       if (cursor !== undefined) {
-        const redis = await this.redis();
+        const redis = await this.withOperationTimeout(this.redis());
         const snapshot = this.entries(
-          await redis.xrange(
-            key,
-            '-',
-            '+',
-            'COUNT',
-            String(this.maxEvents + 1),
+          await this.withOperationTimeout(
+            redis.xrange(key, '-', '+', 'COUNT', String(this.maxEvents + 1)),
           ),
         );
         const firstCursor = snapshot[0]?.[0];
@@ -316,13 +321,9 @@ export class ChatStreamStore {
       }
 
       const start = cursor === undefined ? '-' : `(${cursor}`;
-      const redis = await this.redis();
-      const raw = await redis.xrange(
-        key,
-        start,
-        '+',
-        'COUNT',
-        String(limit + 1),
+      const redis = await this.withOperationTimeout(this.redis());
+      const raw = await this.withOperationTimeout(
+        redis.xrange(key, start, '+', 'COUNT', String(limit + 1)),
       );
       const entries = this.entries(raw);
       const hasMore = entries.length > limit;
@@ -365,6 +366,23 @@ export class ChatStreamStore {
   private async redis(): Promise<ChatStreamRedis> {
     if ('eval' in this.queue) return this.queue;
     return (await this.queue.client) as unknown as ChatStreamRedis;
+  }
+
+  private async withOperationTimeout<T>(operation: Promise<T>): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        operation,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () => reject(new Error('CHAT_STREAM_REDIS_OPERATION_TIMEOUT')),
+            this.operationTimeoutMs,
+          );
+        }),
+      ]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   }
 
   private parseEntry(

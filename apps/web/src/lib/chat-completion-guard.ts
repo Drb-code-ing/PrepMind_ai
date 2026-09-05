@@ -48,9 +48,14 @@ export function trimIncompleteChatTail<T extends ChatCompletionMessage>(messages
   return [];
 }
 
-export function getChatCompletionGuard(
-  input: ChatCompletionGuardInput,
-): ChatCompletionGuardResult {
+export function selectHydratedChatHistory<T extends ChatCompletionMessage>(
+  messages: T[],
+  options: Readonly<{ preserveIncompleteTail: boolean }>,
+): T[] {
+  return options.preserveIncompleteTail ? messages : trimIncompleteChatTail(messages);
+}
+
+export function getChatCompletionGuard(input: ChatCompletionGuardInput): ChatCompletionGuardResult {
   if (input.isLoading || input.messages.length === 0) {
     return {
       canSync: false,

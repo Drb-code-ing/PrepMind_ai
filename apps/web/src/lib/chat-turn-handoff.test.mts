@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  getChatTurnHandoff,
+  getLatestChatTurnHandoff,
   hasPendingChatTurnHandoff,
   isChatTurnHandoffMessage,
   omitChatTurnHandoffMessages,
@@ -42,6 +44,25 @@ test('recognizes only a strict assistant ChatTurn handoff annotation', () => {
       annotations: [handoff],
     }),
     false,
+  );
+});
+
+test('extracts the latest strict handoff facts for recovery', () => {
+  assert.deepEqual(
+    getChatTurnHandoff({
+      id: 'assistant_1',
+      role: 'assistant',
+      content: 'Queued',
+      annotations: [handoff],
+    }),
+    handoff,
+  );
+  assert.equal(
+    getLatestChatTurnHandoff([
+      { id: 'user_1', role: 'user', content: 'Question' },
+      { id: 'assistant_1', role: 'assistant', content: 'Queued', annotations: [handoff] },
+    ])?.message.id,
+    'assistant_1',
   );
 });
 

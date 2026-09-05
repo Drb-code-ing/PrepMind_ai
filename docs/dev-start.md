@@ -172,6 +172,8 @@ PREPMIND_CHAT_TURN_BRIDGE_ENABLED=false
 
 PREPMIND_CHAT_TURN_BRIDGE_ENABLED=true + conversation ready
   -> POST /chat-messages/prepare -> POST /chat-turns -> 202 handoff
+  -> Dexie recovery -> status + JSON cursor replay/polling
+  -> PostgreSQL terminal assistant response
 ```
 
 首轮没有 conversation id 时仍走兼容路径以建立会话。bridge 开启后无效消息窗口或 admission 失败会 fail-closed，不静默回退同步
@@ -187,11 +189,15 @@ GET /chat-turns/:turnId
 GET /chat-turns/:turnId/events?cursor=<redis-stream-id>&limit=100
 ```
 
-事件回放是 bounded Redis Stream（默认 `256` 条、`512 KiB`、`24 h` TTL）。`transport=unavailable` 或 `cursorState=expired` 时，
-客户端必须读取第一个状态接口；PostgreSQL 的 turn/assistant response 才是权威。当前 `/api/chat` 已返回 turn handoff，但浏览器尚未
-主动调用这两个入口或接入 SSE。实现和 focused 证据见
+事件回放是 bounded Redis Stream（默认 `256` 条、`512 KiB`、`24 h` TTL）。Redis client 获取与命令另有
+`CHAT_STREAM_OPERATION_TIMEOUT_MS=1500` 的默认有界等待；`transport=unavailable` 或 `cursorState=expired` 时，浏览器转为读取第一个
+状态接口。PostgreSQL 的 turn/assistant response 才是权威。
+
+ticket 04 已让浏览器主动调用这两个入口：Dexie v10 保存 owner/conversation/turn recovery，刷新后继续 cursor，身份或 token 变化会
+Abort，terminal answer 按 durable order 替换 placeholder。当前是 JSON replay/polling，不是长连接 BFF SSE push。实现和 focused 证据见
 [`phase-6-chat-stream-replay.md`](acceptance/phase-6-chat-stream-replay.md) 与
-[`phase-6-chat-turn-api-bridge.md`](acceptance/phase-6-chat-turn-api-bridge.md)。
+[`phase-6-chat-turn-api-bridge.md`](acceptance/phase-6-chat-turn-api-bridge.md) 与
+[`phase-6-chat-turn-browser-replay.md`](acceptance/phase-6-chat-turn-browser-replay.md)。
 
 ## 7. 常用验证
 
@@ -229,7 +235,7 @@ bun --filter @repo/server test -- --runInBand chat-turns
 bun --filter @repo/server test -- --runInBand config/swagger.spec.ts
 ```
 
-ChatTurn Web adapter 与 product bridge focused 回归（不需要 Provider）：
+ChatTurn Web adapter、product bridge 与 browser recovery focused 回归（不需要 Provider）：
 
 ```powershell
 node --experimental-transform-types --test `
@@ -238,12 +244,20 @@ node --experimental-transform-types --test `
   apps/web/src/lib/chat-message-api.test.mts `
   apps/web/src/lib/chat-turn-bridge.test.mts `
   apps/web/src/lib/chat-turn-handoff-response.test.mts `
-  apps/web/src/lib/chat-turn-handoff.test.mts
+  apps/web/src/lib/chat-turn-handoff.test.mts `
+  apps/web/src/lib/chat-turn-replay-api.test.mts `
+  apps/web/src/lib/chat-turn-replay.test.mts `
+  apps/web/src/lib/chat-turn-recovery-cache.test.mts `
+  apps/web/src/lib/chat-turn-recovery-messages.test.mts `
+  apps/web/src/components/providers/chat-runtime-provider-request.test.mts
 bun --filter @repo/server test -- --runInBand chat-messages
+bun --filter @repo/server test -- --runInBand `
+  chat-turns/chat-stream.store.spec.ts config/env.spec.ts
 ```
 
-这些回归证明 bounded request、append-only prepare、严格 `202`、handoff 隔离和 abort/offline 分类；仍需 Docker/可见浏览器证明
-真实 `useChat` 消费时序。即使该验收通过，也不证明浏览器已经具备 SSE/断线恢复。
+这些回归证明 bounded request、append-only prepare、严格 `202`、handoff 隔离、JSON cursor replay、status-only、identity fence 和
+absolute-order replacement。Mock Docker/可见浏览器已覆盖真实 `useChat` 的刷新、Redis 暂停/恢复和后续 enqueue；它仍不证明
+SSE push、真实模型、SLA 或生产使用。
 
 Agent focused eval、controlled-Live 和产品验收只能运行对应 acceptance 文档明确的入口；历史一次性授权不可复用。
 
@@ -287,6 +301,7 @@ docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker
 
 - [`docs/project-status.md`](project-status.md)：当前项目快照
 - [`docs/acceptance/phase-6-agent-runtime-audit.md`](acceptance/phase-6-agent-runtime-audit.md)：Agent 矩阵与缺口
+- [`docs/acceptance/phase-6-chat-turn-browser-replay.md`](acceptance/phase-6-chat-turn-browser-replay.md)：浏览器恢复验收
 - [`docs/roadmap.md`](roadmap.md)：当前路线
 - [`docs/data-flow.md`](data-flow.md)：数据流
 - [`docs/acceptance-checklist.md`](acceptance-checklist.md)：功能验收清单

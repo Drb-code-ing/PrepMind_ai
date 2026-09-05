@@ -41,6 +41,7 @@ import {
   toOcrStructuredResult,
 } from '@/lib/ocr-structured-result';
 import { getWrongQuestionFocusHref } from '@/lib/wrong-question-navigation';
+import { isChatTurnHandoffMessage } from '@/lib/chat-turn-handoff';
 import { ArrowRight, Bot, Check, CheckCircle2, Loader2, X } from 'lucide-react';
 
 // ─── Unified message type for rendering ─────────────────────────────
@@ -172,8 +173,9 @@ function ChatView({ userId }: { userId: string }) {
     Record<string, string>
   >({});
   const [saveWrongErrors, setSaveWrongErrors] = useState<Record<string, string>>({});
-  const [pendingWrongQuestion, setPendingWrongQuestion] =
-    useState<PendingWrongQuestionSave | null>(null);
+  const [pendingWrongQuestion, setPendingWrongQuestion] = useState<PendingWrongQuestionSave | null>(
+    null,
+  );
   const [selectedOcrQuestionByGroup, setSelectedOcrQuestionByGroup] = useState<
     Record<string, string>
   >({});
@@ -246,15 +248,7 @@ function ChatView({ userId }: { userId: string }) {
     scrollToBottom({ force: true });
 
     await startOcr({ image, userText });
-  }, [
-    input,
-    isGenerating,
-    scrollToBottom,
-    selectedImage,
-    setChatError,
-    setInput,
-    startOcr,
-  ]);
+  }, [input, isGenerating, scrollToBottom, selectedImage, setChatError, setInput, startOcr]);
 
   const handleStopGeneration = useCallback(() => {
     if (ocrLoading) stopOcr();
@@ -492,7 +486,9 @@ function ChatView({ userId }: { userId: string }) {
       role: msg.role as 'user' | 'assistant',
       content: msg.content,
       time: ts[msg.id] ?? i,
-      isLoading: isLoading && i === messages.length - 1 && msg.role === 'assistant',
+      isLoading:
+        (isLoading && i === messages.length - 1 && msg.role === 'assistant') ||
+        isChatTurnHandoffMessage(msg),
     }));
 
     if (ocrMessages.length === 0) {
@@ -584,16 +580,15 @@ function ChatView({ userId }: { userId: string }) {
               const primaryQuestion = structuredResult
                 ? getPrimaryOcrQuestion(structuredResult)
                 : null;
-              const saveSourceGroupId =
-                primaryQuestion
-                  ? getQuestionSaveSourceGroupId(msg.groupId, primaryQuestion.id)
-                  : msg.groupId;
+              const saveSourceGroupId = primaryQuestion
+                ? getQuestionSaveSourceGroupId(msg.groupId, primaryQuestion.id)
+                : msg.groupId;
               const savedWrongQuestionId =
                 (saveSourceGroupId ? savedWrongQuestionIdsByGroup[saveSourceGroupId] : undefined) ??
                 (msg.groupId ? savedWrongQuestionIdsByGroup[msg.groupId] : undefined);
               const isSaved = Boolean(
                 (saveSourceGroupId && savedWrongGroupIds.has(saveSourceGroupId)) ||
-                  (msg.groupId && savedWrongGroupIds.has(msg.groupId)),
+                (msg.groupId && savedWrongGroupIds.has(msg.groupId)),
               );
               const saveError =
                 (saveSourceGroupId ? saveWrongErrors[saveSourceGroupId] : undefined) ??
@@ -662,15 +657,17 @@ function ChatView({ userId }: { userId: string }) {
                     handleBatchQuestionSave(ocrRecordForSave, Array.from(selectedForBatch))
                   }
                   onSave={() =>
-                    prepareWrongQuestionSave(ocrRecordForSave, primaryQuestion?.id).catch((error) => {
-                      const errorKey = saveSourceGroupId ?? msg.groupId;
-                      if (!errorKey) return;
-                      setSaveWrongErrors((prev) => ({
-                        ...prev,
-                        [errorKey]:
-                          error instanceof Error ? error.message : '保存失败，请稍后重试',
-                      }));
-                    })
+                    prepareWrongQuestionSave(ocrRecordForSave, primaryQuestion?.id).catch(
+                      (error) => {
+                        const errorKey = saveSourceGroupId ?? msg.groupId;
+                        if (!errorKey) return;
+                        setSaveWrongErrors((prev) => ({
+                          ...prev,
+                          [errorKey]:
+                            error instanceof Error ? error.message : '保存失败，请稍后重试',
+                        }));
+                      },
+                    )
                   }
                 />
               );
@@ -686,7 +683,9 @@ function ChatView({ userId }: { userId: string }) {
             <div className="pm-mascot-float flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-[#fff7d6] text-3xl font-black text-[#247269] shadow-sm ring-1 ring-[#f3e6a8]">
               学
             </div>
-            <h1 className="mt-5 text-2xl font-black text-[var(--pm-ink)]">你好，我是 PrepMind 👋</h1>
+            <h1 className="mt-5 text-2xl font-black text-[var(--pm-ink)]">
+              你好，我是 PrepMind 👋
+            </h1>
             <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--pm-muted)]">
               你的 AI 备考助手，随时为你解答
             </p>
@@ -789,10 +788,7 @@ const ChatBubble = memo(function ChatBubble({
   const isUser = role === 'user';
   const deferredContent = useDeferredValue(content);
   const renderContent = isLoading ? deferredContent : content;
-  const displayContent = useMemo(
-    () => formatChatAssistantContent(renderContent),
-    [renderContent],
-  );
+  const displayContent = useMemo(() => formatChatAssistantContent(renderContent), [renderContent]);
 
   return (
     <div className={`pm-bubble-in flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -981,17 +977,17 @@ const OcrBubble = memo(function OcrBubble({
               onToggleBatch &&
               onSaveQuestion &&
               onSaveSelected && (
-              <OcrQuestionList
-                questions={questions}
-                selectedQuestionId={selectedQuestionId}
-                selectedForBatch={selectedForBatch}
-                savedQuestionIds={savedQuestionIds}
-                onSelectQuestion={onSelectQuestion}
-                onToggleBatch={onToggleBatch}
-                onSaveQuestion={onSaveQuestion}
-                onSaveSelected={onSaveSelected}
-              />
-            )}
+                <OcrQuestionList
+                  questions={questions}
+                  selectedQuestionId={selectedQuestionId}
+                  selectedForBatch={selectedForBatch}
+                  savedQuestionIds={savedQuestionIds}
+                  onSelectQuestion={onSelectQuestion}
+                  onToggleBatch={onToggleBatch}
+                  onSaveQuestion={onSaveQuestion}
+                  onSaveSelected={onSaveSelected}
+                />
+              )}
             {(canSave || isSaved) && (
               <button
                 type="button"
@@ -1021,8 +1017,8 @@ const OcrBubble = memo(function OcrBubble({
             )}
             {ocrStatus === 'done' && primaryQuestion && !canSave && missingFields.length > 0 && (
               <p className="mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-                识别结果缺少：{formatMissingWrongQuestionFields(missingFields)}，暂不能保存到错题本。
-                建议重新识别或补充更清晰的图片。
+                识别结果缺少：{formatMissingWrongQuestionFields(missingFields)}
+                ，暂不能保存到错题本。 建议重新识别或补充更清晰的图片。
               </p>
             )}
             {ocrStatus === 'aborted' && (
@@ -1090,7 +1086,9 @@ function WrongQuestionSaveDialog({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold">保存到错题本</h2>
-            <p className="mt-1 text-xs text-muted-foreground">确认字段后再保存，后续可在错题详情里修改备注。</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              确认字段后再保存，后续可在错题详情里修改备注。
+            </p>
           </div>
           <button
             type="button"

@@ -44,6 +44,24 @@ export interface StoredConversationState extends ConversationStateResponse {
   userId: string;
 }
 
+export interface StoredChatTurnRecovery {
+  id: string;
+  schemaVersion: 'chat-turn-recovery-v1';
+  userId: string;
+  conversationId: string;
+  turnId: string;
+  backgroundJobId: string;
+  placeholderMessageId: string;
+  status: 'QUEUED' | 'ACTIVE';
+  transport: 'available' | 'status_only';
+  cursor: string | null;
+  lastSequence: number | null;
+  previewText: string;
+  createdAt: number;
+  updatedAt: number;
+  expiresAt: number;
+}
+
 export interface OcrRecord extends LocalSyncMetadata {
   id: string;
   userId: string;
@@ -85,6 +103,7 @@ class PrepMindDB extends Dexie {
   wrongQuestions!: Table<WrongQuestionRecord, string>;
   mutationQueue!: Table<MutationQueueItem, string>;
   conversationStates!: Table<StoredConversationState, string>;
+  chatTurnRecoveries!: Table<StoredChatTurnRecovery, string>;
 }
 
 export const db = new PrepMindDB('prepmind-db');
@@ -177,8 +196,7 @@ db.version(7).stores({
     'id, userId, [userId+createdAt], [userId+pendingOperation], type, groupId, createdAt, syncStatus',
   wrongQuestions:
     'id, userId, [userId+sourceGroupId], [userId+createdAt], [userId+pendingOperation], source, sourceGroupId, subject, category, errorType, status, syncStatus, createdAt, updatedAt',
-  mutationQueue:
-    '&id, userId, [userId+status], [userId+entity], dedupeKey, nextRetryAt, updatedAt',
+  mutationQueue: '&id, userId, [userId+status], [userId+entity], dedupeKey, nextRetryAt, updatedAt',
 });
 
 db.version(8).stores({
@@ -200,4 +218,17 @@ db.version(9).stores({
   mutationQueue:
     '&id, userId, [userId+status], [userId+entity], [userId+entity+operation], dedupeKey, nextRetryAt, updatedAt',
   conversationStates: '&id, userId, [userId+conversationId], expiresAt, updatedAt',
+});
+
+db.version(10).stores({
+  messages: 'id, userId, [userId+order], role, order, createdAt',
+  ocrRecords:
+    'id, userId, [userId+createdAt], [userId+pendingOperation], type, groupId, createdAt, syncStatus',
+  wrongQuestions:
+    'id, userId, [userId+sourceGroupId], [userId+createdAt], [userId+pendingOperation], source, sourceGroupId, subject, category, errorType, status, syncStatus, createdAt, updatedAt',
+  mutationQueue:
+    '&id, userId, [userId+status], [userId+entity], [userId+entity+operation], dedupeKey, nextRetryAt, updatedAt',
+  conversationStates: '&id, userId, [userId+conversationId], expiresAt, updatedAt',
+  chatTurnRecoveries:
+    '&id, userId, [userId+conversationId], [userId+turnId], conversationId, turnId, expiresAt, updatedAt',
 });

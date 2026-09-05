@@ -123,6 +123,19 @@ describe('ChatStreamStore', () => {
     ).resolves.toMatchObject({ disposition: 'unavailable', events: [] });
   });
 
+  it('bounds a Redis command that never settles', async () => {
+    const redis = createRedis();
+    redis.xrange.mockReturnValueOnce(new Promise(() => undefined));
+    const store = createStore(redis, 5);
+
+    await expect(
+      store.read('user_1', 'turn_1', { limit: 10 }),
+    ).resolves.toMatchObject({
+      disposition: 'unavailable',
+      events: [],
+    });
+  });
+
   function createRedis() {
     return {
       eval: jest.fn(),
@@ -131,12 +144,16 @@ describe('ChatStreamStore', () => {
     } as unknown as jest.Mocked<ChatStreamRedis>;
   }
 
-  function createStore(redis: jest.Mocked<ChatStreamRedis>) {
+  function createStore(
+    redis: jest.Mocked<ChatStreamRedis>,
+    operationTimeoutMs = 1_500,
+  ) {
     return new ChatStreamStore(redis, {
       prefix: 'test',
       maxEvents: 4,
       maxBytes: 16_384,
       ttlSeconds: 60,
+      operationTimeoutMs,
     });
   }
 
