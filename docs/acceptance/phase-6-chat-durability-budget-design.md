@@ -1,13 +1,14 @@
 # Phase 6 Chat Durability and Budget Design
 
-更新时间：2026-09-02
-状态：设计、可靠入队、deterministic Worker durable baseline 与 Chat Stream/Redis bounded replay API 已实现；`/api/chat`
-产品切换、全链路 budget ledger 和真实模型 Worker 仍未实现。实现证据见
-[`phase-6-chat-stream-replay.md`](phase-6-chat-stream-replay.md)。
+更新时间：2026-09-05
+状态：可靠入队、deterministic Worker、bounded replay API、gate-on 产品 bridge/浏览器恢复和 ChatRunBudget 共享类型合同已实现；
+全链路持久化 budget ledger、真正长连接 SSE push 和真实模型 Worker 仍未实现。实现证据见
+[`phase-6-chat-turn-browser-replay.md`](phase-6-chat-turn-browser-replay.md) 与
+[`phase-6-chat-run-budget-contract.md`](phase-6-chat-run-budget-contract.md)。
 
 ## 1. 当前问题
 
-当前 `POST /api/chat` 在 Web 进程内完成 Router/Tutor/Retriever/Verifier/FinalResponse 编排并流式输出。回答完成后，浏览器再通过
+`POST /api/chat` 的 legacy 路径（bridge-off 或首轮无 conversation）在 Web 进程内完成 Router/Tutor/Retriever/Verifier/FinalResponse 编排并流式输出。回答完成后，浏览器再通过
 `/chat-messages/sync` 回传完整消息 snapshot；Server 的 sync 会删除并重建该 conversation 的消息。
 
 这条链路有三个明确边界：
@@ -16,7 +17,8 @@
 2. 客户端断开会触发 request AbortSignal，生成可能被中止；如果回答已经产生部分内容，当前 sync 会拒绝不完整 assistant。
 3. Trace 是 best-effort 旁路，不能承担回答持久化；单独在 `/api/chat` 里追加 Outbox 也不能覆盖 Web 进程崩溃、重复请求和 worker 重试。
 
-因此当前产品只能宣称“流式功能可用”，不能宣称“回答断线可恢复、任务不丢失”。
+这些限制仍适用于 legacy 路径。ticket 03/04 已在 gate-on 且 conversation ready 时改走 prepare/enqueue/`202` handoff 和浏览器
+JSON replay/status recovery；该路径已有 deterministic Worker 断线恢复证据，但尚未接入真实模型 Worker。
 
 ## 2. 推荐生产链路
 
@@ -71,7 +73,7 @@ checkpoint 已增加独立 Redis Stream transport，但它仍不是 durable auth
 
 ## 4. 全链路预算合同
 
-当前 Router/Verifier、Tutor、FinalResponse 各自拥有局部 budget。下一实现应创建一个 run-level ledger：
+当前 Router/Verifier、Tutor、FinalResponse 各自拥有局部 budget。已先冻结共享 run-level ledger 合同，下一实现仍需创建其持久化账本：
 
 ```text
 ChatRunBudget {
@@ -89,6 +91,12 @@ ChatRunBudget {
 - 每次 reservation 在 dispatch 前写入 Trace/ledger 的 bounded event；provider 原文、prompt、credential 不落库。
 - 失败、abort、timeout、schema invalid 都释放“未使用”预算但不回滚已发生调用；重试必须新 turn 或显式 retry policy，不能隐式 replay。
 
+共享合同位于 `@repo/types` 的 `chat-run-budget` API：policy、ledger、reservation、usage 和 bounded event 均为 strict Zod schema。
+reservation 的 `RESERVED -> DISPATCHED -> SETTLED|UNCERTAIN` 与未 dispatch 的 `RELEASED` 生命周期、时间顺序、结算 usage 不得超过预留值、
+以及 `used + held <= policy` 都在合同层校验。合同验收见
+[`phase-6-chat-run-budget-contract.md`](phase-6-chat-run-budget-contract.md)。这只是 `implemented + mock/static validated`，不代表
+数据库 ledger、CAS、Worker 接入或真实模型调用已完成。
+
 ## 5. 权限、Trace 与 Outbox 边界
 
 - turn、job、message、outbox 全部以 `userId`/owner capability 绑定；worker 不接受客户端传入的 owner。
@@ -105,16 +113,17 @@ ChatRunBudget {
    `docs/acceptance/phase-6-chat-enqueue-outbox.md`。
 3. ~~Worker 先实现 deterministic/mock 生成与 durable assistant commit，再接入真实模型 gate；不改变现有 `/api/chat` 默认 mock/off。~~
    已完成 deterministic durable baseline；真实模型 gate 仍后置。
-4. ~~增加 Redis/SSE bounded delta stream 与 turn replay；浏览器断开后可通过 turn 查询最终结果。~~ 已完成 Chat Stream contract、Redis
-   store、owner-scoped query/controller 和 Worker 发布；当前浏览器及 `/api/chat` 尚未接入，详见 Chat Stream acceptance。
-5. 将现有 `/api/chat` 切换到 turn-backed path，保留旧 sync 只读兼容窗口；迁移完成后禁止 delete/recreate snapshot 作为权威写入。
-6. 进行 Docker、API、可见浏览器和真实模型 controlled smoke；每一步单独提交、推送、合并 main 后复验。
+4. ~~增加 bounded stream/replay 与浏览器断线恢复。~~ 已完成 Redis store、owner-scoped query/controller、Worker 发布、gate-on
+   `/api/chat` admission/handoff 和 JSON replay/status consumer；不是长连接 SSE push，首轮和 gate-off 仍保留 legacy。
+5. ~~冻结 ChatRunBudget 共享类型合同与生命周期边界。~~ 已完成；详见 ChatRunBudget 合同验收文档。
+6. 实现 Prisma ledger/reservation/event 持久化、Serializable/CAS 并发服务及跨节点预算上限；再接入 Worker/Agent stage 与 Trace 对账。
+7. 为 Worker 接入独立真实模型 gate 和 usage/cost；完成产品迁移后再移除 legacy snapshot 权威写入。
+8. 进行 Docker、API、可见浏览器和真实模型 controlled smoke；每一步单独提交、推送、合并 main 后复验。
 
 ## 7. 本 checkpoint 的明确结论
 
 - 当前 ChatTurn schema/migration 与 `ChatTurn + BackgroundJob + chat.response.requested` 同事务可靠入队已完成；没有触碰 Docker 数据。
-- “BackgroundJob + Outbox 同事务”与 Worker durable terminal commit 已成为实现合同；Redis bounded replay API 已实现，但仍没有
-  `/api/chat` turn-backed 产品路径或浏览器 SSE 接入。
+- “BackgroundJob + Outbox 同事务”与 Worker durable terminal commit 已实现；gate-on `/api/chat` handoff 和浏览器 JSON status/replay
+  已接入，真正 SSE push 尚未实现。
 - 当前 Worker 的生成器是 `deterministic-worker-v1`，只证明执行与持久化骨架，不证明真实模型或语义质量。
-- 在产品切换完成前，产品文档必须继续使用“Stream API 已有 bounded replay、现有流式入口断连 durability 未建立”的表述。
-
+- 本次 ChatRunBudget 只完成共享合同；运行时 ledger、跨节点预算与 Trace 对账仍是 ticket 05 后续任务。

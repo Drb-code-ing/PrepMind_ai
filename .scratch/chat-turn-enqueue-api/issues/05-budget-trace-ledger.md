@@ -4,9 +4,9 @@
 
 **Blocked by:** 03 — Turn-backed `/api/chat` bridge; 04 — Browser replay and disconnect recovery.
 
-**Status:** ready-for-agent
+**Status:** contract-frozen; persistence implementation next
 
-- [ ] Define the ledger facts and cross-node reservation contract.
+- [x] Define the ledger facts and cross-node reservation contract in `@repo/types`.
 - [ ] Enforce limits before each model-capable stage and record bounded usage.
 - [ ] Reconcile terminal state, stream events, and Trace without making Trace authoritative.
 - [ ] Add concurrency and crash/recovery tests.
