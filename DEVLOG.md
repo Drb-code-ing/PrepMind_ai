@@ -1,5 +1,11 @@
 # PrepMind AI 开发日志
 
+> 2026-09-05 — Ticket 05 真实 PostgreSQL 并发验收切片：
+>
+> 在现有本地 PostgreSQL（Docker 容器）中创建临时 synthetic user/conversation/turn，使用同一 `maxCalls=1` ledger 并发提交两个不同
+> reservation。真实 Serializable/CAS 结果为 `fulfilled=1/rejected=1`，最终 ledger `heldCalls=1/usedCalls=0`；随后仅删除本次 synthetic user
+> 级联数据，未触碰既有业务记录、卷、Redis 或 MinIO。该证据证明单 ledger 竞争上限生效，不代表跨节点 crash/recovery、Trace 或真实 Provider usage。
+
 > 2026-09-05 — Ticket 05 Serializable retry 回归切片：
 >
 > 新增 repository 测试，注入一次 PostgreSQL `P2034` serialization conflict，确认事务重试后 reservation/event 只写入一次且不重复扣账。
