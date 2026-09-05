@@ -113,9 +113,10 @@ HTTP request
 3. 行为文档中的 Tool-Using Orchestrator 尚未实现，不能列入“已完成 Agent”。
 4. Chat Trace 是旁路 best-effort，写入超时或失败不会阻断回答；Worker 与 Redis bounded stream 已建立 durable baseline，`/api/chat`
    已接 admission/handoff，浏览器 status/JSON replay 与断线恢复也已接入。真正 SSE push 仍未实现，但不作为 ticket 04 完成条件。
-5. Review/Planner 的 HTTP AbortSignal 与 candidate 外层 fallback 已完成；但共享预算 ledger 和真实模型产品验收仍未建立。
-6. Router/Verifier/Tutor/FinalResponse 各自持有局部预算，全链路没有统一 ledger，需补跨节点上限和越界测试。共享类型与 Prisma 结构已冻结，
-   但运行时仍未有统一 ledger；必须继续完成 repository 与 CAS，不能把 schema 迁移当成预算 enforcement。
+5. Review/Planner 的 HTTP AbortSignal 与 candidate 外层 fallback 已完成；共享预算 repository、Worker reservation/settlement 和 terminal
+   reconciliation 已建立，但 Review/Planner 真实模型产品验收仍未建立。
+6. Router/Verifier/Tutor/FinalResponse 各自持有局部预算；`@repo/agent` 现在提供 typed `AgentBudgetPort/runBudgetedStage`，但产品 composition
+   root 尚未注入，因此仍需补跨节点上限、Trace 对账和越界测试，不能把 port 合同当成产品 enforcement。
 7. `POST /chat-turns`、Web adapter、`/api/chat` bridge 和 browser recovery 都已实现；`202` 仍只表示 Worker 已接管，浏览器必须继续
    通过 authenticated status/JSON replay 取得结果。不得把该 polling consumer 误读为 SSE push 或 Provider 成功。
 
@@ -150,7 +151,8 @@ HTTP request
 7. ~~恢复本地 Worker readiness 与 CLI。~~ 已关闭 retained failure 永久降级和 direct `ts-node` 入口失败，Docker Worker
    `healthy`；历史失败没有删除，真实模型 Worker 边界没有改变。
 8. ~~冻结 ChatRunBudget 共享类型与生命周期合同。~~ 已完成；实现与边界见 `phase-6-chat-run-budget-contract.md`。
-9. 在隔离数据库完成 ChatRunBudget migration 与 Serializable/CAS 并发验收，补齐其他 Agent stages、Trace 对账和 crash/recovery。
+9. ~~在本地 PostgreSQL 部署 ChatRunBudget migration。~~ 已完成：`prisma migrate deploy` 应用 `20260905100000_chat_run_budget` 且 status up to date；仍需隔离数据库
+   Serializable/CAS 并发、crash/recovery 证据，并补齐其他 Agent stages、Trace 对账。
 10. 为 MemoryAgent 定义真实模型增强的隐私、候选确认、预算和 Trace 合同；完成 Agent 架构后再进入分层记忆实现。
 11. 做独立 Review/Planner、Knowledge agents、Router/Verifier/Tutor/Rewrite 的产品验收，保持浏览器窗口可见并保留证据。
 12. 所有代码/文档任务逐项提交、推送、`--no-ff` 合并 main，再在 merged-main 复验；全部 Agent 架构与真实验收完成后，才写两篇面试博客。
