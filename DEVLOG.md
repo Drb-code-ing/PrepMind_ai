@@ -10,7 +10,9 @@
 > `packages/types` 全量测试 `49 passed / 0 failed`、typecheck 和 Prettier 通过；本次未读取 `.env`、未调用 DeepSeek/Qwen 或其他 Provider，未
 > 触碰 Docker 数据。证据等级为 `implemented + mock/static validated`，不代表 Prisma ledger、Serializable/CAS、跨节点预算 enforcement、
 > Worker/Agent 接入、Trace 对账或真实模型结算完成。详见 `docs/acceptance/phase-6-chat-run-budget-contract.md`、更新后的预算设计和 Agent
-> runtime audit。下一切片实现持久化 reservation/event 与并发服务。
+> runtime audit。功能提交 `28d22f0d` 已推送，随后以 `--no-ff` 合并并推送为 `main=2eb15d50`；merged-main 的 types `49/49`、typecheck、
+> `--end-of-line auto` Prettier 和 diff check 均通过，`main == origin/main`。本地 feature branch 已在合并复验后删除；七个用户预修改文件
+> 仍未暂存。下一切片实现持久化 reservation/event 与并发服务。
 
 > 2026-09-05 — Docker 冗余容器清理与 Worker readiness 恢复：
 >
