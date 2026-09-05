@@ -36,7 +36,8 @@ typecheck: passed
 Prettier: passed
 ```
 
-追加验证：`apps/server` focused Jest 18/18（含 P2034 Serializable retry）、`packages/database` tests 11/11、Server build 通过；`prisma migrate deploy` 已成功应用
+追加验证：`apps/server` focused Jest 18/18（含 P2034 Serializable retry）、`packages/database` tests 11/11、Server build 通过；隔离 synthetic owner/turn 上执行的真实
+PostgreSQL `Promise.all` reservation 竞争为 `fulfilled=1/rejected=1`，最终 ledger `heldCalls=1/usedCalls=0`；`prisma migrate deploy` 已成功应用
 `20260905100000_chat_run_budget`，随后 `prisma migrate status` 报告 schema up to date。测试覆盖数值边界、unknown/raw payload 拒绝、reservation
 生命周期、settlement/cancellation event 语义和 terminal 未 dispatch 释放。证据等级为 `implemented + mock/static validated`；本次未读取 `.env` 中
 的凭据、未调用 DeepSeek/Qwen 或其他 Provider，Docker 仅读取容器状态且未清理数据。
