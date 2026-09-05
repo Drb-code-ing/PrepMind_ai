@@ -73,4 +73,10 @@ Provider，费用为 0。没有执行 `prune`、`down -v`、数据库 reset、Re
 
 ## Git 回执
 
-功能提交、分支推送、`--no-ff` 合并和 merged-main 复验在收口后回填。
+- 功能提交：`89e3a341728ff686498382ce168e72279668d06d`，已推送
+  `origin/drb/worker-readiness-recovery`。
+- `--no-ff` 合并提交：`12824029ece8d7ebbea8afa1116acaa01e759957`，已推送 `origin/main`；
+  `main == origin/main`。
+- merged-main 复验：Worker readiness 与 Docker boundary 合计 `5 suites / 55 tests passed`，Server build 通过；从该 merge
+  commit 的干净归档重建并只替换 Worker 后，Worker `healthy`、CLI `ready`/exit `0`、Server/Web `200/200`，原数据卷与
+  非 Worker 容器 ID 未改变。

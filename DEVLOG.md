@@ -22,7 +22,9 @@
 > Compose 使用根 `.env` 注入既有 Worker 配置，但没有查看或输出凭据，没有调用 DeepSeek/Qwen/其他 Provider，费用为 0；没有
 > 执行 prune、`down -v`、reset、flush 或 wipe。证据等级为 `implemented + mock/static validated + local Docker runtime
 validated`；Worker 仍是 `deterministic-worker-v1`，不构成真实模型证据。详细验收见
-> `docs/acceptance/phase-6-worker-readiness-recovery.md`。提交、合并和 merged-main 回执在收口后补录。
+> `docs/acceptance/phase-6-worker-readiness-recovery.md`。功能提交 `89e3a341728ff686498382ce168e72279668d06d` 已推送，随后以
+> `--no-ff` 合并并推送为 `main=12824029ece8d7ebbea8afa1116acaa01e759957`；merged-main focused `55/55`、Server
+> build、Worker `healthy`、CLI exit `0`、Server/Web `200/200` 和 `main == origin/main` 均复验通过。
 >
 > 2026-09-05 — 本地 Mock/Live 模式切换默认可用：
 >
