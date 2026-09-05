@@ -12,7 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "bun dist/src/main.js",
-    "readiness:worker": "ts-node -r tsconfig-paths/register scripts/worker-readiness.ts",
+    "readiness:worker": "bun scripts/worker-readiness.ts",
     "smoke:rag-eval": "ts-node -r tsconfig-paths/register scripts/rag-eval-smoke.ts",
     "smoke:operator-audit-export": "ts-node -r tsconfig-paths/register scripts/operator-audit-export-smoke.ts",
     "eval:review-planner:live": "bun scripts/review-planner-controlled-live-eval.ts",

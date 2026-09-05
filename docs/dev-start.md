@@ -147,6 +147,15 @@ docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker
 docker compose --env-file .env -f docker/docker-compose.dev.yml --profile worker logs --tail 120 server worker minio-init
 ```
 
+默认 Compose project 名是 `docker`，规范容器名为 `docker-<service>-1`。Docker Desktop 若出现随机名称的旧 Server/Web，先用
+`docker compose ls --all`、`docker ps -a` 和受限字段的 `docker inspect` 核对 project/service、状态、端口与挂载；只对确认已退出且
+无挂载的容器执行精确 `docker rm <container-id>`，不要用全局 prune 代替归属判断。
+
+Audit maintenance 的失败任务会按 BullMQ 策略保留用于排查。Readiness 会比较最新 failure 与 PostgreSQL
+`lastSucceededAt`：只有更新的成功运行已经覆盖该失败时才恢复 `ready`，同时仍展示 retained failed count；更新的失败或无法验证
+failure 时间时继续降级。仓库入口 `bun --filter @repo/server readiness:worker` 使用 Bun 执行 TypeScript，以兼容 workspace 的
+`.ts` import；退出码仍为 `0=ready`、`1=degraded/not_ready`、`2=脚本/配置/超时异常`。
+
 Docker Desktop 在中文路径下遇到已知 Bake gRPC shared-key 错误时，只在当前 PowerShell 设置
 `$env:COMPOSE_BAKE='false'`，按服务分别 build，再使用 `up -d --no-build`；不要清理 build cache、容器或卷。
 

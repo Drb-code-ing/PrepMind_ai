@@ -5,9 +5,10 @@
 
 ## 一句话结论
 
-PrepMind 的产品基础和大部分 Agent 合同已经落地，但 **Phase 6 Agent 运行时总审计仍未结束**。当前最新原子任务让本地
-`/agent-trace` Mock/Live 控件开箱即用，并把同一 effective environment 接到 Chat 链各模型 runtime；此前完成的 durable
-ChatTurn 浏览器恢复仍有效。Worker 仍是 deterministic baseline，也不是真实模型 Worker。
+PrepMind 的产品基础和大部分 Agent 合同已经落地，但 **Phase 6 Agent 运行时总审计仍未结束**。当前最新维护任务恢复了本地
+Worker readiness：BullMQ 保留的历史失败只有在已被更新成功覆盖时才不再阻断流量，失败计数仍可观测；本机 CLI 也已统一到
+Bun。此前完成的 `/agent-trace` Mock/Live 切换和 durable ChatTurn 浏览器恢复仍有效。Worker 仍是 deterministic baseline，
+也不是真实模型 Worker。
 
 ## 当前基线
 
@@ -19,6 +20,9 @@ ChatTurn 浏览器恢复仍有效。Worker 仍是 deterministic baseline，也�
   不再要求修改 `.env` 或重启。其他 Server Agent gate 仍按各自验收边界关闭。
 - 业务事实权威：PostgreSQL；Redis/BullMQ 负责缓存和队列；MinIO 负责对象存储；Dexie 负责本地恢复/离线补偿。
 - Docker 数据必须保留。验收只允许清理本次创建的合成数据和隔离浏览器状态。
+- 本地 Compose 当前只有一组规范 Server/Web；Worker 为 `healthy`。历史 maintenance failure 仍保留在 BullMQ，readiness 通过
+  更新的 PostgreSQL 成功时间证明已恢复，而不是删除失败证据。详见
+  [`phase-6-worker-readiness-recovery.md`](acceptance/phase-6-worker-readiness-recovery.md)。
 
 ## 能力分层
 
@@ -26,7 +30,7 @@ ChatTurn 浏览器恢复仍有效。Worker 仍是 deterministic baseline，也�
 | --------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | 产品基础                    | 已实现并有阶段验收                                                                                            | 真实部署仍需独立环境检查                                                            |
 | RAG                         | Qwen `text-embedding-v4` / 1536；向量 + PostgreSQL full-text hybrid rank                                      | 当前没有 reranker；`fake` 只用于非生产测试                                          |
-| Router / Verifier           | 混合路径已实现，确定性安全门优先                                                                              | 本地 Web gate ready；其他部署仍显式配置，不能用单条 smoke 推断所有 Agent             |
+| Router / Verifier           | 混合路径已实现，确定性安全门优先                                                                              | 本地 Web gate ready；其他部署仍显式配置，不能用单条 smoke 推断所有 Agent            |
 | Tutor / Organizer           | 受限 candidate、权限与本地 merger 已实现，历史语义/产品证据分开保存                                           | 真实模型质量与产品 gate 仍需逐项确认                                                |
 | Review / Planner            | 只读建议与受限 candidate 已实现                                                                               | 共享 ledger、持续运行证据和独立产品 Live 仍待补齐                                   |
 | Knowledge Dedup / Organizer | owner-scoped shortlist、受限 candidate 与 deterministic fallback 已实现                                       | 需要最新矩阵确认真实产品 smoke 状态                                                 |
@@ -64,6 +68,7 @@ ChatTurn 浏览器恢复仍有效。Worker 仍是 deterministic baseline，也�
 - ChatTurn 浏览器恢复：[`phase-6-chat-turn-browser-replay.md`](acceptance/phase-6-chat-turn-browser-replay.md)
 - Chat Stream 合同与回放：[`phase-6-chat-stream-replay.md`](acceptance/phase-6-chat-stream-replay.md)
 - 本地 Mock/Live 模式切换：[`phase-6-local-ai-mode-switch.md`](acceptance/phase-6-local-ai-mode-switch.md)
+- Worker readiness 恢复：[`phase-6-worker-readiness-recovery.md`](acceptance/phase-6-worker-readiness-recovery.md)
 - 本地启动与运维：[`dev-start.md`](dev-start.md)
 - 当前路线：[`roadmap.md`](roadmap.md)
 - 数据流：[`data-flow.md`](data-flow.md)

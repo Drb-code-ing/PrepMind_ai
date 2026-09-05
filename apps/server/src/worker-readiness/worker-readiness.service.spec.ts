@@ -259,7 +259,7 @@ describe('WorkerReadinessService', () => {
     expect(result.status).toBe('not_ready');
   });
 
-  it('fails a paused enabled audit queue and degrades failed audit jobs', async () => {
+  it('fails a paused enabled audit queue', async () => {
     const paused = await createService({
       mode: 'inline',
       exportEnabled: true,
@@ -267,13 +267,81 @@ describe('WorkerReadinessService', () => {
     }).getReadiness(now);
     expect(paused.checks.auditExportQueue.status).toBe('fail');
     expect(paused.status).toBe('not_ready');
+  });
 
+  it('keeps retained maintenance failures non-blocking after a newer success', async () => {
+    const service = createService({
+      mode: 'inline',
+      maintenanceEnabled: true,
+      maintenanceState: { lastSucceededAt: now },
+      auditMaintenanceCounts: {
+        ...emptyQueueCounts(),
+        delayed: 1,
+        failed: 1,
+      },
+      auditMaintenanceFailedJobs: [
+        {
+          finishedOn: now.getTime() - 60_000,
+          timestamp: now.getTime() - 120_000,
+        },
+      ],
+    });
+
+    const recovered = await service.getReadiness(now);
+    const auditMaintenanceQueue = (
+      service as unknown as {
+        auditMaintenanceQueue: { getFailed: jest.Mock };
+      }
+    ).auditMaintenanceQueue;
+
+    expect(recovered.checks.auditMaintenanceQueue).toEqual(
+      expect.objectContaining({
+        status: 'pass',
+        message:
+          'Audit maintenance queue is readable; retained failures were followed by a newer successful run.',
+      }),
+    );
+    expect(recovered.checks.auditMaintenanceQueue.counts).toEqual({
+      ...emptyQueueCounts(),
+      delayed: 1,
+      failed: 1,
+    });
+    expect(recovered.status).toBe('ready');
+    expect(recovered.issues).toEqual([]);
+    expect(auditMaintenanceQueue.getFailed).toHaveBeenCalledWith(0, 9);
+  });
+
+  it('degrades when an audit maintenance failure is newer than the last success', async () => {
+    const failed = await createService({
+      mode: 'inline',
+      maintenanceEnabled: true,
+      maintenanceState: { lastSucceededAt: new Date(now.getTime() - 120_000) },
+      auditMaintenanceCounts: { ...emptyQueueCounts(), failed: 1 },
+      auditMaintenanceFailedJobs: [
+        {
+          finishedOn: now.getTime() - 180_000,
+          timestamp: now.getTime() - 240_000,
+        },
+        {
+          finishedOn: now.getTime() - 60_000,
+          timestamp: now.getTime() - 180_000,
+        },
+      ],
+    }).getReadiness(now);
+
+    expect(failed.checks.auditMaintenanceQueue.status).toBe('warn');
+    expect(failed.status).toBe('degraded');
+  });
+
+  it('degrades conservatively when retained failure timing is unavailable', async () => {
     const failed = await createService({
       mode: 'inline',
       maintenanceEnabled: true,
       maintenanceState: { lastSucceededAt: now },
       auditMaintenanceCounts: { ...emptyQueueCounts(), failed: 1 },
+      auditMaintenanceFailedJobs: [{}],
     }).getReadiness(now);
+
     expect(failed.checks.auditMaintenanceQueue.status).toBe('warn');
     expect(failed.status).toBe('degraded');
   });
@@ -305,6 +373,11 @@ function createService(input: {
   maintenanceEnabled?: boolean;
   auditExportCounts?: QueueCounts;
   auditMaintenanceCounts?: QueueCounts;
+  auditMaintenanceFailedJobs?: Array<{
+    timestamp?: number;
+    processedOn?: number;
+    finishedOn?: number;
+  }>;
   auditExportPaused?: boolean;
   auditMaintenancePaused?: boolean;
   maintenanceState?: { lastSucceededAt: Date | null } | null;
@@ -334,15 +407,25 @@ function createService(input: {
       .fn()
       .mockResolvedValue(input.outbox ?? createOutboxSummary()),
   };
-  const auditQueue = (counts: QueueCounts, paused: boolean) =>
+  const auditQueue = (
+    counts: QueueCounts,
+    paused: boolean,
+    failedJobs: Array<{
+      timestamp?: number;
+      processedOn?: number;
+      finishedOn?: number;
+    }> = [],
+  ) =>
     input.auditQueueError
       ? {
           getJobCounts: jest.fn().mockRejectedValue(input.auditQueueError),
           isPaused: jest.fn().mockRejectedValue(input.auditQueueError),
+          getFailed: jest.fn().mockRejectedValue(input.auditQueueError),
         }
       : {
           getJobCounts: jest.fn().mockResolvedValue(counts),
           isPaused: jest.fn().mockResolvedValue(paused),
+          getFailed: jest.fn().mockResolvedValue(failedJobs),
         };
   const prisma = {
     operatorAuditMaintenanceState: {
@@ -359,6 +442,7 @@ function createService(input: {
     auditQueue(
       input.auditMaintenanceCounts ?? emptyQueueCounts(),
       input.auditMaintenancePaused ?? false,
+      input.auditMaintenanceFailedJobs,
     ) as never,
     outbox as never,
     prisma as never,

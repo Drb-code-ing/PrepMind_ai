@@ -21,6 +21,8 @@ import {
 
 type QueueCounts = WorkerReadinessResponse['checks']['queue']['counts'];
 
+const MAX_RECENT_FAILURES = 10;
+
 type RedisLike = {
   keys: (pattern: string) => Promise<string[]>;
   mget: (...keys: string[]) => Promise<Array<string | null>>;
@@ -40,11 +42,13 @@ type QueueSnapshot =
       ok: true;
       counts: QueueCounts;
       isPaused: boolean;
+      latestFailedAtMs: number | null;
     }
   | {
       ok: false;
       counts: QueueCounts;
       isPaused: boolean;
+      latestFailedAtMs: null;
     };
 
 type HeartbeatSnapshot =
@@ -116,7 +120,11 @@ export class WorkerReadinessService {
     ] = await Promise.all([
       this.getQueueSnapshot(this.queue, 'knowledge'),
       this.getQueueSnapshot(this.auditExportQueue, 'audit export'),
-      this.getQueueSnapshot(this.auditMaintenanceQueue, 'audit maintenance'),
+      this.getQueueSnapshot(
+        this.auditMaintenanceQueue,
+        'audit maintenance',
+        true,
+      ),
       this.getHeartbeatSnapshot(),
       this.getOutboxSnapshot(now),
       this.getAuditMaintenanceCheck(now),
@@ -145,6 +153,7 @@ export class WorkerReadinessService {
       auditMaintenanceSnapshot,
       this.maintenanceEnabled,
       'Audit maintenance',
+      maintenanceCheck.lastSucceededAt,
     );
     const checks = {
       redis: redisCheck,
@@ -203,11 +212,15 @@ export class WorkerReadinessService {
   private async getQueueSnapshot(
     queue: Queue,
     label: string,
+    inspectLatestFailure = false,
   ): Promise<QueueSnapshot> {
     try {
-      const [counts, isPaused] = await Promise.all([
+      const [counts, isPaused, failedJobs] = await Promise.all([
         queue.getJobCounts('waiting', 'active', 'delayed', 'failed', 'paused'),
         queue.isPaused(),
+        inspectLatestFailure
+          ? queue.getFailed(0, MAX_RECENT_FAILURES - 1)
+          : Promise.resolve([]),
       ]);
 
       return {
@@ -220,10 +233,16 @@ export class WorkerReadinessService {
           paused: counts.paused ?? 0,
         },
         isPaused,
+        latestFailedAtMs: getLatestFailedAtMs(failedJobs),
       };
     } catch {
       this.logger.warn(`Worker readiness ${label} queue check failed.`);
-      return { ok: false, counts: emptyQueueCounts(), isPaused: false };
+      return {
+        ok: false,
+        counts: emptyQueueCounts(),
+        isPaused: false,
+        latestFailedAtMs: null,
+      };
     }
   }
 
@@ -231,6 +250,7 @@ export class WorkerReadinessService {
     snapshot: QueueSnapshot,
     enabled: boolean,
     label: string,
+    lastSucceededAt: string | null = null,
   ): WorkerReadinessResponse['checks']['auditExportQueue'] {
     const isPaused = snapshot.isPaused || snapshot.counts.paused > 0;
     const hasBacklog = hasQueueBacklog(snapshot.counts);
@@ -243,8 +263,15 @@ export class WorkerReadinessService {
       status = enabled ? 'fail' : 'warn';
       message = `${label} queue is paused.`;
     } else if (snapshot.counts.failed > 0) {
-      status = 'warn';
-      message = `${label} queue has failed jobs.`;
+      const successMs = lastSucceededAt ? Date.parse(lastSucceededAt) : NaN;
+      const failuresRecovered =
+        snapshot.latestFailedAtMs !== null &&
+        Number.isFinite(successMs) &&
+        successMs > snapshot.latestFailedAtMs;
+      status = failuresRecovered ? 'pass' : 'warn';
+      message = failuresRecovered
+        ? `${label} queue is readable; retained failures were followed by a newer successful run.`
+        : `${label} queue has failed jobs.`;
     }
     return { status, message, counts: snapshot.counts, isPaused, hasBacklog };
   }
@@ -493,4 +520,21 @@ function emptyQueueCounts(): QueueCounts {
     failed: 0,
     paused: 0,
   };
+}
+
+function getLatestFailedAtMs(
+  jobs: Array<{
+    timestamp?: number;
+    processedOn?: number;
+    finishedOn?: number;
+  }>,
+) {
+  const failureTimes = jobs.flatMap((job) => {
+    const failureTime = job.finishedOn ?? job.processedOn ?? job.timestamp;
+    return typeof failureTime === 'number' && Number.isFinite(failureTime)
+      ? [failureTime]
+      : [];
+  });
+
+  return failureTimes.length > 0 ? Math.max(...failureTimes) : null;
 }
