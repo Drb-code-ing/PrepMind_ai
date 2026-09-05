@@ -26,6 +26,7 @@ import {
 } from './chat-response.job';
 import { resolveChatResponseGenerationTimeout } from './chat-response-worker.config';
 import { PrismaService } from '../database/prisma.service';
+import { ChatRunBudgetRepository } from '../chat-run-budget/chat-run-budget.repository';
 import { ChatStreamStore } from './chat-stream.store';
 
 export const CHAT_RESPONSE_GENERATOR = Symbol('CHAT_RESPONSE_GENERATOR');
@@ -115,6 +116,7 @@ export class ChatResponseWorkerService {
     @Inject(CHAT_RESPONSE_GENERATOR)
     private readonly generator: ChatResponseGenerator,
     @Optional() private readonly streams?: ChatStreamStore,
+    @Optional() private readonly budgets?: ChatRunBudgetRepository,
   ) {}
 
   async process(job: Job<unknown>): Promise<void> {
@@ -134,12 +136,34 @@ export class ChatResponseWorkerService {
 
     await this.publishStarted(claim.claim.turn);
     let generatedTextObserved = false;
+    let workerReservationId: string | null = null;
     try {
       const messages = await this.loadInputMessages(claim.claim.turn);
+      workerReservationId = await this.reserveWorkerBudget(
+        claim.claim.turn,
+        messages,
+        attemptNumber(job),
+      );
       const generated = await this.generate(claim.claim.turn, messages);
       validateGeneratedResult(generated);
       generatedTextObserved = generated.content.length > 0;
       await this.publishTextDelta(claim.claim.turn, generated.content);
+      if (workerReservationId) {
+        await this.budgets?.settle(
+          claim.claim.turn.userId,
+          workerReservationId,
+          {
+            inputTokens: Math.min(
+              10_000,
+              estimateTokens(
+                messages.map((message) => message.content).join('\n'),
+              ),
+            ),
+            outputTokens: Math.min(2_800, estimateTokens(generated.content)),
+            costMicros: 0,
+          },
+        );
+      }
       await this.commitSuccess(payload, claim.claim, generated, bullJobId);
       await this.publishCompleted(
         claim.claim.turn,
@@ -147,6 +171,16 @@ export class ChatResponseWorkerService {
         chatResponseMessageId(claim.claim.turn.id),
       );
     } catch (error) {
+      if (workerReservationId && this.budgets) {
+        try {
+          await this.budgets.uncertain(
+            claim.claim.turn.userId,
+            workerReservationId,
+          );
+        } catch {
+          // Preserve the original worker failure; reconciliation can inspect the reservation.
+        }
+      }
       const decision = await this.handleFailure(
         payload,
         claim.claim,
@@ -166,6 +200,40 @@ export class ChatResponseWorkerService {
       );
       job.discard();
     }
+  }
+
+  private async reserveWorkerBudget(
+    turn: ChatTurn,
+    messages: readonly ChatResponseInputMessage[],
+    attempt: number,
+  ): Promise<string | null> {
+    if (!this.budgets) return null;
+    const ledger = await this.budgets.findLedger(turn.userId, turn.id);
+    if (!ledger) return null;
+    const reservationId = `worker:${turn.id}:${attempt}`;
+    const reservation = await this.budgets.reserve({
+      ownerId: turn.userId,
+      turnId: turn.id,
+      ledgerId: ledger.id,
+      reservationId,
+      stage: 'WORKER',
+      inputTokens: Math.min(
+        ledger.maxInputTokens,
+        estimateTokens(messages.map((message) => message.content).join('\n')),
+      ),
+      outputTokens: Math.min(ledger.maxOutputTokens, 2_800),
+      costMicros: Math.min(ledger.maxCostMicros, 100_000),
+    });
+    const dispatched = await this.budgets.dispatch(turn.userId, reservation.id);
+    if (dispatched.kind !== 'updated') {
+      await this.budgets.release(turn.userId, reservation.id);
+      throw new ChatResponseWorkerError(
+        'BUDGET_EXHAUSTED',
+        false,
+        'Chat response worker budget reservation could not be dispatched',
+      );
+    }
+    return reservation.id;
   }
 
   private async publishStarted(turn: ChatTurn) {
@@ -962,6 +1030,10 @@ function isTerminalJob(status: BackgroundJob['status']) {
     status === 'CANCELLED' ||
     status === 'STALE_SKIPPED'
   );
+}
+
+function estimateTokens(content: string) {
+  return Math.max(1, Math.ceil(content.length / 4));
 }
 
 function compatibleTerminalStates(

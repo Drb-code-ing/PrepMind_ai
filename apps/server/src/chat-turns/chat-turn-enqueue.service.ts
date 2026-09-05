@@ -16,6 +16,10 @@ import {
 import { PrismaService } from '../database/prisma.service';
 import { OutboxService } from '../outbox/outbox.service';
 import {
+  ChatRunBudgetRepository,
+  DEFAULT_CHAT_RUN_BUDGET_POLICY,
+} from '../chat-run-budget/chat-run-budget.repository';
+import {
   CHAT_RESPONSE_JOB,
   CHAT_RESPONSE_QUEUE,
   CHAT_RESPONSE_REQUESTED_EVENT,
@@ -58,6 +62,7 @@ export class ChatTurnEnqueueService {
     private readonly chatTurns: ChatTurnsRepository,
     private readonly backgroundJobs: BackgroundJobsService,
     private readonly outbox: OutboxService,
+    private readonly chatRunBudget: ChatRunBudgetRepository,
   ) {}
 
   async enqueue(input: CreateChatTurnInput): Promise<ChatTurnEnqueueResult> {
@@ -70,6 +75,15 @@ export class ChatTurnEnqueueService {
               input,
             );
           const turn = turnResult.turn;
+          await this.chatRunBudget.createLedgerInTransaction(
+            transaction,
+            input.userId,
+            turn.id,
+            {
+              ...DEFAULT_CHAT_RUN_BUDGET_POLICY,
+              policyVersion: turn.budgetPolicyVersion,
+            },
+          );
           const jobIdempotencyKey = chatResponseJobIdempotencyKey(turn.id);
           const eventIdempotencyKey = chatResponseRequestedIdempotencyKey(
             turn.id,

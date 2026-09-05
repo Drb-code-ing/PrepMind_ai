@@ -45,6 +45,24 @@ describe('ChatResponseWorkerService', () => {
     expect(harness.generator.generate).toHaveBeenCalledTimes(1);
   });
 
+  it('reserves and settles the Worker stage when a durable budget is available', async () => {
+    const budget = createBudgetMock();
+    const harness = createHarness(undefined, undefined, budget);
+
+    await harness.service.process(createJob());
+
+    expect(budget.reserve).toHaveBeenCalledWith(
+      expect.objectContaining({ turnId: payload.turnId, stage: 'WORKER' }),
+    );
+    expect(budget.dispatch).toHaveBeenCalledTimes(1);
+    expect(budget.settle).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.objectContaining({ costMicros: 0 }),
+    );
+    expect(budget.uncertain).not.toHaveBeenCalled();
+  });
+
   it('publishes ordered non-terminal events and only then publishes the terminal event', async () => {
     const stream = createStreamMock();
     const harness = createHarness(undefined, stream);
@@ -251,6 +269,7 @@ describe('ChatResponseWorkerService', () => {
   function createHarness(
     generatorError?: Error,
     stream?: ReturnType<typeof createStreamMock>,
+    budget?: ReturnType<typeof createBudgetMock>,
   ) {
     const state = {
       turn: makeTurn(),
@@ -325,6 +344,7 @@ describe('ChatResponseWorkerService', () => {
       prisma as never,
       generator,
       stream as never,
+      budget as never,
     );
     return {
       service,
@@ -333,6 +353,21 @@ describe('ChatResponseWorkerService', () => {
       prisma,
       transaction: db,
       job: createJob(),
+    };
+  }
+
+  function createBudgetMock() {
+    return {
+      findLedger: jest.fn().mockResolvedValue({
+        id: 'ledger_1',
+        maxInputTokens: 10_000,
+        maxOutputTokens: 2_800,
+        maxCostMicros: 100_000,
+      }),
+      reserve: jest.fn().mockResolvedValue({ id: 'reservation_1' }),
+      dispatch: jest.fn().mockResolvedValue({ kind: 'updated' }),
+      settle: jest.fn().mockResolvedValue({ kind: 'updated' }),
+      uncertain: jest.fn().mockResolvedValue({ kind: 'updated' }),
     };
   }
 

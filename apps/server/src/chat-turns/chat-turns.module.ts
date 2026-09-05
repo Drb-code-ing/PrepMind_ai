@@ -4,6 +4,7 @@ import { BackgroundJobsModule } from '../background-jobs/background-jobs.module'
 import { AuthModule } from '../auth/auth.module';
 import { ConfigModule as AppConfigModule } from '../config/config.module';
 import { DatabaseModule } from '../database/database.module';
+import { ChatRunBudgetModule } from '../chat-run-budget/chat-run-budget.module';
 import type { ServerEnv } from '../config/env';
 import { shouldRegisterWorkers } from '../jobs/worker-role';
 import { OutboxModule } from '../outbox/outbox.module';
@@ -23,6 +24,7 @@ import {
 } from './chat-response-worker.service';
 import { ChatTurnEnqueueService } from './chat-turn-enqueue.service';
 import { ChatTurnsRepository } from './chat-turns.repository';
+import { ChatRunBudgetRepository } from '../chat-run-budget/chat-run-budget.repository';
 
 export function createChatResponseWorkerProviders(
   role: ServerEnv['SERVER_ROLE'],
@@ -37,6 +39,7 @@ const chatResponseWorkerProviders = createChatResponseWorkerProviders(
 @Module({
   imports: [
     AppConfigModule,
+    ChatRunBudgetModule,
     AuthModule,
     BackgroundJobsModule,
     DatabaseModule,
@@ -72,6 +75,10 @@ const chatResponseWorkerProviders = createChatResponseWorkerProviders(
     },
     ...chatResponseWorkerProviders,
   ],
-  exports: [ChatTurnsRepository, ChatTurnEnqueueService],
+  exports: [
+    ChatTurnsRepository,
+    ChatTurnEnqueueService,
+    ChatRunBudgetRepository,
+  ],
 })
 export class ChatTurnsModule {}

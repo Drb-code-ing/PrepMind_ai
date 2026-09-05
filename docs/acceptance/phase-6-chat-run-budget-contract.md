@@ -1,7 +1,7 @@
 # Phase 6 ChatRunBudget 合同验收
 
 更新时间：2026-09-05
-状态：共享类型合同以及 Prisma schema/migration 已实现；运行时 repository、跨节点 CAS、Worker 接入和真实模型验收未实现。
+状态：共享类型、Prisma schema/migration、owner-scoped repository 和 deterministic Worker 预留/结算接入已实现；Trace 对账、生产迁移和真实模型验收未实现。
 
 ## 1. 目的
 
@@ -19,6 +19,8 @@
 - event 只允许 bounded ids、枚举、时间和 usage，strict schema 会拒绝未知字段及 prompt、provider response、API key 等原始载荷。
 - Prisma 已新增 owner-bound `ChatRunBudget`、`ChatRunBudgetReservation`、`ChatRunBudgetEvent` 及复合外键、索引和生命周期 CHECK；迁移
   不携带 prompt、provider 原文或凭据字段。
+- Server repository 使用 Serializable transaction + 条件 `updateMany` 做 reserve、dispatch、settle、release、uncertain 和 cancel；enqueue
+  在创建 ChatTurn/BackgroundJob/Outbox 的同一事务内创建 ledger，Worker 在生成前预留 `WORKER` scope。
 
 ## 3. 验证证据
 
@@ -35,12 +37,11 @@ Prettier: passed
 
 ## 4. 明确未完成项
 
-这次已完成合同和数据库结构，但不代表功能已经拥有可运行的预算账本。后续 ticket 05 切片必须实现：
+这次已完成合同、数据库结构和最小运行时接入，但不代表已完成生产级全链路预算。后续 ticket 05 切片必须实现：
 
-1. Prisma `ChatRunBudget`、reservation、ledger event 持久化及 owner/turn 外键。
-2. Serializable/CAS reservation service，覆盖并发超限、取消释放、dispatch 后 uncertain 和重复请求幂等。
-3. Worker/Agent stage 接入统一 ledger，结算真实 usage/cost，并与 terminal Outbox、Redis stream、Trace 做 bounded reconciliation。
-4. crash/recovery、跨节点竞争和产品链路回归；默认仍保持 mock/off，真实模型需另有授权和独立 controlled-Live 证据。
+1. 将 migration 在隔离验收数据库部署，补真实 PostgreSQL 并发超限、取消释放、dispatch 后 uncertain 和重复请求幂等回归。
+2. 扩展 Router/Tutor/Retriever/Verifier/FinalResponse 的 Agent stage 接入，结算真实 usage/cost，并与 terminal Outbox、Redis stream、Trace 做 bounded reconciliation。
+3. 补 crash/recovery、跨节点竞争和产品链路回归；默认仍保持 mock/off，真实模型需另有授权和独立 controlled-Live 证据。
 
 ## 5. 复核入口
 

@@ -326,6 +326,7 @@ function createHarness() {
     new ChatTurnsRepository(prisma as never),
     new BackgroundJobsService(prisma as never),
     new OutboxService(prisma as never),
+    { createLedgerInTransaction: jest.fn().mockResolvedValue({}) } as never,
   );
 
   return { service, prisma, transaction, state, events };
