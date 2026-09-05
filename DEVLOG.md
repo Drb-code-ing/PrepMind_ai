@@ -26,6 +26,16 @@
 > `implemented + mock/static validated`；runtime repository、Serializable/CAS、Worker/Agent 接入和 Trace 对账仍未完成。下一切片实现
 > owner-scoped reservation repository/service。
 
+> 2026-09-05 — Ticket 05 ChatRunBudget runtime baseline：
+>
+> 从 `main=0cc30e43` 创建普通分支 `drb/chat-run-budget-runtime`。新增 owner-scoped `ChatRunBudgetRepository`，以 Serializable transaction
+> 和条件 CAS 实现 reserve、dispatch、settle、release、uncertain、cancel；同一 `ChatTurn + BackgroundJob + Outbox` 入队事务现在会创建
+> ledger，Worker 在 deterministic generation 前预留并在成功后结算 `WORKER` scope，失败时保留 uncertain 事实，不伪造退款。
+>
+> Server focused tests `24/24`、Server build 通过；数据库 migration 未部署到现有 Docker，未执行真实 Provider 调用。证据等级为
+> `implemented + mock/static validated`，仍不代表真实 PostgreSQL 跨节点并发、其他 Agent stages、Trace reconciliation 或真实模型
+> usage/cost 已完成。下一切片在隔离数据库部署 migration 并补并发/crash 回归。
+
 > 2026-09-05 — Docker 冗余容器清理与 Worker readiness 恢复：
 >
 > 在 `drb/worker-readiness-recovery` 上先做只读归属审计，确认当前规范 Compose project 为 `docker`。精确删除了两个 10 天前

@@ -4,10 +4,10 @@
 
 **Blocked by:** 03 — Turn-backed `/api/chat` bridge; 04 — Browser replay and disconnect recovery.
 
-**Status:** contract and Prisma structure frozen; runtime implementation next
+**Status:** repository and Worker reservation baseline implemented; production evidence next
 
 - [x] Define the ledger facts and cross-node reservation contract in `@repo/types`.
 - [x] Add owner-bound Prisma ledger/reservation/event models, indexes, foreign keys, and lifecycle CHECK constraints.
-- [ ] Enforce limits before each model-capable stage and record bounded usage.
+- [x] Enforce limits for the Worker stage and record bounded usage with reservation lifecycle transitions.
 - [ ] Reconcile terminal state, stream events, and Trace without making Trace authoritative.
 - [ ] Add concurrency and crash/recovery tests.

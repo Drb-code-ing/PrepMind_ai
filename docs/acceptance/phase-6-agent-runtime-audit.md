@@ -19,8 +19,8 @@ consumer 也不是真正 SSE push；完整 ledger 和真实模型 Worker 仍未�
 
 2026-09-05 ticket 05 的第一切片冻结了 `@repo/types` ChatRunBudget 共享合同：所有 Chat stage 使用 owner/turn-bound ledger、bounded
 reservation/usage/event，并由 strict schema 校验生命周期、时间顺序、`used + held <= policy` 和敏感字段排除。该切片只证明
-`implemented + mock/static validated`，Prisma schema/migration 已落地，但 runtime repository、CAS/跨节点竞争、Worker/Agent 接入、Trace
-reconciliation 和真实模型结算仍未完成。
+`implemented + mock/static validated`，Prisma schema/migration、runtime repository 和 Worker `WORKER` reservation 已落地，但真实数据库
+并发证据、其他 Agent stage、Trace reconciliation 和真实模型结算仍未完成。
 验收记录见 `docs/acceptance/phase-6-chat-run-budget-contract.md`。
 
 2026-09-04 的 ticket 01 又在同一 durable 写边界之上补齐认证 `POST /chat-turns`：请求由 strict shared Zod contract
@@ -150,7 +150,7 @@ HTTP request
 7. ~~恢复本地 Worker readiness 与 CLI。~~ 已关闭 retained failure 永久降级和 direct `ts-node` 入口失败，Docker Worker
    `healthy`；历史失败没有删除，真实模型 Worker 边界没有改变。
 8. ~~冻结 ChatRunBudget 共享类型与生命周期合同。~~ 已完成；实现与边界见 `phase-6-chat-run-budget-contract.md`。
-9. 实现 ChatRunBudget runtime repository、Serializable/CAS 跨节点上限、取消/恢复和 Trace 对账，再接入 Worker/Agent stages。
+9. 在隔离数据库完成 ChatRunBudget migration 与 Serializable/CAS 并发验收，补齐其他 Agent stages、Trace 对账和 crash/recovery。
 10. 为 MemoryAgent 定义真实模型增强的隐私、候选确认、预算和 Trace 合同；完成 Agent 架构后再进入分层记忆实现。
 11. 做独立 Review/Planner、Knowledge agents、Router/Verifier/Tutor/Rewrite 的产品验收，保持浏览器窗口可见并保留证据。
 12. 所有代码/文档任务逐项提交、推送、`--no-ff` 合并 main，再在 merged-main 复验；全部 Agent 架构与真实验收完成后，才写两篇面试博客。
