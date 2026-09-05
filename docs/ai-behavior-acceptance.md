@@ -368,7 +368,7 @@ Review/Planner 的 V10 controlled-Live 仍是唯一语义质量 authority。V22 
 
 ## 2. Live 验收成本边界
 
-最终 Chat 真实模型只能在同时开启以下变量时调用：
+用 shell/部署配置直接启动最终 Chat Live 时，仍必须同时开启以下变量：
 
 ```powershell
 $env:AI_PROVIDER_MODE='live'
@@ -378,22 +378,29 @@ $env:AI_MAX_INPUT_TOKENS='2500'
 $env:AI_MAX_OUTPUT_TOKENS='1200'
 ```
 
-- 开发默认必须回到 `AI_PROVIDER_MODE=mock`。
-- Agent 模型还必须额外满足对应组件的独立 gate、server-only provider 配置、timeout、请求预算和 eligibility；全局双开关是必要条件，不是充分条件。Phase 6.9.4.4 的 Router/Verifier gate 默认均为 `false`，只在 controlled acceptance 中显式开启。
+- 开发基础环境必须保持 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`；本地 UI 选择只产生进程内有效环境，不写回文件。
+- Agent 模型还必须满足对应组件 gate、server-only provider 配置、timeout、请求预算和 eligibility；全局双开关或等价的本地显式
+  Live 选择是必要条件，不是充分条件。组件 resolver 本身仍 fail-closed；本地 Docker Web 只预配置 Chat 链 gates，其他产品 Agent
+  gate 不因本功能改变。
 - live smoke 每轮控制在 3 到 5 个固定用例。
 - `AI_MAX_OUTPUT_TOKENS=500` 只适合极短 smoke，不适合 Tutor 讲题或 RAG 答案质量验收。
 - live 验收结束后要切回 mock，避免用户继续操作时产生额外费用。
 
-开发环境可以用 `/agent-trace` 的 `AI 模式` 开关在 mock / live 之间切换，但它只是调试便利，不放宽成本与鉴权边界：
+开发环境可以用 `/agent-trace` 的 `AI 模式` 开关在 Mock/Live 之间切换。本地 Docker 已带齐非秘密默认项，不需要为切换手动修改
+`.env` 或重启：
 
 ```powershell
 $env:AI_PROVIDER_MODE='mock'
-$env:AI_ENABLE_LIVE_CALLS='true'
+$env:AI_ENABLE_LIVE_CALLS='false'
 $env:AI_DEV_MODE_SWITCH_ENABLED='true'
 ```
 
-- 开关默认只在非 production 且 `AI_DEV_MODE_SWITCH_ENABLED=true` 时可见；Docker Compose dev 的 Next standalone 容器可额外设置 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 显示该本地诊断开关，生产部署不得开启。
-- Live 选项只有在 `AI_ENABLE_LIVE_CALLS=true` 且存在 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY` 时可用。
+- 非 production 或带 `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` 的本地 standalone runtime 默认显示开关；只有显式
+  `AI_DEV_MODE_SWITCH_ENABLED=false` 才关闭。普通 production runtime 不暴露入口。
+- 点击 Live 本身是本地运行时启用，服务端为后续 Chat 请求建立双开关与 Chat 组件的统一有效环境；选择状态只在当前 Web 进程内
+  保存，重启恢复 Mock。显式关闭的组件 gate 不会被覆盖。
+- Live 按钮不因基础 `AI_ENABLE_LIVE_CALLS=false` 或 key 缺失而禁用。缺少有效 key 时 Chat 必须明确失败，不能回退 Mock；自动化
+  controlled-Live 仍需新的数据边界、预算和一次性授权，不能把手工切换动作当作历史证据授权。
 - 即使通过开关切到 live，`/api/chat` 仍要求有效 access token，并会调用 `/auth/me` 校验。
 - 验收记录仍以 `/api/chat` 响应头 `x-prepmind-ai-mode=mock|live` 为准。
 
@@ -404,7 +411,7 @@ $env:AI_DEV_MODE_SWITCH_ENABLED='true'
 - RAG 语义效果验收必须使用真实 embedding，或使用专门设计的可控测试向量。
 - 没有资料、没有命中或检索失败时，Chat 必须继续普通回答。
 - `KNOWLEDGE_PROCESSING_MODE=queue` 的 smoke 只证明 BullMQ、Redis、worker、`BackgroundJob`、文档状态流和 chunk 入库可靠，不证明真实模型回答质量。
-- queue 模式不改变 `/api/chat` 的 live 边界；Chat 真实模型仍必须同时满足 `AI_PROVIDER_MODE=live`、`AI_ENABLE_LIVE_CALLS=true`、有效 API key 和登录态校验。
+- queue 模式不改变 `/api/chat` 的 live 边界；Chat 真实模型仍必须满足部署双开关或本地显式 Live 选择、有效 API key 和登录态校验。
 
 ## 4. Chat 空回复兜底
 

@@ -496,7 +496,7 @@ hard-link artifact -> strict validator/crash-only recovery`。C2 synthetic path 
 用户输入文本
   -> ChatInputBar
   -> /api/chat
-  -> parse bounded request + provider mode/config metadata（尚不创建 runtime）
+  -> parse bounded request + resolve one effective Mock/Live environment（尚不创建 runtime）
   -> canonical Chat access
        -> 无 token Mock：request-scoped anonymous context，认证 0 次
        -> 任意非空 token：/auth/me 恰好一次，owner 只取 strict AuthUser.id
@@ -519,9 +519,13 @@ hard-link artifact -> strict validator/crash-only recovery`。C2 synthetic path 
 关键约定：
 
 - `/api/chat` 不注入完整历史，只注入裁剪后的近期上下文和当前活跃题目上下文。
-- `/api/chat` 默认 `AI_PROVIDER_MODE=mock`，不要求 API key，也不会调用真实模型；`.env.local` 里存在 key 不会自动启用 live。
-- 真实模型验收必须同时设置 `AI_PROVIDER_MODE=live` 与 `AI_ENABLE_LIVE_CALLS=true`；live 默认模型为 `deepseek-v4-flash`，也可通过 `AI_MODEL` 覆盖。
-- 本地开发可额外设置 `AI_DEV_MODE_SWITCH_ENABLED=true`，在 `/agent-trace` 中使用开发调试开关切换 mock / live；该开关仅在非 production 可见，且不能绕过 `AI_ENABLE_LIVE_CALLS`、API key 或 live Chat 登录校验。
+- `/api/chat` 基础环境默认 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`，不要求 API key，也不会因为已有 key 自动产生真实调用。
+- 本地 runtime 的 `/agent-trace` 默认显示 Mock/Live 控件。用户选择 Live 是本次进程的显式运行时启用：composition root 只为后续
+  Chat 请求生成有效 `AI_PROVIDER_MODE=live`、`AI_ENABLE_LIVE_CALLS=true`，并把同一环境传给 Router/Verifier、Tutor、Retriever
+  query rewrite 与 FinalResponse；不修改 `.env`，重启后回到 Mock。
+- 本地有效环境只补齐未设置的 Chat 组件 gate，并让 DeepSeek 组件 key 回退到通用 `DEEPSEEK_API_KEY`；显式 `false` 仍受尊重。
+  缺少 key 时仍允许选择 Live，但 provider configured gate 返回明确错误，不伪造 Live、不静默回退 Mock。production 无本地工具 guard
+  时开关保持 404；真实 Chat 仍要求有效登录、匹配凭据、HTTPS provider、预算、timeout、schema 与 safety eligibility。
 - Chat 默认输入预算为 2500 tokens、输出上限为 1200 tokens，可通过 `AI_MAX_INPUT_TOKENS` 和 `AI_MAX_OUTPUT_TOKENS` 调整；超出输入预算会返回 413。
 - live 模式会在服务端打印不含密钥的用量估算日志，包含模式、模型、输入估算、输出上限、消息数量和是否带 active context。
 - AI 行为验收规范见 `docs/ai-behavior-acceptance.md`；mock 验工程链路，live 小样本验真实输出体验，fake embedding 不证明 RAG 语义命中质量。
@@ -535,7 +539,12 @@ hard-link artifact -> strict validator/crash-only recovery`。C2 synthetic path 
 - KnowledgeVerifierAgent 保留确定性 safety policy；Phase 6.9.4.4 功能分支已接 semantic-needed 真实模型候选。prompt injection/high-risk 保持零调用，模型失败只能收紧为保守 guidance，不修改用户资料、不阻断 Chat。
 - `@repo/agent` 不直接调用 `streamText`、不读取 API key；Router/Verifier/Tutor candidate 只消费调用方注入的 `ModelAgentRuntime`。最终回答仍由 `/api/chat` 既有 mock/live provider 流式生成，Tutor candidate 只选择并由本地重建教学策略。
 - `/api/chat` 使用同一个 `req.signal` 取消 conversation prepare、Tutor candidate 与最终 `streamText.abortSignal`；客户端断开后不继续生成最终流。已完成的上游调用不会伪装成未发生，Trace/usage 仍按各自 admission contract 处理。
-- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收且组件 gate 默认关闭。Tutor 与 WrongQuestionOrganizer 的 V1--V9 Live 均已失败封存，产品验收没有启动。V9 R0--R4 证明 option selection、runner/durability 与 reviewed Mock 的 zero-provider 工程边界；唯一 R5 又只证明两条 lane 进入 durable dispatch 后在 response 前 transport/abort，仍没有真实语义、usage、费用、产品或质量 authority，也不证明 Router/API/最终流式 Chat 或 Organizer 产品真实质量。Memory 与其余未完成节点仍按各自后续任务推进。
+- `@repo/ai` 的 `ModelAgentRuntime` 不替换最终流式 provider；Router/Verifier 已完成结构化候选的生产验收。组件 resolver 仍默认
+  fail-closed，本地 Docker Web 仅在 Mock 基础模式下预配置 Chat 链 gates，以便显式 UI 切换时无需重启；这不改变历史验收等级。
+  Tutor 与 WrongQuestionOrganizer 的 V1--V9 Live 均已失败封存，产品验收没有启动。V9 R0--R4 证明 option selection、runner/durability
+  与 reviewed Mock 的 zero-provider 工程边界；唯一 R5 又只证明两条 lane 进入 durable dispatch 后在 response 前 transport/abort，
+  仍没有真实语义、usage、费用、产品或质量 authority，也不证明 Router/API/最终流式 Chat 或 Organizer 产品真实质量。Memory 与其余
+  未完成节点仍按各自后续任务推进。
 - `ConversationState` 已由 prepare 与 Chat history 读写/恢复；`ConversationSummary` 在 prepare 中按 12 条/70% 触发并持久化，摘要源只包含 USER/ASSISTANT。模型调用期间不持有数据库事务；成功输出经过常见凭据与 usage 检查后，Serializable 事务只复核目标水位内消息 hash，并用 summaryVersion + 旧水位 CAS 写入。更高 order 的新消息不使当前目标 stale，目标范围正文变化则拒绝推进。
 - Web request 携带 optional `conversationId`：首轮没有 id 时不调用 prepare，Chat sync 返回 id 后第二轮才进入。`/api/chat` 固定先完成 bounded request/provider metadata 与 canonical `/auth/me` projection，再在 authenticated principal + id 同时存在时用同一 opaque bearer 调用 prepare；默认 timeout 10 秒且限定 1~15 秒，并传播同一个 request abort。network/timeout/5xx/schema failure 只生成固定 `degraded`，不泄露 raw error/token/summary，也不阻断 Mock streaming。
 - Context assembler 的 mandatory 是 base system prompt 与 latest non-empty user；Agent guidance、untrusted state guidance、OCR、recent complete turns、safe RAG、summary 是独立 bounded layer。agent/state 合计最多 10% 且分别记 token/drop metadata；OCR 当前题优先，recent 不留孤立旧 user/assistant，RAG 空间不足整层 drop 并同步清空 hits/verifier/safety/citations，summary 仅在确有 history dropped 时考虑。optional layer 不制造 413；summary 未纳入不回滚数据库水位。

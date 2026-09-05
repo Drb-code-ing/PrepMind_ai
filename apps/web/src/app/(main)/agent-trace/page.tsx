@@ -69,9 +69,7 @@ export default function AgentTracePage() {
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-[var(--pm-muted)]">Agent observability</p>
             <h1 className="text-lg font-semibold leading-tight">Agent 调试台</h1>
-            <p className="mt-0.5 text-xs text-[var(--pm-muted)]">
-              路由、降级、RAG 核对与估算成本
-            </p>
+            <p className="mt-0.5 text-xs text-[var(--pm-muted)]">路由、降级、RAG 核对与估算成本</p>
           </div>
           <div className="pm-mascot-float flex h-10 w-10 items-center justify-center rounded-2xl bg-[#eef7ff] text-[#315f86] ring-1 ring-[#cfe5f8]">
             <Activity className="h-5 w-5" />
@@ -83,9 +81,7 @@ export default function AgentTracePage() {
         <section className="pm-glass-card pm-enter rounded-[1.5rem] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-medium text-[var(--pm-muted)]">
-                最近 {summaryDays} 天
-              </p>
+              <p className="text-xs font-medium text-[var(--pm-muted)]">最近 {summaryDays} 天</p>
               <h2 className="mt-1 text-base font-semibold">Trace 摘要</h2>
             </div>
             <button
@@ -117,11 +113,7 @@ export default function AgentTracePage() {
               value={formatAgentTraceCost(summaryQuery.data?.totalCostEstimate ?? 0)}
               icon={Clock3}
             />
-            <SummaryTile
-              label="降级/失败"
-              value={String(degradedOrFailed)}
-              icon={AlertTriangle}
-            />
+            <SummaryTile label="降级/失败" value={String(degradedOrFailed)} icon={AlertTriangle} />
           </div>
         </section>
 
@@ -129,13 +121,9 @@ export default function AgentTracePage() {
           status={devAiModeQuery.data}
           loading={devAiModeQuery.isLoading}
           pending={setDevAiModeMutation.isPending}
-          statusError={
-            devAiModeQuery.error instanceof Error ? devAiModeQuery.error.message : null
-          }
+          statusError={devAiModeQuery.error instanceof Error ? devAiModeQuery.error.message : null}
           error={
-            setDevAiModeMutation.error instanceof Error
-              ? setDevAiModeMutation.error.message
-              : null
+            setDevAiModeMutation.error instanceof Error ? setDevAiModeMutation.error.message : null
           }
           onSelect={(mode) => setDevAiModeMutation.mutate(mode)}
         />
@@ -207,9 +195,7 @@ function DevAiModeSwitch({
   error: string | null;
   onSelect: (mode: 'mock' | 'live') => void;
 }) {
-  if (loading) return null;
-
-  if (!status?.enabled) {
+  if (!loading && !status?.enabled) {
     return statusError ? (
       <section className="pm-enter rounded-[1.35rem] bg-red-50/85 p-3 text-sm leading-6 text-red-600 ring-1 ring-red-100">
         AI 模式状态读取失败：{statusError}
@@ -217,9 +203,10 @@ function DevAiModeSwitch({
     ) : null;
   }
 
-  const liveDisabled = pending || !status.liveAllowedByEnv;
-  const mockActive = status.activeMode === 'mock';
-  const liveActive = status.activeMode === 'live';
+  const activeMode = status?.activeMode ?? 'mock';
+  const liveAllowedByEnv = status?.liveAllowedByEnv ?? false;
+  const mockActive = activeMode === 'mock';
+  const liveActive = activeMode === 'live';
 
   return (
     <section className="pm-enter rounded-[1.35rem] bg-white/72 p-3 ring-1 ring-[var(--pm-line)]">
@@ -231,7 +218,7 @@ function DevAiModeSwitch({
           <div className="min-w-0">
             <p className="text-sm font-semibold">AI 模式</p>
             <p className="mt-0.5 truncate text-xs text-[var(--pm-muted)]">
-              当前：{status.activeMode === 'live' ? 'Live' : 'Mock'}
+              {loading ? '正在读取模式...' : `当前：${activeMode === 'live' ? 'Live' : 'Mock'}`}
             </p>
           </div>
         </div>
@@ -253,7 +240,7 @@ function DevAiModeSwitch({
           <button
             type="button"
             onClick={() => onSelect('live')}
-            disabled={liveDisabled || liveActive}
+            disabled={pending || liveActive}
             className={`tap-target inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-3 text-sm font-bold ring-1 transition-all active:scale-[0.98] ${
               liveActive
                 ? 'bg-[#1f6f62] text-white ring-[#1f6f62]'
@@ -266,7 +253,7 @@ function DevAiModeSwitch({
         </div>
       </div>
 
-      {!status.liveAllowedByEnv && status.message ? (
+      {!liveAllowedByEnv && status?.message ? (
         <p className="mt-3 rounded-2xl bg-amber-50/85 px-3 py-2 text-xs leading-5 text-amber-700 ring-1 ring-amber-100">
           {status.message}
         </p>
@@ -372,10 +359,7 @@ function TraceRunItem({
         <div className="mt-3 border-t border-[var(--pm-line)] pt-3">
           <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-[var(--pm-muted)] sm:grid-cols-4">
             <Metric label="RAG 命中" value={`${run.ragHitCount}`} />
-            <Metric
-              label="核对"
-              value={getAgentTraceVerifierStatusLabel(run.verifierStatus)}
-            />
+            <Metric label="核对" value={getAgentTraceVerifierStatusLabel(run.verifierStatus)} />
             <Metric label="核对片段" value={`${run.verifierChunkCount}`} />
             <Metric label="Tutor" value={run.tutorIntent ?? '未执行'} />
           </div>

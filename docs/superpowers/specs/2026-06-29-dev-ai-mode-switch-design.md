@@ -32,22 +32,24 @@ Use a local-only Next.js API route with in-memory state:
 - `GET /api/dev/ai-mode`
 - `PUT /api/dev/ai-mode`
 
-The endpoint is enabled only when:
+The endpoint is enabled when the runtime is explicitly local:
 
-- `NODE_ENV !== 'production'`
-- `AI_DEV_MODE_SWITCH_ENABLED=true`
+- `NODE_ENV !== 'production'`, or
+- `PREPMIND_LOCAL_DEV_TOOLS_ENABLED=true` for the local Docker standalone image.
 
-The endpoint reports the environment mode, active mode, and whether live can actually be used. `/api/chat` reads this dev override before resolving the provider status. Even when the override asks for live, `getAiProviderStatus` must still reject live if `AI_ENABLE_LIVE_CALLS` is not true or no API key is configured.
+`AI_DEV_MODE_SWITCH_ENABLED=false` explicitly disables the endpoint; otherwise it is visible in a local runtime. The endpoint reports the base environment mode, active mode, and whether a real provider credential is ready. Mock remains the process-start default. Selecting Live creates an in-memory effective environment for subsequent Chat requests, without editing `.env` or restarting the Web process.
+
+The effective environment sets the two global Live values, defaults only missing Chat-chain component gates, normalizes the DeepSeek `/v1` endpoint, and lets component-specific Chat credentials fall back to the generic DeepSeek key. One effective snapshot is passed to Router/Verifier, Tutor, Retriever query rewrite, and FinalResponse. Explicit component `false` values remain authoritative.
 
 ## Data Flow
 
 1. User opens `/agent-trace`.
 2. The page fetches `GET /api/dev/ai-mode`.
-3. If the endpoint is enabled, the UI shows a small `Mock / Live` segmented control.
+3. In a local runtime the UI always shows a small `Mock / Live` segmented control.
 4. User switches mode.
 5. UI sends `PUT /api/dev/ai-mode` with `{ "mode": "mock" }` or `{ "mode": "live" }`.
 6. Future `/api/chat` requests resolve provider mode from the dev override.
-7. If active mode is live, `/api/chat` still calls `validateChatLiveAccess`.
+7. If active mode is live, `/api/chat` still enforces provider configuration and canonical authenticated access before constructing model runtimes.
 8. Chat responses continue to expose `x-prepmind-ai-mode=mock|live` for acceptance checks.
 
 ## API Contract
@@ -81,18 +83,17 @@ Place the switch in `/agent-trace`, because this page is already the Phase 6 deb
 
 - Label: `AI 模式`
 - Options: `Mock` and `Live`
-- Live option disabled when the server says live is unavailable.
-- Copy should explain the exact missing guard when live is disabled.
+- Live remains selectable even when the provider credential is missing; the status copy explains readiness and Chat fails explicitly rather than falling back to Mock.
 
 The switch should not appear as normal product functionality on Chat or Profile.
 
 ## Safety Rules
 
 - Mock remains default.
-- Live mode requires `AI_ENABLE_LIVE_CALLS=true`.
+- Shell/deployment Live still requires `AI_ENABLE_LIVE_CALLS=true`; local UI selection creates the equivalent in-memory value for the current process.
 - Live mode requires a configured `DEEPSEEK_API_KEY` or `OPENAI_API_KEY`.
 - Live chat still requires a valid access token through `validateChatLiveAccess`.
-- The dev endpoint is disabled in production and without `AI_DEV_MODE_SWITCH_ENABLED=true`.
+- The dev endpoint is disabled in ordinary production and when explicitly set to `AI_DEV_MODE_SWITCH_ENABLED=false`.
 - The override is process-local memory, not database state.
 
 ## Testing Plan

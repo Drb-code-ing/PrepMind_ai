@@ -45,7 +45,7 @@ import {
 import { orchestrateChatModelAgents } from '@/lib/chat-model-agent-orchestration';
 import { createChatModelAgentRuntimeBundle } from '@/lib/chat-model-agent-runtime';
 import { createTutorModelRuntimeBundle } from '@/lib/tutor-model-runtime';
-import { resolveChatProviderStatus } from '@/lib/chat-provider-status';
+import { resolveChatProviderRuntime } from '@/lib/chat-provider-status';
 import {
   buildVerifiedEvidenceContextPromptV1,
   prepareRealtimeFinalResponseV1,
@@ -341,7 +341,7 @@ export async function POST(req: Request) {
       return Response.json({ error: '消息列表不能为空' }, { status: 400 });
     }
 
-    const providerStatus = resolveChatProviderStatus();
+    const { environment: chatRuntimeEnv, status: providerStatus } = resolveChatProviderRuntime();
     const traceRunId = crypto.randomUUID();
     const modelCallId = crypto.randomUUID();
     const requestId = crypto.randomUUID();
@@ -482,12 +482,12 @@ export async function POST(req: Request) {
 
     const conversationContext = accessAndContext.context;
 
-    const modelAgentBundle = createChatModelAgentRuntimeBundle({ env: process.env });
+    const modelAgentBundle = createChatModelAgentRuntimeBundle({ env: chatRuntimeEnv });
     let agentExecutionResult: Awaited<ReturnType<typeof orchestrateChatModelAgents>>;
     try {
       agentExecutionResult = await orchestrateChatModelAgents({
         bundle: modelAgentBundle,
-        createTutorBundle: () => createTutorModelRuntimeBundle({ env: process.env }),
+        createTutorBundle: () => createTutorModelRuntimeBundle({ env: chatRuntimeEnv }),
         messages: normalizedMessages,
         activeContext: normalizedActiveContext,
         executionContext,
@@ -526,7 +526,9 @@ export async function POST(req: Request) {
       });
       return Response.json({ error: '知识检索权限绑定失败' }, { status: 403 });
     }
-    const queryRewrite = createRetrieverQueryRewriteModelRuntimeBundle({ env: process.env });
+    const queryRewrite = createRetrieverQueryRewriteModelRuntimeBundle({
+      env: chatRuntimeEnv,
+    });
     const retrieval = await runRealtimeRetrieverCompositionV1({
       context: executionContext,
       messages: normalizedMessages,
@@ -657,7 +659,7 @@ export async function POST(req: Request) {
     const runtime = createChatFinalResponseRuntimeV1({
       mode: providerStatus.mode,
       mockText,
-      env: process.env,
+      env: chatRuntimeEnv,
     });
     const preparedAt = new Date();
     const traceBase = buildChatAgentTracePayload({
