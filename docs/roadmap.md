@@ -20,6 +20,8 @@ baseline、认证 enqueue、`/api/chat` handoff，以及浏览器 owner-bound st
 - 历史 controlled-Live 只读且不可重跑；语义质量、产品可用性、billing 和 SLA 分开记录。
 - ticket 01-03 已完成 durable admission、Web adapter 和 `/api/chat` handoff；ticket 04 已接入 JSON replay/status recovery。
   当前不是长连接 BFF SSE push，Worker 仍是 deterministic baseline。
+- 本地 Worker readiness 已恢复：更新的 maintenance success 可覆盖仍被 BullMQ 保留的旧 failure，但失败计数继续可观测；
+  direct CLI 已改用 Bun。该维护任务不替代 ticket 05 的全链路预算，也不提供 ticket 06 的真实模型证据。
 
 ## 阶段总览
 

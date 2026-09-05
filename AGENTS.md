@@ -22,10 +22,10 @@
 ## 2. 当前项目状态（2026-09-05）
 
 - 2026-08-31 文档分层整理已合并并推送；开始新任务前始终用 `git rev-parse main` 与 `git rev-parse origin/main` 核对，不要复制历史 SHA。
-- Phase 6 Agent 运行时总审计仍是当前主线。最新原子任务补齐了本地 `/agent-trace` Mock/Live 切换及 Chat 链 effective
-  environment；在此之前已在 deterministic Worker、bounded replay、enqueue API/Web adapter 之上接通 authenticated
-  `/api/chat -> message prepare -> durable enqueue -> 202 handoff`，并完成浏览器 JSON status/replay recovery。真正长连接 SSE push、
-  全链路 ledger 与真实模型 Worker 仍未完成。
+- Phase 6 Agent 运行时总审计仍是当前主线。最新维护任务已恢复 Worker readiness 与 Bun CLI；更早任务已补齐本地
+  `/agent-trace` Mock/Live 切换及 Chat 链 effective environment，并在 deterministic Worker、bounded replay、enqueue API/Web
+  adapter 之上接通 authenticated `/api/chat -> message prepare -> durable enqueue -> 202 handoff` 和浏览器 JSON status/replay
+  recovery。真正长连接 SSE push、全链路 ledger 与真实模型 Worker 仍未完成。
 - `packages/agent/src/graph/index.ts` 是受治理的 catalog descriptor，不是执行器；产品 Chat 编排仍在 Web/API composition。
 - Tool-Using Orchestrator 尚未实现。Review/Planner、Knowledge agents、Router/Verifier、Tutor、Retriever/FinalResponse
   的真实模型产品证据必须按矩阵逐项确认，不能用一条 Chat smoke 代替。

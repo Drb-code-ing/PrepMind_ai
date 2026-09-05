@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { WorkerReadinessResponse } from '@repo/types/api/worker-readiness';
 import { MODULE_METADATA } from '@nestjs/common/constants';
@@ -89,6 +90,16 @@ describe('worker readiness CLI helpers', () => {
       ),
     ).not.toContain('ReviewAgentModule');
     expect(controllers).toEqual([]);
+  });
+
+  it('uses Bun for the workspace readiness entrypoint', () => {
+    const packageJson = JSON.parse(
+      readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'),
+    ) as { scripts?: Record<string, string> };
+
+    expect(packageJson.scripts?.['readiness:worker']).toBe(
+      'bun scripts/worker-readiness.ts',
+    );
   });
 
   it('fails readiness checks with a bounded timeout', async () => {
@@ -251,31 +262,21 @@ function runReadinessCliSubprocess(env: Record<string, string>): Promise<{
   const serverRoot = path.resolve(__dirname, '../..');
 
   return new Promise((resolve) => {
-    const child = spawn(
-      'node',
-      [
-        '-r',
-        'tsconfig-paths/register',
-        '-r',
-        'ts-node/register',
-        'scripts/worker-readiness.ts',
-      ],
-      {
-        cwd: serverRoot,
-        env: {
-          PATH: process.env.PATH,
-          SystemRoot: process.env.SystemRoot,
-          TEMP: process.env.TEMP,
-          TMP: process.env.TMP,
-          JWT_SECRET: 'dev-secret-change-me',
-          NODE_ENV: 'development',
-          KNOWLEDGE_PROCESSING_MODE: 'queue',
-          SERVER_ROLE: 'worker',
-          ...env,
-        },
-        windowsHide: true,
+    const child = spawn('bun', ['scripts/worker-readiness.ts'], {
+      cwd: serverRoot,
+      env: {
+        PATH: process.env.PATH,
+        SystemRoot: process.env.SystemRoot,
+        TEMP: process.env.TEMP,
+        TMP: process.env.TMP,
+        JWT_SECRET: 'dev-secret-change-me',
+        NODE_ENV: 'development',
+        KNOWLEDGE_PROCESSING_MODE: 'queue',
+        SERVER_ROLE: 'worker',
+        ...env,
       },
-    );
+      windowsHide: true,
+    });
     let output = '';
     let timedOut = false;
     const timeout = setTimeout(() => {

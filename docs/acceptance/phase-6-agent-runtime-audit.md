@@ -4,6 +4,11 @@
 范围：Phase 6 全部 Agent、模型 gate、通信边界、权限、预算、Trace、降级和现有证据。  
 结论级别：本文件是审计基线，不代表所有 Agent 已完成真实模型验收。
 
+2026-09-05 的 Worker readiness 恢复任务已修正本地 Compose 的历史失败判定：Audit maintenance queue 会保留失败任务用于
+排查，但只有 PostgreSQL `lastSucceededAt` 严格晚于最新 BullMQ failure 时，旧 failure 才不再阻断 readiness；更新失败或时间
+不可验证仍降级。`readiness:worker` 同步切到 Bun，既有 direct CLI 历史失败已关闭。Docker Worker 已恢复 `healthy`，这不改变其
+`deterministic-worker-v1` 模型边界。详见 `docs/acceptance/phase-6-worker-readiness-recovery.md`。
+
 2026-09-02 Chat Stream 原子任务已将 `chat.response.requested` 通过 Outbox 幂等桥接到 BullMQ，Worker 可在 owner-scoped claim 后
 以同一事务提交 assistant、ChatTurn、BackgroundJob 和终态 Outbox；随后以 `chat-turn-stream-v1` 合同发布有界 Redis Stream 事件，
 并提供 owner-bound turn 状态/回放接口。2026-09-05 ticket 04 又让浏览器消费 authenticated status + JSON cursor replay/polling，
@@ -49,6 +54,8 @@ response。identity/conversation/token fence、absolute order、旧 snapshot syn
   BullMQ，Worker 在 owner-scoped claim 后将 assistant/Turn/BackgroundJob/终态 Outbox 同事务提交，再发布可幂等回放的 Redis 事件；
   product bridge 已能 admission/handoff，浏览器也已接 JSON replay/status recovery；这仍不等于真实模型 Worker、SSE push 或生产
   持续运行。
+- Worker readiness 已区分“保留的历史 maintenance failure”与“当前仍失败”：更新成功可以恢复 ready，但 retained count 继续
+  暴露；最新失败、时间未知、队列暂停/不可读仍 fail closed。本机 CLI 与 subprocess 回归使用 Bun。
 - Web enqueue adapter 已实现稳定 owner-bound request/hash、strict `202`、显式 snapshot fallback 和 abort/offline 分类；ticket 03 已由
   `/api/chat` 消费该 seam，ticket 04 已把严格 handoff 接到 owner-bound browser recovery。Redis preview 不是最终业务回答。
 
@@ -133,6 +140,8 @@ HTTP request
    重叠提交阻止和 Mock Docker/可见浏览器验收；详见 `docs/acceptance/phase-6-chat-turn-api-bridge.md`。
 6. ~~完成浏览器 status/replay（ticket 04）。~~ 已接 authenticated JSON cursor replay/polling、Dexie v10、identity fence、
    PostgreSQL terminal authority 和 Mock Docker/可见浏览器验收；不是 SSE push。继续完成全链路 ledger 与真实模型 Worker。
-7. 为 MemoryAgent 定义真实模型增强的隐私、候选确认、预算和 Trace 合同；完成 Agent 架构后再进入分层记忆实现。
-8. 做独立 Review/Planner、Knowledge agents、Router/Verifier/Tutor/Rewrite 的产品验收，保持浏览器窗口可见并保留证据。
-9. 所有代码/文档任务逐项提交、推送、`--no-ff` 合并 main，再在 merged-main 复验；全部 Agent 架构与真实验收完成后，才写两篇面试博客。
+7. ~~恢复本地 Worker readiness 与 CLI。~~ 已关闭 retained failure 永久降级和 direct `ts-node` 入口失败，Docker Worker
+   `healthy`；历史失败没有删除，真实模型 Worker 边界没有改变。
+8. 为 MemoryAgent 定义真实模型增强的隐私、候选确认、预算和 Trace 合同；完成 Agent 架构后再进入分层记忆实现。
+9. 做独立 Review/Planner、Knowledge agents、Router/Verifier/Tutor/Rewrite 的产品验收，保持浏览器窗口可见并保留证据。
+10. 所有代码/文档任务逐项提交、推送、`--no-ff` 合并 main，再在 merged-main 复验；全部 Agent 架构与真实验收完成后，才写两篇面试博客。

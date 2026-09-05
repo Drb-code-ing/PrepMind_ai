@@ -1,5 +1,29 @@
 # PrepMind AI 开发日志
 
+> 2026-09-05 — Docker 冗余容器清理与 Worker readiness 恢复：
+>
+> 在 `drb/worker-readiness-recovery` 上先做只读归属审计，确认当前规范 Compose project 为 `docker`。精确删除了两个 10 天前
+> 已退出的旧 Server 容器 `priceless_yonath`、`elated_wozniak` 和一个已退出的旧 Web 容器 `practical_fermat`；三者均无端口、
+> 无挂载，当前 `docker-server-1`、`docker-web-1` 及数据服务未替换。
+>
+> `docker-worker-1` 修复前连续 healthcheck 失败 300 次，唯一问题是 Audit maintenance queue 保留
+> `failed=1 / delayed=1`。失败任务源于一次 Prisma 5 秒 interactive transaction 超时，但后续 maintenance 已成功；旧 readiness
+> 仅看 `failed > 0`，因此恢复后仍永久 `degraded`。现在有界读取最多 10 条近期失败任务的安全时间元数据、自行取最新时间，并与
+> PostgreSQL
+> `lastSucceededAt` 比较：更新成功可以恢复 `ready`，retained failed count 和说明仍保留；更新失败、时间未知、队列不可读/暂停
+> 继续降级。`readiness:worker` 与真实 subprocess 回归改用 Bun，关闭 workspace `.ts` import 导致的既有 `ts-node` 入口失败；
+> 同步修正上一个本地模式切换任务遗留的两条 Docker gate 旧断言。
+>
+> 自动化验证：Worker readiness `4 suites / 51 tests`、Docker boundary `4/4`、Server full
+> `240 suites / 2262 tests passed`（另有 `3 suites / 30 tests skipped`）、Server build、目标 ESLint/Prettier 和 diff check 通过。
+> 候选镜像从干净主线归档叠加本任务实现构建，只替换 Worker；最终 Worker `healthy`、readiness CLI exit `0`、Server
+> `/health=200`、Web `/login=200`。PostgreSQL/MinIO 原 volume 保持挂载，没有删除 Bull failure、Redis key、数据库记录或对象。
+>
+> Compose 使用根 `.env` 注入既有 Worker 配置，但没有查看或输出凭据，没有调用 DeepSeek/Qwen/其他 Provider，费用为 0；没有
+> 执行 prune、`down -v`、reset、flush 或 wipe。证据等级为 `implemented + mock/static validated + local Docker runtime
+validated`；Worker 仍是 `deterministic-worker-v1`，不构成真实模型证据。详细验收见
+> `docs/acceptance/phase-6-worker-readiness-recovery.md`。提交、合并和 merged-main 回执在收口后补录。
+>
 > 2026-09-05 — 本地 Mock/Live 模式切换默认可用：
 >
 > 在 `drb/ai-mode-switch-defaults` 上恢复 `/agent-trace` 的 AI 模式控件，并把本地 Docker Web 配置改为开箱即用。控件在本地
@@ -39,7 +63,7 @@
 > Provider credential、未调用 DeepSeek/Qwen/其他 Provider，费用为 0。合成账号 `cmtnr0irv0000my01lopx81py` 及其 User、Conversation、
 > ChatMessage、ChatTurn、BackgroundJob、目标 Outbox、Bull job、Stream key 和浏览器 owner-scoped 数据已精确清理为 0；未执行
 > `FLUSHDB/FLUSHALL`、数据库 reset、volume 删除、MinIO wipe 或 Docker prune。证据等级为 `implemented + mock/static validated +
-> Mock Docker/可见浏览器产品验收`；真实模型 Worker、全链路 ChatRunBudget ledger、SSE push 和 production-used 仍未完成。功能提交
+Mock Docker/可见浏览器产品验收`；真实模型 Worker、全链路 ChatRunBudget ledger、SSE push 和 production-used 仍未完成。功能提交
 > `711347470b297a30594239b7dcaec00097d988dd` 已推送到 `origin/drb/chat-turn-browser-replay`，随后以 `--no-ff` 合并并推送为
 > `main=94677fa1aff9101e1e910a0887ed293d9159e19e`；merged-main recovery `24/24`、Server stream/config `94/94`、Docker/API
 > health 和 `main == origin/main` 均复验通过。七个用户预修改文件仍未暂存。

@@ -2,18 +2,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 describe('Phase 6.9.7 Docker runtime boundaries', () => {
-  it('keeps every model capability disabled in the tracked Docker environment example', () => {
+  it('keeps the Chat chain ready but Live calls off in the Docker environment example', () => {
     const example = readRepoFile('docker/.env.example');
     const lines = new Set(example.split(/\r?\n/));
 
     for (const line of [
       'AI_PROVIDER_MODE=mock',
       'AI_ENABLE_LIVE_CALLS=false',
-      'ROUTER_MODEL_ENABLED=false',
-      'KNOWLEDGE_VERIFIER_MODEL_ENABLED=false',
-      'TUTOR_AGENT_MODEL_ENABLED=false',
+      'AI_DEV_MODE_SWITCH_ENABLED=true',
+      'ROUTER_MODEL_ENABLED=true',
+      'KNOWLEDGE_VERIFIER_MODEL_ENABLED=true',
+      'TUTOR_AGENT_MODEL_ENABLED=true',
       'TUTOR_AGENT_MODEL_TIMEOUT_MS=3000',
       'TUTOR_AGENT_DEEPSEEK_API_KEY=',
+      'RETRIEVER_QUERY_REWRITE_MODEL_ENABLED=true',
+      'FINAL_RESPONSE_AGENT_MODEL_ENABLED=true',
       'WRONG_QUESTION_ORGANIZER_AGENT_MODEL_ENABLED=false',
       'WRONG_QUESTION_ORGANIZER_AGENT_MODEL_TIMEOUT_MS=5000',
       'WRONG_QUESTION_ORGANIZER_AGENT_DEEPSEEK_API_KEY=',
@@ -49,13 +52,13 @@ describe('Phase 6.9.7 Docker runtime boundaries', () => {
     expect(server).not.toContain('TUTOR_AGENT_');
 
     expect(web).toContain(
-      'TUTOR_AGENT_MODEL_ENABLED: ${TUTOR_AGENT_MODEL_ENABLED:-false}',
+      'TUTOR_AGENT_MODEL_ENABLED: ${TUTOR_AGENT_MODEL_ENABLED:-true}',
     );
     expect(web).toContain(
       'TUTOR_AGENT_MODEL_TIMEOUT_MS: ${TUTOR_AGENT_MODEL_TIMEOUT_MS:-3000}',
     );
     expect(web).toContain(
-      'TUTOR_AGENT_DEEPSEEK_API_KEY: ${TUTOR_AGENT_DEEPSEEK_API_KEY:-}',
+      'TUTOR_AGENT_DEEPSEEK_API_KEY: ${TUTOR_AGENT_DEEPSEEK_API_KEY:-${DEEPSEEK_API_KEY:-}}',
     );
     expect(web).not.toContain('WRONG_QUESTION_ORGANIZER_AGENT_');
   });
