@@ -26,6 +26,7 @@
     "./review-planner-diagnostics": "./src/review-planner-diagnostics.ts",
     "./review": "./src/nodes/review.ts",
     "./realtime-chat": "./src/contracts/realtime-chat.ts",
+    "./chat-run-budget": "./src/contracts/chat-run-budget.ts",
     "./retriever-query-rewrite": "./src/model-candidates/retriever-query-rewrite-model-candidate.ts",
     "./retriever-schema-recovery": "./src/model-candidates/retriever-schema-recovery.ts",
     "./retriever-schema-recovery-sr3-contract": "./src/evals/phase-6-9-8-retriever-final-response-schema-recovery-sr3-contract.ts",

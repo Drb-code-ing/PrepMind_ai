@@ -23,6 +23,8 @@
 - Server repository 使用 Serializable transaction + 条件 `updateMany` 做 reserve、dispatch、settle、release、uncertain、cancel 和终态
   reconcile；enqueue 在创建 ChatTurn/BackgroundJob/Outbox 的同一事务内创建 ledger，Worker 在生成前预留 `WORKER` scope，并在终态释放
   尚未 dispatch 的 reservation。
+- `@repo/agent` 新增与 Server 解耦的 `AgentBudgetPort`/`runBudgetedStage` typed capability：阶段可注入 reserve/dispatch/settle/uncertain/release，
+  Provider 异常默认保留 `UNCERTAIN`。该 port 已有单元测试，但 Router/Tutor/Retriever/Verifier/FinalResponse 尚未由产品 composition root 注入。
 
 ## 3. 验证证据
 
