@@ -2,6 +2,10 @@
 
 import type { BackgroundJob, ChatMessage, ChatTurn } from '@prisma/client';
 import type { Job } from 'bullmq';
+import type {
+  ChatRunBudgetReservationRequest,
+  ChatRunBudgetUsage,
+} from '@repo/types';
 
 import {
   CHAT_RESPONSE_COMPLETED_EVENT,
@@ -78,13 +82,19 @@ describe('ChatResponseWorkerService', () => {
     await harness.service.process(createJob());
 
     expect(budget.reserve).toHaveBeenCalledWith(
-      expect.objectContaining({ turnId: payload.turnId, stage: 'WORKER' }),
+      expect.objectContaining({
+        turnId: payload.turnId,
+        stage: 'WORKER',
+        inputTokens: 0,
+        outputTokens: 0,
+        costMicros: 0,
+      }),
     );
     expect(budget.dispatch).toHaveBeenCalledTimes(1);
     expect(budget.settle).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(String),
-      expect.objectContaining({ costMicros: 0 }),
+      { inputTokens: 0, outputTokens: 0, costMicros: 0 },
     );
     expect(budget.uncertain).not.toHaveBeenCalled();
   });
@@ -629,6 +639,7 @@ describe('ChatResponseWorkerService', () => {
   }
 
   function createBudgetMock() {
+    let reserved: ChatRunBudgetUsage | undefined;
     return {
       findLedger: jest.fn().mockResolvedValue({
         id: 'ledger_1',
@@ -641,15 +652,32 @@ describe('ChatResponseWorkerService', () => {
         maxOutputTokens: 2_800,
         maxCostMicros: 100_000,
       }),
-      reserve: jest.fn().mockResolvedValue(budgetReservation('RESERVED')),
+      reserve: jest.fn(async (input: ChatRunBudgetReservationRequest) => {
+        reserved = input;
+        return {
+          ...budgetReservation('RESERVED'),
+          inputTokens: input.inputTokens,
+          outputTokens: input.outputTokens,
+          costMicros: input.costMicros,
+        };
+      }),
       dispatch: jest.fn().mockResolvedValue({
         kind: 'updated',
         reservation: budgetReservation('DISPATCHED'),
       }),
-      settle: jest.fn().mockResolvedValue({
-        kind: 'updated',
-        reservation: budgetReservation('SETTLED'),
-      }),
+      settle: jest.fn(
+        async (_owner: string, _id: string, usage: ChatRunBudgetUsage) => {
+          const accepted =
+            reserved &&
+            usage.inputTokens <= reserved.inputTokens &&
+            usage.outputTokens <= reserved.outputTokens &&
+            usage.costMicros <= reserved.costMicros;
+          return {
+            kind: accepted ? 'updated' : 'conflict',
+            reservation: budgetReservation(accepted ? 'SETTLED' : 'DISPATCHED'),
+          };
+        },
+      ),
       uncertain: jest.fn().mockResolvedValue({
         kind: 'updated',
         reservation: budgetReservation('UNCERTAIN'),

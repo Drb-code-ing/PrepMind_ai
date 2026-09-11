@@ -10,7 +10,7 @@
 baseline、认证 enqueue、`/api/chat` handoff，以及浏览器 owner-bound status + JSON cursor replay/polling、刷新恢复和 status-only
 降级。下一步不是继续堆一次性 Live 脚本，而是补全链路预算和各 Agent 的真实模型证据。
 
-当前基线（2026-09-05）：
+当前基线（2026-09-11）：
 
 - 文档入口分层整理已合并并推送；开始新任务前用 `git rev-parse main` 与 `git rev-parse origin/main` 核对当前主线。
 - 基础模式默认 `AI_PROVIDER_MODE=mock`、`AI_ENABLE_LIVE_CALLS=false`，不会自动调用 Provider；本地 Docker Web 的五个 Chat 链
@@ -78,7 +78,9 @@ ChatTurn + BackgroundJob + chat.response.requested Outbox
 4. ~~将 bounded replay API 接入浏览器，并处理 cursor 过期与 PostgreSQL 状态恢复（ticket 04）。~~ 已完成 authenticated JSON
    cursor replay/polling、Dexie v10 checkpoint、身份 fence、status-only 和 Mock Docker/可见浏览器验收；详见
    [`phase-6-chat-turn-browser-replay.md`](acceptance/phase-6-chat-turn-browser-replay.md)。真正 SSE push 不在本 ticket 范围；
-5. 全链路 ChatRunBudget ledger、Trace 对账和跨节点上限（ticket 05）；Router Server stage 已接入，其他产品 Agent 仍待迁移；
+5. 全链路 ChatRunBudget ledger、Trace 对账和跨节点上限（ticket 05）；Router/Retriever/Verifier 已接入 Worker 调用链。
+   09-11 修复 WORKER 零 token 结算及 Verifier schema/取消未知费用，focused `72/72`、隔离 PostgreSQL `13/13`；下一步完成
+   FinalResponse 独立预算合同，补齐 Router 成本/失败语义、Retriever ledger、Tutor 与 Trace 对账；
 6. 真实模型 Worker 的独立 gate、usage/cost 和产品 smoke（ticket 06）。
 
 ### C. 分层记忆（Phase 6.10）

@@ -10,6 +10,7 @@ import type { ChatRunBudgetReservationRequest } from '@repo/types';
 import { ChatRunBudgetRepository } from '../src/chat-run-budget/chat-run-budget.repository';
 import { ChatRunBudgetStageRunner } from '../src/chat-turns/chat-run-budget-stage-runner';
 import type { PrismaService } from '../src/database/prisma.service';
+import { checkChatWorkerLedger } from './chat-worker-ledger-check';
 
 const fixtureName = 'chat_budget_test';
 const repository = (client: PrismaClient) =>
@@ -227,12 +228,12 @@ async function checkIsolatedPostgres() {
       costMicros: 100,
     };
     let executions = 0;
-    const execute = async () => {
+    const execute = () => {
       executions += 1;
-      return {
+      return Promise.resolve({
         value: 'synthetic',
         usage: { inputTokens: 80, outputTokens: 70, costMicros: 60 },
-      };
+      });
     };
     const results = await Promise.allSettled(
       stages.map((stage, index) =>
@@ -397,6 +398,7 @@ async function checkIsolatedPostgres() {
       }),
       1,
     );
+    const workerChecks = await checkChatWorkerLedger(a);
     console.log(
       JSON.stringify({
         passed: true,
@@ -413,6 +415,7 @@ async function checkIsolatedPostgres() {
           'reserve-crash-terminal-replay',
           'dispatch-crash-held',
           'recovery-settles-once',
+          ...workerChecks,
         ],
       }),
     );
