@@ -77,6 +77,10 @@ Docker/可见浏览器产品验收。当前 consumer 是 JSON polling，不是�
 [`docs/acceptance/phase-6-chat-stream-replay.md`](acceptance/phase-6-chat-stream-replay.md) 与
 [`docs/acceptance/phase-6-chat-turn-browser-replay.md`](acceptance/phase-6-chat-turn-browser-replay.md)。
 
+09-12 FinalResponse 记账入口：受信 generator 的 accounting 声明 -> 独立 FINAL_RESPONSE reserve/dispatch -> 有界 generate ->
+严格 usage 校验/本地价格计算 -> settle -> WORKER 零额度 settle -> assistant/Turn/Job/Outbox。缺失或超额 usage 保留 hold 且不提交回答；
+预算不足首轮终止且不调用 generator。默认 deterministic 不进入模型 reservation；网络 generator、stream mode、取消与产品 smoke 尚待接入。
+
 09-11 账本修正：WORKER 零额度许可必须以零额度结算，不再上报正文长度估算。Verifier 成功独立结算 usage/cost，
 调用后的 schema/取消/超时等失败保留 UNCERTAIN 并返回保守结果；终态 reconciliation 不释放该 hold。
 真实 Worker + 隔离 PostgreSQL 已验证落库和终态重放，executor 为合成，不是 Provider 或浏览器验收；详见

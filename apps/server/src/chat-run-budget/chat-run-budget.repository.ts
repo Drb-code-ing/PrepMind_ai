@@ -19,6 +19,13 @@ import { PrismaService } from '../database/prisma.service';
 
 const MAX_TRANSACTION_ATTEMPTS = 5;
 
+export class ChatRunBudgetExhaustedError extends Error {
+  constructor() {
+    super('Chat run budget exhausted');
+    this.name = 'ChatRunBudgetExhaustedError';
+  }
+}
+
 export const DEFAULT_CHAT_RUN_BUDGET_POLICY: ChatRunBudgetPolicy = {
   policyVersion: 'chat-v1',
   maxCalls: 5,
@@ -150,7 +157,7 @@ export class ChatRunBudgetRepository {
           heldCostMicros: { increment: validatedInput.costMicros },
         },
       });
-      if (updated.count !== 1) throw new Error('Chat run budget exhausted');
+      if (updated.count !== 1) throw new ChatRunBudgetExhaustedError();
 
       const reservation = await transaction.chatRunBudgetReservation.create({
         data: {

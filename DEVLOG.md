@@ -1,5 +1,20 @@
 # PrepMind AI 开发日志
 
+## 2026-09-12 - FinalResponse 独立预算与 usage 合同
+
+- 目的：让未来 Worker 网络生成器在调用前独立获得预算许可，成功按 Provider tokens 结算，不挪用 WORKER 零额度。
+- 从已推送 `main=2b0f6a28` 建立并切换 `drb/chat-final-response-budget`。受信 accounting 声明区分无 Provider 和 DeepSeek pro；
+  FinalResponse 复用 2500/1200 tokens、15000 微 CNY 上限，缺失/非法/超额 usage、输出无效及超时保留 UNCERTAIN，不提交假成功。
+- 新测试先见 11 项失败；接入后扩展异常/重复 dispatch。隔离 PostgreSQL 又发现预算耗尽被普通 Error 误分类成 Provider 重试，
+  改成 typed budget exhaustion，首轮失败且不调用模型。终态回放只需要 generator 标识，收窄类型，不为回放伪造 usage。
+- 验证：ChatTurn/预算 `15 suites / 128 tests`；隔离 PostgreSQL 20 migrations、17 项，含 FinalResponse 成功/缺 usage/超额/预算拒绝，
+  核验真实 Worker、ledger、Turn/Job/assistant/唯一终态 Outbox 与 replay。分支和合并后均执行 focused 验证；Server build、lint、
+  Prettier、diff/link 检查随提交完成。具体命令及边界见 `docs/acceptance/phase-6-chat-run-budget-contract.md` 3.3。
+- 未读 `.env`、未调用 Provider、未更新部署镜像/浏览器验收；仅使用脚本专属 tmpfs PostgreSQL，既有 Docker 服务/数据保留。
+  子代理启动遇到 503，无子代理审查结论；主代理完成实现与核验。证据仅 implemented/mock/static/隔离数据库，不是真实模型 Worker。
+- 同步 status、runtime audit、预算验收、data-flow、roadmap。下一步真实 generator 的 usage 采集、mode/stream、取消和受控产品验收；
+  Router 成本/失败语义、Retriever/Tutor ledger、Trace 仍有缺口。最终提交/合并 SHA 见 Git 回执。
+
 ## 2026-09-11 - Worker/Verifier 账本结算回归修复
 
 - 目的：接入 FinalResponse 前修复上一轮 `e620230e` 的实际 Worker 完成阻断，避免测试通过却无法使用真实数据库。

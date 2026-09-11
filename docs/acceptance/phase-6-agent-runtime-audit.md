@@ -1,6 +1,6 @@
 # Phase 6 Agent Runtime Audit
 
-更新时间：2026-09-11
+更新时间：2026-09-12
 范围：Phase 6 全部 Agent、模型 gate、通信边界、权限、预算、Trace、降级和现有证据。  
 结论级别：本文件是审计基线，不代表所有 Agent 已完成真实模型验收。
 
@@ -122,7 +122,9 @@ HTTP request
    已接 admission/handoff，浏览器 status/JSON replay 与断线恢复也已接入。真正 SSE push 仍未实现，但不作为 ticket 04 完成条件。
 5. Review/Planner 的 HTTP AbortSignal 与 candidate 外层 fallback 已完成；共享预算 repository、Worker reservation/settlement 和 terminal
    reconciliation 已建立，但 Review/Planner 真实模型产品验收仍未建立。
-6. Server `ChatRunBudgetStageRunner` 已由 Worker/Router/Verifier 使用；Retriever 已进入调用链但未独立记账，Tutor/FinalResponse 尚待迁入。
+6. Server `ChatRunBudgetStageRunner` 已由 Worker/Router/Verifier 使用；09-12 接入 FinalResponse 独立预算/usage 合同，synthetic generator +
+   实际 Worker/Repository 的隔离 PostgreSQL 检查通过（总计 17 项），缺失/超额 usage 保留 UNCERTAIN，预算不足不调用生成器。
+   默认 generator 仍 deterministic，网络生成器及产品证据待 ticket 06；Retriever 未独立记账，Tutor 仍待迁入。详见预算合同 3.3。
    WORKER 零 token 执行许可仍占 1 calls；Verifier 有正常结算/未知费用 hold 证据，但 Router 成本和失败 usage、完整 Trace 对账、
    多 Worker 恢复仍有缺口，不能把 runner/port 合同当成所有产品 Agent 的 enforcement。
 7. `POST /chat-turns`、Web adapter、`/api/chat` bridge 和 browser recovery 都已实现；`202` 仍只表示 Worker 已接管，浏览器必须继续
