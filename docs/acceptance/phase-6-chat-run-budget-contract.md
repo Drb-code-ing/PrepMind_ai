@@ -1,6 +1,6 @@
 # Phase 6 ChatRunBudget 合同验收
 
-更新时间：2026-09-11
+更新时间：2026-09-12
 状态：共享类型、Prisma schema/migration、owner-scoped repository、deterministic Worker 预留/结算、终态对账、Server turn-bound stage runner 与单 ledger 并发边界已实现；隔离 PostgreSQL crash/recovery 验收已通过。Trace 对账、其他产品 Agent stage 注入和真实模型验收仍未实现。
 
 ## 1. 目的
@@ -24,7 +24,7 @@
   reconcile；enqueue 在创建 ChatTurn/BackgroundJob/Outbox 的同一事务内创建 ledger，Worker 在生成前预留 `WORKER` scope，并在终态释放
   尚未 dispatch 的 reservation。重复 dispatch 不会再次授予执行许可；活跃/排队 turn 禁止提前终态对账；终态竞争失败方复用 durable winner。
 - `@repo/agent` 新增与 Server 解耦的 `AgentBudgetPort`/`runBudgetedStage` typed capability：阶段可注入 reserve/dispatch/settle/uncertain/release，
-  Provider 异常默认保留 `UNCERTAIN`。Router/Verifier 已通过 Server-only stage 注入 Worker；Retriever 已迁入调用链但尚无独立 ledger stage，Tutor/FinalResponse 仍待迁入。
+  Provider 异常默认保留 `UNCERTAIN`。Router/Verifier 已通过 Server-only stage 注入 Worker；FinalResponse 独立预算/usage 合同已接入，网络 generator 尚未接入。Retriever 尚无独立 ledger stage，Tutor 仍待迁入。
 - Server 新增 `ChatRunBudgetStageRunner`：按 `ownerId + turnId + policyVersion + attempt` 创建不可变 scope，仅暴露阶段运行和预算上限；Worker
   已通过该 capability 执行 `WORKER` reservation，不再在生产路径手写 reserve/dispatch/settle。Router stage 现在也通过 Server-only
   `ChatRouterStageService` 进入 Worker 生成路径；默认 gate-off 时只返回 deterministic route，不预留预算或调用 Provider，开启全部 gate 后才会
@@ -101,15 +101,45 @@ bun --no-env-file apps/server/scripts/chat-run-budget-postgres-check.ts --run-is
 
 回顾时可问：为什么 WORKER 零 token 仍占 calls？为什么 schema 失败不能按零元结算？怎样证明降级完成后 UNCERTAIN 没有被终态重放释放？
 
+### 3.3 FinalResponse 独立预算与 usage（2026-09-12）
+
+基线 `2b0f6a28`，分支 `drb/chat-final-response-budget`。本切片完成 ticket 05 的 FinalResponse 记账入口，不启用 ticket 06 网络生成器。
+
+- 受信 Server generator 明确声明 `accounting=none|deepseek-v4-pro`，在执行前选择计费方式，模型返回不能自报价格或更改 owner/额度。
+  默认 deterministic 返回 `usage=null`，不创建 FINAL_RESPONSE reservation；WORKER 仍占一次执行许可并结算零 token/cost。
+- Provider 路径必须有 durable runner，独立预留 `FINAL_RESPONSE` 的 `2500 input / 1200 output / 15000 micro-CNY`，复用已有 FinalResponse
+  常量；不可变 `generationBudget` 交给生成器。scope 固定 `final_response:<turn>:<attempt>`，只有新 dispatch 才能执行。
+- 返回 tokens 使用共享预算 Zod schema 的严格子集校验，必须为非负安全整数且不超过预留。按现有 pro 价格快照本地计算费用；
+  `200 input + 30 output = 780 micro-CNY`。不从正文估算、不接受自报 cost。缺失 usage、超额或无效正文不发布/落库回答，保留 UNCERTAIN。
+  Provider 抛错/超时同样保留 hold；终态重放不退款、不重新生成。父 WORKER 回调失败也保持执行许可 hold，这是保守的现有生命周期。
+- 真实数据库暴露预算拒绝原来是普通 Error，被 Worker 当作 Provider 故障重试。新增 typed `ChatRunBudgetExhaustedError`，首轮即终止为
+  `BUDGET_EXHAUSTED`，生成次数为零；不把所有数据库异常都伪装成预算不足。
+- 验证：新增测试先见 `11 failed / 23 passed`，实现后补充 Provider 异常及重复 dispatch；ChatTurn/预算模块共 `15 suites / 128 tests`。
+  隔离 PostgreSQL `17/17`、20 migrations，新增实际 Worker 成功、缺 usage、超额、拒绝四场景，核验独立 ledger、Turn/Job、assistant、
+  唯一终态 Outbox 与 replay；测试只注入 synthetic generator，不运行网络模型或 BullMQ 投递。
+- 证据等级：`implemented + mock/static validated + real PostgreSQL isolated recovery`。未读 `.env`、Provider 0 次，无浏览器产品 smoke、
+  无部署镜像更新。Docker 只创建/停止脚本专属 tmpfs PostgreSQL，既有服务和卷保留。Server build、目标 lint/Prettier 和文档检查随提交执行。
+
+复现（前两条在 `apps/server`，最后一条在仓库根目录）：
+
+```bash
+bun --no-env-file run test --runInBand src/chat-turns src/chat-run-budget
+bun --no-env-file run build
+bun --no-env-file apps/server/scripts/chat-run-budget-postgres-check.ts --run-isolated
+```
+
+回顾时可问：为什么调用前声明 accounting？为什么缺 usage 不能当免费？预算耗尽为什么不能重试？独立 reservation 怎样阻止终态重复计费？
+
 ## 4. 明确未完成项
 
 这次已完成合同、数据库结构和最小运行时接入，但不代表已完成生产级全链路预算。后续 ticket 05 切片必须实现：
 
 1. 补多 Worker/跨主机、网络中断和数据库故障恢复证据；现有证据仅覆盖同机多 PrismaClient 竞争和子进程 post-commit 恢复。
-2. 扩展 Retriever/Tutor/FinalResponse 的 ledger stage 接入。Retriever 与 Verifier candidate 已在 Worker RAG 路径接线，Verifier 的合成 runtime/真实数据库结算证据见 3.2；embedding/provider、Router 成本与失败语义仍待验证。复用 turn-bound runner，结算真实 usage/cost，并与 terminal Outbox、Redis stream、Trace 做 bounded reconciliation。各节点仍需产品 smoke。
+2. 扩展 Retriever/Tutor 的 ledger stage 接入。Retriever 与 Verifier candidate 已在 Worker RAG 路径接线，Verifier 的合成 runtime/真实数据库结算证据见 3.2；embedding/provider、Router 成本与失败语义仍待验证。复用 turn-bound runner，结算真实 usage/cost，并与 terminal Outbox、Redis stream、Trace 做 bounded reconciliation。各节点仍需产品 smoke。
    对 UNCERTAIN 仅允许带外部 usage 证据的显式 `settleUncertain`，不提供无证据释放路径。
-3. FinalResponse 尚无独立 Worker generator/ledger stage，Tutor 和 Trace 对账仍未完成。当前 WORKER 只对编排做执行去重，
-   不能将其零额度用作未来真实 generator 的预算。默认仍保持 mock/off，真实模型 Worker 属于 ticket 06，需独立受控证据。
+3. FinalResponse 独立 ledger/usage 合同已接入（3.3），但默认注入仍为 deterministic；网络 generator、真实 usage 采集、mode/stream metadata、
+   端到端取消和产品 smoke 属于 ticket 06。默认保持 mock/off。当前 maxCalls=5 包含 WORKER 一次许可，新增 stage 前须按实际路由计算总量，
+   不能照抄未包含 WORKER 的早期阶段分配。Tutor 和 Trace 对账仍未完成。
 
 ## 5. 复核入口
 

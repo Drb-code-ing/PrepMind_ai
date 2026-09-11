@@ -9,6 +9,14 @@ import {
 import type { Job } from 'bullmq';
 import { createHash } from 'node:crypto';
 import type { RouterResult } from '@repo/types/api/agent';
+import { chatRunBudgetUsageSchema, type ChatRunBudgetUsage } from '@repo/types';
+import {
+  FINAL_RESPONSE_AGENT_MAX_INPUT_TOKENS,
+  FINAL_RESPONSE_AGENT_MAX_OUTPUT_TOKENS,
+  FINAL_RESPONSE_AGENT_MAX_COST_CNY,
+  FINAL_RESPONSE_AGENT_INPUT_PRICE_PER_MILLION_CNY,
+  FINAL_RESPONSE_AGENT_OUTPUT_PRICE_PER_MILLION_CNY,
+} from '@repo/agent/final-response';
 import {
   verifyKnowledgeChunks,
   type KnowledgeVerifierResult,
@@ -31,7 +39,10 @@ import {
 } from './chat-response.job';
 import { resolveChatResponseGenerationTimeout } from './chat-response-worker.config';
 import { PrismaService } from '../database/prisma.service';
-import { ChatRunBudgetRepository } from '../chat-run-budget/chat-run-budget.repository';
+import {
+  ChatRunBudgetRepository,
+  ChatRunBudgetExhaustedError,
+} from '../chat-run-budget/chat-run-budget.repository';
 import { ChatStreamStore } from './chat-stream.store';
 import {
   ChatRunBudgetStageRunner,
@@ -61,6 +72,7 @@ export type ChatResponseGeneratorInput = Readonly<{
   messages: readonly ChatResponseInputMessage[];
   budgetPolicyVersion: string;
   signal: AbortSignal;
+  generationBudget: Readonly<ChatRunBudgetUsage>;
   route?: RouterResult;
   verifierResult?: KnowledgeVerifierResult;
 }>;
@@ -68,9 +80,13 @@ export type ChatResponseGeneratorInput = Readonly<{
 export type ChatResponseGeneratorResult = Readonly<{
   content: string;
   generator: string;
+  /** Provider-reported tokens; null only for no-provider or unknown usage. */
+  usage: Readonly<{ inputTokens: number; outputTokens: number }> | null;
 }>;
 
 export interface ChatResponseGenerator {
+  /** Trusted composition selects accounting before dispatch, never model output. */
+  readonly accounting: 'none' | 'deepseek-v4-pro';
   generate(
     input: ChatResponseGeneratorInput,
   ): Promise<ChatResponseGeneratorResult>;
@@ -83,6 +99,7 @@ export interface ChatResponseGenerator {
  */
 @Injectable()
 export class DeterministicChatResponseGenerator implements ChatResponseGenerator {
+  readonly accounting = 'none' as const;
   async generate(
     input: ChatResponseGeneratorInput,
   ): Promise<ChatResponseGeneratorResult> {
@@ -101,6 +118,7 @@ export class DeterministicChatResponseGenerator implements ChatResponseGenerator
     return {
       content: `后台回答任务已完成（第 ${Math.max(1, questionCount)} 个问题）。`,
       generator: 'deterministic-worker-v1',
+      usage: null,
     };
   }
 }
@@ -129,6 +147,20 @@ type FailureDecision =
 const CHAT_RESPONSE_WORKER_VERSION = 'chat-response-worker-v1';
 const MAX_SERIALIZABLE_ATTEMPTS = 3;
 const INPUT_CONTENT_MAX_LENGTH = 100_000;
+const ZERO_GENERATION_USAGE = Object.freeze({
+  inputTokens: 0,
+  outputTokens: 0,
+  costMicros: 0,
+});
+const FINAL_RESPONSE_RESERVATION = Object.freeze({
+  inputTokens: FINAL_RESPONSE_AGENT_MAX_INPUT_TOKENS,
+  outputTokens: FINAL_RESPONSE_AGENT_MAX_OUTPUT_TOKENS,
+  costMicros: Math.round(FINAL_RESPONSE_AGENT_MAX_COST_CNY * 1_000_000),
+});
+const FINAL_RESPONSE_TOKEN_USAGE_SCHEMA = chatRunBudgetUsageSchema.pick({
+  inputTokens: true,
+  outputTokens: true,
+});
 
 @Injectable()
 export class ChatResponseWorkerService {
@@ -173,8 +205,10 @@ export class ChatResponseWorkerService {
           attemptNumber(job),
         );
       } else {
-        if (this.budgets) throw new ChatRunBudgetUnavailableError();
+        if (this.budgets || this.generator.accounting !== 'none')
+          throw new ChatRunBudgetUnavailableError();
         generated = await this.generate(claim.claim.turn, messages);
+        validateDeterministicUsage(generated);
       }
       validateGeneratedResult(generated);
       generatedTextObserved = generated.content.length > 0;
@@ -246,7 +280,7 @@ export class ChatResponseWorkerService {
     return scope.run(
       'WORKER',
       {
-        // WORKER is a durable execution lease. Child model stages reserve
+        // WORKER fences duplicate dispatch. Child model stages reserve
         // their own bounded budgets; reserving the whole ledger here would
         // starve Router/Verifier and make the enabled path fail closed.
         inputTokens: 0,
@@ -291,18 +325,37 @@ export class ChatResponseWorkerService {
               ).result
             : verifyKnowledgeChunks({ query, chunks: [...retrieved.chunks] });
         }
-        const value = await this.generate(
-          turn,
-          messages,
-          router?.route,
-          verifierResult,
-        );
-        validateGeneratedResult(value);
+        const execute = async () => {
+          const value = await this.generate(
+            turn,
+            messages,
+            router?.route,
+            verifierResult,
+          );
+          validateGeneratedResult(value);
+          return value;
+        };
+        let value: ChatResponseGeneratorResult;
+        if (this.generator.accounting === 'deepseek-v4-pro') {
+          value = await scope.run(
+            'FINAL_RESPONSE',
+            FINAL_RESPONSE_RESERVATION,
+            async () => {
+              const result = await execute();
+              return { value: result, usage: finalResponseUsage(result) };
+            },
+          );
+        } else if (this.generator.accounting === 'none') {
+          value = await execute();
+          validateDeterministicUsage(value);
+        } else {
+          throw new ChatRunBudgetUnavailableError();
+        }
         return {
           value,
           // This reservation fences execution, not model usage. Child stages
-          // own model accounting; the deterministic generator makes no call.
-          usage: { inputTokens: 0, outputTokens: 0, costMicros: 0 },
+          // own model accounting, including FinalResponse.
+          usage: ZERO_GENERATION_USAGE,
         };
       },
     );
@@ -336,7 +389,7 @@ export class ChatResponseWorkerService {
 
   private async publishCompleted(
     turn: ChatTurn,
-    generated: ChatResponseGeneratorResult,
+    generated: Pick<ChatResponseGeneratorResult, 'generator'>,
     responseMessageId: string,
   ) {
     await this.appendStreamEvent(turn, {
@@ -370,7 +423,6 @@ export class ChatResponseWorkerService {
       await this.publishCompleted(
         turn,
         {
-          content: '',
           generator: durableGenerator(backgroundJob.resultSummary),
         },
         turn.responseMessageId,
@@ -604,6 +656,10 @@ export class ChatResponseWorkerService {
       messages,
       budgetPolicyVersion: turn.budgetPolicyVersion,
       signal: controller.signal,
+      generationBudget:
+        this.generator.accounting === 'deepseek-v4-pro'
+          ? FINAL_RESPONSE_RESERVATION
+          : ZERO_GENERATION_USAGE,
       ...(route ? { route } : {}),
       ...(verifierResult ? { verifierResult } : {}),
     });
@@ -1084,9 +1140,42 @@ function validateGeneratedResult(result: ChatResponseGeneratorResult) {
   }
 }
 
+function validateDeterministicUsage(result: ChatResponseGeneratorResult) {
+  if (result.usage !== null) throw invalidGenerationUsage();
+}
+
+function finalResponseUsage(
+  result: ChatResponseGeneratorResult,
+): ChatRunBudgetUsage {
+  const parsed = FINAL_RESPONSE_TOKEN_USAGE_SCHEMA.safeParse(result.usage);
+  if (!parsed.success) throw invalidGenerationUsage();
+  const { inputTokens, outputTokens } = parsed.data;
+  // One micro-CNY per token equals one CNY per million tokens. Pricing is local.
+  const costMicros =
+    inputTokens * FINAL_RESPONSE_AGENT_INPUT_PRICE_PER_MILLION_CNY +
+    outputTokens * FINAL_RESPONSE_AGENT_OUTPUT_PRICE_PER_MILLION_CNY;
+  if (
+    inputTokens > FINAL_RESPONSE_RESERVATION.inputTokens ||
+    outputTokens > FINAL_RESPONSE_RESERVATION.outputTokens ||
+    costMicros > FINAL_RESPONSE_RESERVATION.costMicros ||
+    !Number.isSafeInteger(costMicros)
+  )
+    throw invalidGenerationUsage();
+  return { inputTokens, outputTokens, costMicros };
+}
+
+function invalidGenerationUsage() {
+  return new ChatResponseWorkerError(
+    'OUTPUT_INVALID',
+    false,
+    'Chat response generator returned invalid usage',
+  );
+}
+
 function classifyFailure(error: unknown) {
   if (
     error instanceof ChatRunBudgetUnavailableError ||
+    error instanceof ChatRunBudgetExhaustedError ||
     error instanceof AgentBudgetAdmissionError
   ) {
     return { code: 'BUDGET_EXHAUSTED' as const, retryable: false };

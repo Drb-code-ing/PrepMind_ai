@@ -26,6 +26,7 @@ import { ChatRunBudgetStageRunner } from './chat-run-budget-stage-runner';
 import type { ChatRouterStageService } from './chat-router-stage';
 import type { ChatRetrieverStageService } from './chat-retriever-stage';
 import type { ChatVerifierStageService } from './chat-verifier-stage';
+import { ChatRunBudgetExhaustedError } from '../chat-run-budget/chat-run-budget.repository';
 
 describe('ChatResponseWorkerService', () => {
   const payload = {
@@ -172,6 +173,211 @@ describe('ChatResponseWorkerService', () => {
     );
   });
 
+  it('settles FinalResponse independently and does not generate again on terminal replay', async () => {
+    const budget = createBudgetMock();
+    const harness = createHarness(
+      undefined,
+      undefined,
+      budget,
+      undefined,
+      undefined,
+      undefined,
+      'deepseek-v4-pro',
+    );
+    harness.generator.generate.mockResolvedValue({
+      content: 'synthetic provider answer',
+      generator: 'synthetic-final',
+      usage: { inputTokens: 200, outputTokens: 30 },
+    });
+
+    await harness.service.process(createJob());
+    await harness.service.process(createJob());
+
+    expect(harness.state.turn.status).toBe('SUCCEEDED');
+    expect(harness.generator.generate).toHaveBeenCalledTimes(1);
+    expect(budget.reserve).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stage: 'FINAL_RESPONSE',
+        reservationId: 'final_response:turn_1:1',
+        inputTokens: 2500,
+        outputTokens: 1200,
+        costMicros: 15000,
+      }),
+    );
+    expect(budget.settle).toHaveBeenCalledWith(
+      'user_1',
+      'final_response:turn_1:1',
+      {
+        inputTokens: 200,
+        outputTokens: 30,
+        costMicros: 780,
+      },
+    );
+    expect(budget.settle).toHaveBeenCalledWith('user_1', 'worker:turn_1:1', {
+      inputTokens: 0,
+      outputTokens: 0,
+      costMicros: 0,
+    });
+    expect(budget.uncertain).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    null,
+    undefined,
+    { inputTokens: -1, outputTokens: 30 },
+    { inputTokens: 1.5, outputTokens: 30 },
+    { inputTokens: 2501, outputTokens: 30 },
+    { inputTokens: 200, outputTokens: 1201 },
+    { inputTokens: 200, outputTokens: 30, costMicros: 0 },
+  ])(
+    'retains FinalResponse uncertainty for invalid usage %j',
+    async (usage) => {
+      const budget = createBudgetMock();
+      const harness = createHarness(
+        undefined,
+        undefined,
+        budget,
+        undefined,
+        undefined,
+        undefined,
+        'deepseek-v4-pro',
+      );
+      harness.generator.generate.mockResolvedValue({
+        content: 'synthetic provider answer',
+        generator: 'synthetic-final',
+        usage,
+      } as ChatResponseGeneratorResult);
+      await harness.service.process(createJob());
+      expect(harness.state.turn.status).toBe('FAILED');
+      expect(harness.state.turn.errorCode).toBe('OUTPUT_INVALID');
+      expect(budget.uncertain).toHaveBeenCalledWith(
+        'user_1',
+        'final_response:turn_1:1',
+      );
+      expect(budget.settle).not.toHaveBeenCalled();
+      expect(harness.state.messages).toHaveLength(1);
+    },
+  );
+
+  it('does not dispatch FinalResponse without an available budget', async () => {
+    const budget = createBudgetMock();
+    budget.reserve
+      .mockImplementationOnce(async (input) => ({
+        ...budgetReservation('RESERVED'),
+        ...input,
+        id: input.reservationId,
+        userId: input.ownerId,
+      }))
+      .mockRejectedValueOnce(new ChatRunBudgetExhaustedError());
+    const harness = createHarness(
+      undefined,
+      undefined,
+      budget,
+      undefined,
+      undefined,
+      undefined,
+      'deepseek-v4-pro',
+    );
+    await harness.service.process(createJob());
+    expect(harness.generator.generate).not.toHaveBeenCalled();
+    expect(budget.dispatch).toHaveBeenCalledTimes(1);
+    expect(harness.state.turn.status).toBe('FAILED');
+    expect(harness.state.turn.errorCode).toBe('BUDGET_EXHAUSTED');
+  });
+
+  it('forbids provider generation without the durable stage runner', async () => {
+    const harness = createHarness(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'deepseek-v4-pro',
+    );
+    await harness.service.process(createJob());
+    expect(harness.generator.generate).not.toHaveBeenCalled();
+    expect(harness.state.turn.errorCode).toBe('BUDGET_EXHAUSTED');
+  });
+
+  it('does not overwrite the winner when FinalResponse already dispatched', async () => {
+    const budget = createBudgetMock();
+    budget.dispatch
+      .mockResolvedValueOnce({
+        kind: 'updated',
+        reservation: budgetReservation('DISPATCHED'),
+      })
+      .mockResolvedValueOnce({
+        kind: 'conflict',
+        reservation: budgetReservation('DISPATCHED'),
+      });
+    const harness = createHarness(
+      undefined,
+      undefined,
+      budget,
+      undefined,
+      undefined,
+      undefined,
+      'deepseek-v4-pro',
+    );
+    await expect(harness.service.process(createJob())).rejects.toThrow(
+      'already dispatched',
+    );
+    expect(harness.generator.generate).not.toHaveBeenCalled();
+    expect(harness.state.turn.status).toBe('ACTIVE');
+    expect(harness.state.outbox).toHaveLength(0);
+  });
+
+  it('retains a FinalResponse hold when the provider throws', async () => {
+    const budget = createBudgetMock();
+    const harness = createHarness(
+      new Error('synthetic transport failure'),
+      undefined,
+      budget,
+      undefined,
+      undefined,
+      undefined,
+      'deepseek-v4-pro',
+    );
+    await harness.service.process(createJob(2));
+    expect(harness.state.turn.errorCode).toBe('PROVIDER_FAILURE');
+    expect(budget.uncertain).toHaveBeenCalledWith(
+      'user_1',
+      'final_response:turn_1:3',
+    );
+    expect(budget.settle).not.toHaveBeenCalled();
+  });
+
+  it('keeps a timed-out FinalResponse reservation held', async () => {
+    jest.useFakeTimers();
+    try {
+      const budget = createBudgetMock();
+      const harness = createHarness(
+        undefined,
+        undefined,
+        budget,
+        undefined,
+        undefined,
+        undefined,
+        'deepseek-v4-pro',
+      );
+      harness.generator.generate.mockImplementation(
+        () => new Promise(() => undefined),
+      );
+      const processing = harness.service.process(createJob(2));
+      await jest.runAllTimersAsync();
+      await processing;
+      expect(harness.state.turn.errorCode).toBe('GENERATION_TIMEOUT');
+      expect(budget.uncertain).toHaveBeenCalledWith(
+        'user_1',
+        'final_response:turn_1:3',
+      );
+      expect(budget.settle).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('fails closed rather than generating without a missing durable ledger', async () => {
     const budget = createBudgetMock();
     budget.findLedger.mockResolvedValueOnce(null);
@@ -235,6 +441,7 @@ describe('ChatResponseWorkerService', () => {
     harness.generator.generate.mockResolvedValueOnce({
       content: '',
       generator: 'test',
+      usage: null,
     });
     await harness.service.process(createJob());
     expect(harness.state.turn.errorCode).toBe('OUTPUT_INVALID');
@@ -351,6 +558,7 @@ describe('ChatResponseWorkerService', () => {
       finish.resolve({
         content: 'generated answer',
         generator: 'test-generator',
+        usage: null,
       });
       await winning;
     }
@@ -540,6 +748,7 @@ describe('ChatResponseWorkerService', () => {
     router?: ChatRouterStageService,
     retriever?: ChatRetrieverStageService,
     verifier?: ChatVerifierStageService,
+    accounting: ChatResponseGenerator['accounting'] = 'none',
   ) {
     const state = {
       turn: makeTurn(),
@@ -548,6 +757,7 @@ describe('ChatResponseWorkerService', () => {
       outbox: [] as unknown[],
     };
     const generator: jest.Mocked<ChatResponseGenerator> = {
+      accounting,
       generate: jest.fn<
         Promise<ChatResponseGeneratorResult>,
         Parameters<ChatResponseGenerator['generate']>
@@ -558,6 +768,8 @@ describe('ChatResponseWorkerService', () => {
       generator.generate.mockResolvedValue({
         content: 'generated answer',
         generator: 'test-generator',
+        usage: null,
+        usage: null,
       });
     }
 
@@ -639,7 +851,15 @@ describe('ChatResponseWorkerService', () => {
   }
 
   function createBudgetMock() {
-    let reserved: ChatRunBudgetUsage | undefined;
+    const reservations = new Map<string, ChatRunBudgetReservationRequest>();
+    const row = (
+      id: string,
+      status: Parameters<typeof budgetReservation>[0],
+    ) => ({
+      ...budgetReservation(status),
+      ...reservations.get(id),
+      id,
+    });
     return {
       findLedger: jest.fn().mockResolvedValue({
         id: 'ledger_1',
@@ -653,20 +873,16 @@ describe('ChatResponseWorkerService', () => {
         maxCostMicros: 100_000,
       }),
       reserve: jest.fn(async (input: ChatRunBudgetReservationRequest) => {
-        reserved = input;
-        return {
-          ...budgetReservation('RESERVED'),
-          inputTokens: input.inputTokens,
-          outputTokens: input.outputTokens,
-          costMicros: input.costMicros,
-        };
+        reservations.set(input.reservationId, input);
+        return row(input.reservationId, 'RESERVED');
       }),
-      dispatch: jest.fn().mockResolvedValue({
+      dispatch: jest.fn(async (_owner: string, id: string) => ({
         kind: 'updated',
-        reservation: budgetReservation('DISPATCHED'),
-      }),
+        reservation: row(id, 'DISPATCHED'),
+      })),
       settle: jest.fn(
-        async (_owner: string, _id: string, usage: ChatRunBudgetUsage) => {
+        async (_owner: string, id: string, usage: ChatRunBudgetUsage) => {
+          const reserved = reservations.get(id);
           const accepted =
             reserved &&
             usage.inputTokens <= reserved.inputTokens &&
@@ -674,14 +890,14 @@ describe('ChatResponseWorkerService', () => {
             usage.costMicros <= reserved.costMicros;
           return {
             kind: accepted ? 'updated' : 'conflict',
-            reservation: budgetReservation(accepted ? 'SETTLED' : 'DISPATCHED'),
+            reservation: row(id, accepted ? 'SETTLED' : 'DISPATCHED'),
           };
         },
       ),
-      uncertain: jest.fn().mockResolvedValue({
+      uncertain: jest.fn(async (_owner: string, id: string) => ({
         kind: 'updated',
-        reservation: budgetReservation('UNCERTAIN'),
-      }),
+        reservation: row(id, 'UNCERTAIN'),
+      })),
       release: jest.fn().mockResolvedValue({
         kind: 'updated',
         reservation: budgetReservation('RELEASED'),

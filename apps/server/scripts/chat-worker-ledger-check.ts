@@ -23,6 +23,7 @@ import {
   CHAT_RESPONSE_JOB,
   CHAT_RESPONSE_RESOURCE_TYPE,
   CHAT_RESPONSE_COMPLETED_EVENT,
+  CHAT_RESPONSE_FAILED_EVENT,
 } from '../src/chat-turns/chat-turn.constants';
 
 /** Called only with the parent check's isolated tmpfs database. No env or network executor. */
@@ -131,6 +132,7 @@ export async function checkChatWorkerLedger(client: PrismaClient) {
     const worker = new ChatResponseWorkerService(
       client as PrismaService,
       {
+        accounting: 'none',
         generate: (input: ChatResponseGeneratorInput) => {
           generationCalls += 1;
           if (outcome !== 'no-candidate')
@@ -229,6 +231,164 @@ export async function checkChatWorkerLedger(client: PrismaClient) {
       ledger?.heldCalls,
     );
     checks.push(`worker-ledger-${outcome}-terminal-replay`);
+    console.log(`passed: worker-ledger-${outcome}`);
+  }
+  return [
+    ...checks,
+    ...(await checkFinalResponseLedger(client, repository, runner, owner.id)),
+  ];
+}
+
+async function checkFinalResponseLedger(
+  client: PrismaClient,
+  repository: ChatRunBudgetRepository,
+  runner: ChatRunBudgetStageRunner,
+  ownerId: string,
+) {
+  const checks: string[] = [];
+  for (const outcome of [
+    'success',
+    'missing-usage',
+    'over-limit',
+    'admission-denied',
+  ] as const) {
+    console.log(`checking: final-response-ledger-${outcome}`);
+    const conversation = await client.conversation.create({
+      data: { userId: ownerId },
+    });
+    const message = await client.chatMessage.create({
+      data: {
+        userId: ownerId,
+        conversationId: conversation.id,
+        role: 'USER',
+        order: 1,
+        content: 'Synthetic final response budget check.',
+      },
+    });
+    const turn = await client.chatTurn.create({
+      data: {
+        userId: ownerId,
+        conversationId: conversation.id,
+        clientRequestId: randomUUID(),
+        inputHash: `sha256:${'1'.repeat(64)}`,
+        inputMessageIds: [message.id],
+        budgetPolicyVersion: 'chat-v1',
+      },
+    });
+    await repository.createLedger(ownerId, turn.id, {
+      ...DEFAULT_CHAT_RUN_BUDGET_POLICY,
+      ...(outcome === 'admission-denied' ? { maxCalls: 1 } : {}),
+    });
+    const background = await client.backgroundJob.create({
+      data: {
+        userId: ownerId,
+        queueName: CHAT_RESPONSE_QUEUE,
+        jobName: CHAT_RESPONSE_JOB,
+        resourceType: CHAT_RESPONSE_RESOURCE_TYPE,
+        resourceId: turn.id,
+      },
+    });
+    let generationCalls = 0;
+    const worker = new ChatResponseWorkerService(
+      client as PrismaService,
+      {
+        accounting: 'deepseek-v4-pro',
+        generate: (input) => {
+          generationCalls += 1;
+          assert.deepEqual(input.generationBudget, {
+            inputTokens: 2500,
+            outputTokens: 1200,
+            costMicros: 15000,
+          });
+          return Promise.resolve({
+            content: 'Synthetic answer.',
+            generator: 'synthetic-final-v1',
+            usage:
+              outcome === 'missing-usage'
+                ? null
+                : {
+                    inputTokens: outcome === 'over-limit' ? 2501 : 200,
+                    outputTokens: 30,
+                  },
+          });
+        },
+      },
+      undefined,
+      repository,
+      runner,
+    );
+    const job = {
+      id: background.id,
+      attemptsMade: 0,
+      opts: { attempts: 3 },
+      data: {
+        turnId: turn.id,
+        backgroundJobId: background.id,
+        inputHash: turn.inputHash,
+        budgetPolicyVersion: 'chat-v1',
+      },
+      discard: () => undefined,
+    } as unknown as Job<unknown>;
+    await worker.process(job);
+    const completed = await client.chatTurn.findUniqueOrThrow({
+      where: { id: turn.id },
+    });
+    const success = outcome === 'success';
+    const denied = outcome === 'admission-denied';
+    assert.equal(completed.status, success ? 'SUCCEEDED' : 'FAILED');
+    assert.equal(
+      completed.errorCode,
+      success ? null : denied ? 'BUDGET_EXHAUSTED' : 'OUTPUT_INVALID',
+    );
+    assert.equal(
+      (
+        await client.backgroundJob.findUniqueOrThrow({
+          where: { id: background.id },
+        })
+      ).status,
+      completed.status,
+    );
+    const final = await client.chatRunBudgetReservation.findUnique({
+      where: {
+        id_userId: { id: `final_response:${turn.id}:1`, userId: ownerId },
+      },
+    });
+    if (denied) assert.equal(final, null);
+    else {
+      assert.equal(final?.status, success ? 'SETTLED' : 'UNCERTAIN');
+      assert.equal(final?.usageCostMicros, success ? 780 : 0);
+    }
+    const ledger = await repository.findLedger(ownerId, turn.id);
+    assert.equal(ledger?.usedCalls, success ? 2 : 0);
+    assert.equal(ledger?.heldCalls, success ? 0 : denied ? 1 : 2);
+    assert.equal(ledger?.usedInputTokens, success ? 200 : 0);
+    assert.equal(ledger?.usedOutputTokens, success ? 30 : 0);
+    assert.equal(ledger?.usedCostMicros, success ? 780 : 0);
+    assert.equal(ledger?.heldCostMicros, success || denied ? 0 : 15000);
+    await worker.process(job);
+    assert.equal(generationCalls, denied ? 0 : 1);
+    assert.equal(
+      await client.chatMessage.count({
+        where: { conversationId: conversation.id, role: 'ASSISTANT' },
+      }),
+      success ? 1 : 0,
+    );
+    assert.equal(
+      await client.outboxEvent.count({
+        where: {
+          aggregateId: turn.id,
+          type: success
+            ? CHAT_RESPONSE_COMPLETED_EVENT
+            : CHAT_RESPONSE_FAILED_EVENT,
+        },
+      }),
+      1,
+    );
+    assert.equal(
+      (await repository.findLedger(ownerId, turn.id))?.heldCalls,
+      ledger?.heldCalls,
+    );
+    checks.push(`final-response-ledger-${outcome}-terminal-replay`);
   }
   return checks;
 }

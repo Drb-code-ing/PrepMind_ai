@@ -1,6 +1,6 @@
 # PrepMind AI 当前状态
 
-更新时间：2026-09-11
+更新时间：2026-09-12
 用途：给开发者和协作 Agent 提供一个短、可核对的项目快照。阶段细节和原始证据仍以 `docs/acceptance/` 为准。
 
 ## 一句话结论
@@ -9,7 +9,7 @@ PrepMind 的产品基础和大部分 Agent 合同已经落地，但 **Phase 6 Ag
 Worker readiness：BullMQ 保留的历史失败只有在已被更新成功覆盖时才不再阻断流量，失败计数仍可观测；本机 CLI 也已统一到
 Bun。此前完成的 `/agent-trace` Mock/Live 切换和 durable ChatTurn 浏览器恢复仍有效。Worker 现在具备 Router/Retriever/Verifier
 stage wiring；09-11 修正了零预留/非零结算回归和 Verifier schema/取消漏记 UNCERTAIN，并通过真实 Worker + 隔离 PostgreSQL 回归。
-最终回答 generator 仍是 deterministic baseline，也不是真实模型 Worker。
+09-12 已接入 FinalResponse 独立预算/usage 合同并通过隔离数据库回归；最终回答 generator 仍是 deterministic baseline，也不是真实模型 Worker。
 
 ## 当前基线
 
@@ -37,7 +37,7 @@ stage wiring；09-11 修正了零预留/非零结算回归和 Verifier schema/�
 | Knowledge Dedup / Organizer | owner-scoped shortlist、受限 candidate 与 deterministic fallback 已实现                                       | 需要最新矩阵确认真实产品 smoke 状态                                                 |
 | Retriever / FinalResponse   | Worker 的 `rag_answer` 路径调用 owner-bound Retriever projection，再进入 Verifier stage；默认 deterministic、可选 DeepSeek candidate | 不能据此证明上游每个 Agent 或 SLA；Verifier/最终回答真实模型与 embedding/provider 生产证据仍待验证 |
 | Chat response worker        | Outbox -> BullMQ -> claim -> durable terminal commit；Stream contract、Redis bounded replay 和状态查询已实现  | 当前 generator 是 `deterministic-worker-v1`；全链路 ledger、真实模型 Worker 未完成  |
-| ChatRunBudget 合同          | `@repo/types`、Prisma schema/migration、owner-scoped repository、Worker/Router reservation/settlement/terminal reconcile、显式 UNCERTAIN recovery、dispatch 单胜者、终态 guard、Server turn-bound stage runner、`@repo/agent` typed budget port 与隔离 PostgreSQL 同机多 client 并发及子进程 post-commit crash 验收已实现 | 多 Worker/跨主机/网络故障恢复、Tutor/Retriever/Verifier/FinalResponse stage 注入、Trace 对账和真实模型结算未完成 |
+| ChatRunBudget 合同          | `@repo/types`、Prisma schema/migration、owner-scoped repository、Worker/Router reservation/settlement/terminal reconcile、显式 UNCERTAIN recovery、dispatch 单胜者、终态 guard、Server turn-bound stage runner、`@repo/agent` typed budget port 与隔离 PostgreSQL 同机多 client 并发及子进程 post-commit crash 验收已实现 | 多 Worker/跨主机/网络故障恢复、Tutor/Retriever stage 注入、FinalResponse 网络生成器、Trace 对账和真实模型结算未完成 |
 | ChatTurn product bridge     | gate-on 后 prepare/enqueue/`202`；浏览器 owner-bound status + JSON cursor replay、刷新恢复和 status-only 降级 | gate 默认关闭；首轮保留 legacy；当前不是长连接 BFF SSE push，也不是生产持续运行证据 |
 | MemoryAgent                 | PostgreSQL 候选/确认/停用/删除流程已实现                                                                      | 当前无模型 gate、自动注入或完整分层记忆实现                                         |
 | Tool-Using Orchestrator     | 未实现                                                                                                        | 仅在治理 catalog/规划中出现                                                         |
@@ -56,8 +56,8 @@ stage wiring；09-11 修正了零预留/非零结算回归和 Verifier schema/�
 
 1. 完成 Phase 6 Agent 审计：逐项确认通信、owner/权限、并发、预算 ledger、取消、Trace 和真实模型产品 smoke。
 2. 继续补齐其他 Agent stage 和 Trace 对账（ticket 05），复用 Server turn-bound stage runner；Router/Retriever/Verifier Worker 接线已存在，
-   09-11 的 Worker/Verifier 结算修复通过 `72/72` focused 与 `13/13` 隔离数据库检查。下一步为 FinalResponse 建立独立预算/usage 合同，
-   再接真实 generator；Router 成本/失败 usage、Retriever ledger 和 Tutor 迁移仍有缺口，不把本次修复当作全链路完成。
+   09-12 FinalResponse 独立预算/usage 合同已完成，当前 `128/128` Server 测试与 `17/17` 隔离数据库检查。下一步接真实 generator
+   的 usage 采集、mode/stream metadata 与取消；Router 成本/失败 usage、Retriever ledger 和 Tutor 迁移仍有缺口，不把本次接入当作全链路完成。
    ChatRunBudget 同机多 client 并发与子进程 post-commit crash/reconciliation 证据已封存，多 Worker/跨主机/网络故障恢复仍待专门验收。
 3. 为 Chat Worker 接入独立真实模型 gate、usage/cost 记录和产品 controlled smoke（ticket 06）；继续保持默认 mock/off。
 4. 以负载和延迟数据评估是否另做真正 SSE push；ticket 04 当前是 JSON replay/polling，不伪称 SSE。
