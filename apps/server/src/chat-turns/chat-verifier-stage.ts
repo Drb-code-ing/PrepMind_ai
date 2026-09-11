@@ -4,9 +4,7 @@ import {
   createOpenAICompatibleStructuredExecutor,
   type ModelAgentRuntime,
 } from '@repo/ai';
-import {
-  AgentBudgetUncertainResult,
-} from '@repo/agent/chat-run-budget';
+import { AgentBudgetUncertainResult } from '@repo/agent/chat-run-budget';
 import {
   isKnowledgeVerifierModelEligible,
   runKnowledgeVerifierModelCandidate,
@@ -62,6 +60,17 @@ export class ChatVerifierStageService {
       query: input.query,
       chunks: [...input.chunks],
     });
+    if (input.signal?.aborted) {
+      return {
+        result: deterministic,
+        observation: {
+          ...localObservation(),
+          disposition: 'fallback_aborted',
+          reasonCodes: ['fallback_aborted', 'ABORTED'],
+        },
+        degraded: true,
+      };
+    }
     if (!this.configuration?.enabled) {
       return {
         result: deterministic,
@@ -127,33 +136,25 @@ export class ChatVerifierStageService {
           envelope.observation.attempted &&
           (envelope.observation.traceUnavailable === true ||
             envelope.observation.usageUnavailable === true ||
-            envelope.observation.disposition === 'fallback_runtime_error' ||
-            envelope.observation.disposition === 'fallback_timeout' ||
+            envelope.observation.disposition !== 'candidate_applied' ||
             !usageWithinCap);
         const value = {
-            result: envelope.result,
-            observation: envelope.observation,
-            degraded: envelope.observation.disposition !== 'candidate_applied',
-          } satisfies ChatVerifierStageResult;
-        const usage = unknownOutcome
-          ? {
-              inputTokens: INPUT_TOKENS,
-              outputTokens: OUTPUT_TOKENS,
-              costMicros: REQUEST_CAP_MICROS,
-            }
-          : {
-              inputTokens: envelope.observation.usage.inputTokens,
-              outputTokens: envelope.observation.usage.outputTokens,
-              costMicros: calculatedCostMicros,
-            };
+          result: envelope.result,
+          observation: envelope.observation,
+          degraded: envelope.observation.disposition !== 'candidate_applied',
+        } satisfies ChatVerifierStageResult;
         if (unknownOutcome) {
+          // Failure envelopes can report zero even after a billable call.
+          // Never convert missing usage (including schema/abort) into a refund.
           throw new AgentBudgetUncertainResult(value);
         }
         return {
           value,
-          // A dispatched call with no trustworthy usage must retain its full
-          // hold rather than settling it as a free provider request.
-          usage,
+          usage: {
+            inputTokens: envelope.observation.usage.inputTokens,
+            outputTokens: envelope.observation.usage.outputTokens,
+            costMicros: calculatedCostMicros,
+          },
         };
       },
     );

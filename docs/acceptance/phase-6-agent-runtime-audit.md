@@ -1,6 +1,6 @@
 # Phase 6 Agent Runtime Audit
 
-更新时间：2026-09-07
+更新时间：2026-09-11
 范围：Phase 6 全部 Agent、模型 gate、通信边界、权限、预算、Trace、降级和现有证据。  
 结论级别：本文件是审计基线，不代表所有 Agent 已完成真实模型验收。
 
@@ -20,7 +20,9 @@ consumer 也不是真正 SSE push；完整 ledger 和真实模型 Worker 仍未�
 2026-09-08 ticket 05 Verifier model-stage wiring 已接入 Worker：`rag_answer` 的 owner-bound Retriever projection 现在进入
 `ChatVerifierStageService`，默认 gate-off 保持 deterministic；启用时严格绑定知识专用 DeepSeek `deepseek-v4-pro` runtime。不可确认的
 timeout/provider/schema 结果保留完整 dispatched hold，不以零 usage 结算。WORKER reservation 改为零额度执行 lease，避免吞掉子 stage
-预算。Worker Verifier propagation focused `23/23`、Server build/lint/Prettier 通过；未调用 Provider，尚无 product real-model smoke。
+预算。该轮 `23/23` 测试的结算 mock 未校验上限，不能证明真实账本可用；09-11 已复现并修复零预留/非零结算冲突，以及
+schema 无效/调用后取消漏记 UNCERTAIN。当前 focused `72/72`、隔离 PostgreSQL `13/13`，新增真实 Worker terminal/replay 断言；
+候选 executor 仍为合成，未调用真实 Provider，尚无 product real-model smoke。详见 ChatRunBudget 合同验收 3.2。
 
 2026-09-07 ticket 05 dispatch/recovery 切片进一步冻结 ChatRunBudget 运行时边界：重复 dispatch 不会再次授予执行许可，活跃/排队 turn
 禁止提前终态对账，终态竞争失败方复用 durable winner，terminal replay 会再次执行 reconciliation；repository/Worker focused Jest `28/28`、
@@ -120,9 +122,9 @@ HTTP request
    已接 admission/handoff，浏览器 status/JSON replay 与断线恢复也已接入。真正 SSE push 仍未实现，但不作为 ticket 04 完成条件。
 5. Review/Planner 的 HTTP AbortSignal 与 candidate 外层 fallback 已完成；共享预算 repository、Worker reservation/settlement 和 terminal
    reconciliation 已建立，但 Review/Planner 真实模型产品验收仍未建立。
-6. Router/Verifier/Tutor/FinalResponse 各自持有局部预算；`@repo/agent` 现在提供 typed `AgentBudgetPort/runBudgetedStage`，Server 也提供 turn-bound
-   `ChatRunBudgetStageRunner` 并已由 Worker 使用，但产品 composition root 尚未将 Router/Tutor/Retriever/Verifier/FinalResponse 注入，因此仍需
-   补跨节点上限、Trace 对账和越界测试，不能把 runner/port 合同当成所有产品 Agent 的 enforcement。
+6. Server `ChatRunBudgetStageRunner` 已由 Worker/Router/Verifier 使用；Retriever 已进入调用链但未独立记账，Tutor/FinalResponse 尚待迁入。
+   WORKER 零 token 执行许可仍占 1 calls；Verifier 有正常结算/未知费用 hold 证据，但 Router 成本和失败 usage、完整 Trace 对账、
+   多 Worker 恢复仍有缺口，不能把 runner/port 合同当成所有产品 Agent 的 enforcement。
 7. `POST /chat-turns`、Web adapter、`/api/chat` bridge 和 browser recovery 都已实现；`202` 仍只表示 Worker 已接管，浏览器必须继续
    通过 authenticated status/JSON replay 取得结果。不得把该 polling consumer 误读为 SSE push 或 Provider 成功。
 

@@ -300,16 +300,9 @@ export class ChatResponseWorkerService {
         validateGeneratedResult(value);
         return {
           value,
-          usage: {
-            inputTokens: Math.min(
-              10_000,
-              estimateTokens(
-                messages.map((message) => message.content).join('\n'),
-              ),
-            ),
-            outputTokens: Math.min(2_800, estimateTokens(value.content)),
-            costMicros: 0,
-          },
+          // This reservation fences execution, not model usage. Child stages
+          // own model accounting; the deterministic generator makes no call.
+          usage: { inputTokens: 0, outputTokens: 0, costMicros: 0 },
         };
       },
     );
@@ -1127,10 +1120,6 @@ function isTerminalJob(status: BackgroundJob['status']) {
     status === 'CANCELLED' ||
     status === 'STALE_SKIPPED'
   );
-}
-
-function estimateTokens(content: string) {
-  return Math.max(1, Math.ceil(content.length / 4));
 }
 
 function compatibleTerminalStates(

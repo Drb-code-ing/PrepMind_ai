@@ -1,5 +1,22 @@
 # PrepMind AI 开发日志
 
+## 2026-09-11 - Worker/Verifier 账本结算回归修复
+
+- 目的：接入 FinalResponse 前修复上一轮 `e620230e` 的实际 Worker 完成阻断，避免测试通过却无法使用真实数据库。
+- 根因：WORKER 已预留 `0/0/0`，结算仍用正文估算 token；旧测试 settle 永远返回成功。按 Repository 上限增强 mock 后，23 项中
+  4 项报 `Agent stage budget settlement conflicted`。修复为执行许可同样零 token/cost 结算，仍占 1 calls，不伪造模型用量。
+- Verifier 新增 17 项合成 runtime 测试，先复现预取消占预算、schema 无效/调用后取消漏记 UNCERTAIN 三项失败，再修复。
+  成功按 token 结算 CNY micros；失败持有未知费用；预算拒绝/重复 dispatch 不绕过权限或重新执行。
+- 验证：Worker/Verifier/StageRunner/Repository/module `72/72`，扩展 ChatTurn/预算模块 `15 suites / 115 tests` 全通过；
+  Server build、目标 ESLint/Prettier、6 份文档新增链接/敏感模式检查通过。隔离 PostgreSQL 应用 20 migrations、`13/13`。
+  新增真实 `Worker.process()` 默认回答/合成 Verifier 成功/合成 schema 失败三条链路，核验 assistant/Turn/Job/Outbox 落库、
+  终态重放唯一性及 UNCERTAIN 不退款；不是 BullMQ、Qwen、真实 LLM 或产品浏览器 smoke。
+- 安全：仅创建并停止临时 tmpfs PostgreSQL，原有 7 个 Docker 容器与卷未改动；未读 `.env`，Provider 0 次。
+  本轮只做 Server build，不重复运行会自动加载 `.env.local` 的 Next build。纠正上一轮回执：其 Next build 确实自动读取 `.env.local`。
+- 分支 `drb/chat-worker-ledger-regression`；提交前完成 Server build、目标 lint/Prettier 与文档检查，合并后重跑 focused/隔离数据库并核对远程 parity。
+  具体命令、边界和可追问问题见 `docs/acceptance/phase-6-chat-run-budget-contract.md` 3.2；最终 SHA 以本任务 Git 回执为准。
+- 后续：FinalResponse 独立预算/usage 合同 -> 真实 generator；Router 成本与失败语义、Retriever ledger、Tutor、Trace 和产品验收仍未完成。
+
 > 2026-09-08 — Ticket 05 Server Verifier model-stage wiring 原子切片（进行中）：
 >
 > 新增 `ChatVerifierStageService`，在 Worker 的 owner-bound Retriever projection 后按 `KNOWLEDGE_VERIFIER_MODEL_ENABLED` 接入
